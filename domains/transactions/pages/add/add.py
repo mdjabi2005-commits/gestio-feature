@@ -39,12 +39,16 @@ def render_ocr_upload_fragment():
     st.subheader("📸 Scan par OCR (Simple & Rapide)")
     st.info("💡 Chargez vos tickets, vérifiez, et validez. Ils seront automatiquement rangés.")
 
+    # Gestion de la clé du uploader pour forcer son vidage
+    if "ocr_uploader_key" not in st.session_state:
+        st.session_state.ocr_uploader_key = "ocr_uploader_0"
+
     # 1. UPLOAD
     uploaded_files = st.file_uploader(
         "Choisissez vos images (Tickets)",
         type=["jpg", "jpeg", "png"],
         accept_multiple_files=True,
-        key="ocr_uploader"
+        key=st.session_state.ocr_uploader_key
     )
 
     # 2. SESSION STATE
@@ -254,6 +258,8 @@ def render_ocr_validation_fragment():
                                 # Si c'était le dernier ticket du batch, on purge proprement l'état pour une remise à neuf totale
                                 if not st.session_state.ocr_batch:
                                     st.session_state.ocr_cancel = False
+                                    # On incrémente la clé de l'uploader pour FORCER Streamlit à vider la liste visuelle de fichiers
+                                    st.session_state.ocr_uploader_key = f"ocr_uploader_{time.time()}"
                                 
                                 # Purge globale des données (forcera la BDD à se relire sur d'autres vues)
                                 st.session_state.pop("all_transactions_df", None)
