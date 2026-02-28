@@ -1,0 +1,16 @@
+streamlit
+pandas
+numpy
+plotly
+matplotlib
+Pillow
+opencv-python
+pyyaml
+pdfminer.six
+rapidocr-onnxruntime
+python-dateutil
+psutil
+pydantic
+requests
+pyjwt
+cryptography
