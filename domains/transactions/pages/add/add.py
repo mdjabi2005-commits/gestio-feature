@@ -105,11 +105,12 @@ def render_ocr_upload_fragment():
                 timer_text.caption(f"⏱️ Temps écoulé : {elapsed:.1f}s")
             
             try:
-                results = ocr_service.process_batch_tickets(
-                    image_paths=paths,
-                    max_workers=max_workers,
-                    progress_callback=update_ui_progress
-                )
+                with st.spinner("🤖 Groq analyse vos tickets en temps réel... (Super Rapide)"):
+                    results = ocr_service.process_batch_tickets(
+                        image_paths=paths,
+                        max_workers=max_workers,
+                        progress_callback=update_ui_progress
+                    )
                 processed_count = len([r for r in results if r[2] is None])
             except InterruptedError:
                 status_text.warning("⚠️ Traitement annulé.")
@@ -192,7 +193,13 @@ def render_ocr_validation_fragment():
                     c1, c2 = st.columns(2)
                     with c1:
                         cat_options = TRANSACTION_CATEGORIES + ["➕ Autre..."]
-                        f_cat_sel = st.selectbox("Catégorie", cat_options, key=f"cat_{fname}")
+                        
+                        # Trouver l'index de la catégorie prédite par l'OCR
+                        default_index = 0
+                        if trans.categorie in cat_options:
+                            default_index = cat_options.index(trans.categorie)
+
+                        f_cat_sel = st.selectbox("Catégorie", cat_options, index=default_index, key=f"cat_{fname}")
                         if f_cat_sel == "➕ Autre...":
                             f_cat = st.text_input("Nouvelle catégorie", key=f"newcat_{fname}")
                         else:
@@ -241,6 +248,7 @@ def render_ocr_validation_fragment():
                             if success:
                                 toast_success("Ticket validé et rangé !")
                                 st.session_state.ocr_batch[fname]["saved"] = True
+                                time.sleep(1.5) # Laisser le temps au Toast de s'afficher
                                 st.rerun()
                             else:
                                 toast_error("Transaction sauvée mais erreur lors du rangement du fichier.")

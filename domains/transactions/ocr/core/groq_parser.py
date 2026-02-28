@@ -50,6 +50,11 @@ Tu dois extraire le nom du commerçant et classifier la transaction.
 
 Tu dois répondre OBLIGATOIREMENT ET UNIQUEMENT par un objet JSON strict ("type": "json_object").
 
+Règles de classification cruciales (ANTI-BIAIS) :
+1. Si tu détectes des mots liés au carburant ("Carburant", "Gazole", "SP95", "Litre", "Pompe", "Station"),
+la catégorie DOIT ÊTRE ABSOLUMENT "Voiture", MÊME SI l'enseigne est un supermarché (ex: Carrefour, Auchan, Leclerc).
+2. Si c'est un ticket de supermarché standard sans mention de carburant, c'est "Alimentation".
+
 Règles de sortie du JSON :
 {{
   "category": "Choisis OBLIGATOIREMENT une SEULE catégorie parmi cette liste exacte : [{categories_str}]. Si aucune ne correspond bien, choisis 'Autre'.",

@@ -38,7 +38,7 @@ class AttachmentRepository:
 
     @staticmethod
     def _empty_df() -> pd.DataFrame:
-        return pd.DataFrame(columns=['id', 'transaction_id', 'file_name', 'file_type', 'upload_date'])
+        return pd.DataFrame(columns=['id', 'transaction_id', 'file_name', 'file_path', 'file_type', 'upload_date'])
 
     def add_attachment(self, attachment: TransactionAttachment) -> Optional[int]:
         conn = None
@@ -46,9 +46,9 @@ class AttachmentRepository:
             conn = get_db_connection(db_path=self.db_path)
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO transaction_attachments (transaction_id, file_name, file_type, upload_date) "
-                "VALUES (?, ?, ?, ?)",
-                (attachment.transaction_id, attachment.file_name,
+                "INSERT INTO transaction_attachments (transaction_id, file_name, file_path, file_type, upload_date) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (attachment.transaction_id, attachment.file_name, attachment.file_path,
                  attachment.file_type, attachment.upload_date.isoformat())
             )
             new_id = cursor.lastrowid
