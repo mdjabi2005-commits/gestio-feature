@@ -10,7 +10,6 @@ from pathlib import Path
 from .pattern_manager import PatternManager
 from ..core.parser import parse_amount, parse_date, parse_pdf_revenue
 from ..core.rapidocr_engine import RapidOCREngine
-from ..core.text_utils import clean_ocr_text
 from ...database.model import Transaction
 
 # Import conditionnel du moteur PDF
@@ -179,16 +178,13 @@ class OCRService:
             # 1. Extraction texte via OCR
             raw_text = self.ocr_engine.extract_text(image_path)
 
-            # 2. Nettoyage
-            cleaned_text = clean_ocr_text(raw_text)
-
             # 3. Récupération des patterns
             amount_patterns = self.pattern_manager.get_amount_patterns()
             date_patterns = self.pattern_manager.get_date_patterns()
 
             # 4. Parsing
-            amount = parse_amount(cleaned_text, amount_patterns)
-            transaction_date = parse_date(cleaned_text, date_patterns)
+            amount = parse_amount(raw_text, amount_patterns)
+            transaction_date = parse_date(raw_text, date_patterns)
 
             # 5. Validation
             if amount is None:
