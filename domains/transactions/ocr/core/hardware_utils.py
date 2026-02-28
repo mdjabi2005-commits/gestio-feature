@@ -10,6 +10,9 @@ import psutil
 
 logger = logging.getLogger(__name__)
 
+# RAM minimale par worker RapidOCR (modèle ONNX ~0.5 Go par process)
+_RAM_PER_WORKER_GB: float = 0.5
+
 
 def get_cpu_info() -> dict:
     """Retourne les infos CPU/RAM"""
@@ -50,3 +53,43 @@ def get_optimal_batch_size() -> int:
     except Exception as e:
         logger.warning(f"Impossible de déterminer les workers, fallback à 1: {e}")
         return 1
+
+
+def get_optimal_workers(task_count: int) -> int:
+    """
+    Calcule le nombre de workers ProcessPoolExecutor à utiliser.
+
+    Borne le résultat par :
+    - le nombre de tâches  (inutile de spawner plus de process que de fichiers)
+    - la RAM disponible    (chaque worker charge un modèle ONNX en mémoire)
+    - le nombre de cœurs  (via get_optimal_batch_size)
+
+    Args:
+        task_count: Nombre de fichiers à traiter.
+
+    Returns:
+        Nombre de workers >= 1.
+    """
+    if task_count <= 0:
+        return 1
+
+    # 1. Limite CPU
+    cpu_workers = get_optimal_batch_size()
+
+    # 2. Limite RAM
+    try:
+        info = get_cpu_info()
+        available_ram = info.get("available_ram_gb", 4.0)
+        ram_workers = max(1, int(available_ram / _RAM_PER_WORKER_GB))
+    except Exception:
+        ram_workers = cpu_workers
+
+    # 3. Pas plus de workers que de tâches à traiter
+    optimal = min(cpu_workers, ram_workers, task_count)
+    optimal = max(1, optimal)
+
+    logger.info(
+        f"Workers calculés : {optimal} "
+        f"(cpu_limit={cpu_workers}, ram_limit={ram_workers}, tâches={task_count})"
+    )
+    return optimal
