@@ -254,6 +254,10 @@ def render_ocr_validation_fragment():
                                 # Si c'était le dernier ticket du batch, on purge proprement l'état pour une remise à neuf totale
                                 if not st.session_state.ocr_batch:
                                     st.session_state.ocr_cancel = False
+                                
+                                # Purge globale des données (forcera la BDD à se relire sur d'autres vues)
+                                st.session_state.pop("all_transactions_df", None)
+                                st.cache_data.clear()
                                     
                                 time.sleep(1.5) # Laisser le temps au Toast de s'afficher
                                 st.rerun()
@@ -325,6 +329,10 @@ def render_pdf_fragment():
                                 transaction_type="Revenu"
                             )
                             toast_success("PDF importé et rangé !")
+                            
+                            st.session_state.pop("all_transactions_df", None)
+                            st.cache_data.clear()
+                            
                             st.rerun()
                         else:
                             toast_error("Erreur")
@@ -410,6 +418,8 @@ def render_recurrence_fragment():
                 )
                 if repo.add_recurrence(new_rec):
                     toast_success("Récurrence créée !")
+                    st.session_state.pop("all_transactions_df", None)
+                    st.cache_data.clear()
                     st.rerun()
                 else:
                     toast_error("Erreur")
