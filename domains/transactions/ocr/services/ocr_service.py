@@ -219,46 +219,64 @@ class OCRService:
                 log_error(e, f"Erreur traitement image ticket {Path(image_path).name}")
             raise
 
+    def process_batch_tickets(self, image_paths: list[str], max_workers: int = 4, progress_callback=None) -> list[tuple[str, Transaction | None, str | None]]:
+        """
+        Traite un lot d'images (tickets) en parallèle à l'aide de threads.
+        Étant donné que RapidOCR libère le GIL (Global Interpreter Lock), 
+        les threads partagent cette unique instance de class en RAM sans se bloquer,
+        ce qui résout le problème de rechargement OOM (Out Of Memory).
+        
+        Args:
+            image_paths: Liste des chemins absolus des images à traiter
+            max_workers: Nombre maximum de threads en parallèle
+            progress_callback: Fonction de rappel appelée après chaque ticket traité
+                               Signature: (filename: str, processed_count: int, total_count: int, elapsed_time: float)
+                               
+        Returns:
+            Liste de tuples (nom_fichier, Transaction_ou_None, erreur_ou_None)
+        """
+        import time
+        import concurrent.futures
+        
+        results = []
+        total = len(image_paths)
+        processed_count = 0
+        start_time = time.time()
+        
+        logger.info(f"Démarrage process_batch_tickets: {total} fichiers avec {max_workers} threads")
+
+        # Utilisation des THREADS pour partager self.ocr_engine !
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # On stocke les futures (tâches planifiées) avec leur chemin de fichier associé
+            future_to_path = {
+                executor.submit(self.process_ticket, path): path 
+                for path in image_paths
+            }
+            
+            # On itère au fur et à mesure que les threads terminent
+            for future in concurrent.futures.as_completed(future_to_path):
+                path = future_to_path[future]
+                fname = Path(path).name
+                elapsed = time.time() - start_time
+                
+                try:
+                    # Le résultat de self.process_ticket est une Transaction
+                    transaction = future.result()
+                    results.append((fname, transaction, None))
+                except Exception as e:
+                    logger.error(f"Erreur thread OCR sur {fname}: {e}")
+                    results.append((fname, None, str(e)))
+                
+                processed_count += 1
+                
+                if progress_callback:
+                    # Le callback permet à l'UI (Streamlit par ex) de mettre à jour la barre de progression
+                    progress_callback(fname, processed_count, total, elapsed)
+                    
+        return results
+
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Fonction TOP-LEVEL (picklable) pour ProcessPoolExecutor
-# IMPORTANT : doit rester au niveau module, PAS dans une classe.
-# Sur Windows (spawn), ProcessPoolExecutor ne peut envoyer aux workers
-# que des objets sérialisables (pickle). Une méthode de classe ou une
-# lambda NE SONT PAS picklables — une fonction module-level l'est.
+# Fin du service OCR unifié
 # ─────────────────────────────────────────────────────────────────────────────
-def process_ticket_standalone(image_path: str) -> dict:
-    """
-    Traite un ticket image dans un worker ProcessPoolExecutor.
-
-    Chaque worker instancie son propre OCRService (et donc son propre
-    moteur RapidOCR). Le résultat est un dict sérialisable (pas un objet
-    Pydantic) pour traverser la frontière inter-processus sans erreur pickle.
-
-    Args:
-        image_path: Chemin absolu vers l'image du ticket.
-
-    Returns:
-        dict avec les clés :
-          - "montant"  (float | None)
-          - "date"     (str ISO "YYYY-MM-DD" | None)
-          - "source"   (str)
-          - "error"    (str | None)  — rempli si exception
-    """
-    try:
-        service = OCRService()
-        transaction = service.process_ticket(image_path)
-        return {
-            "montant": float(transaction.montant) if transaction.montant is not None else None,
-            "date": transaction.date.isoformat() if transaction.date else None,
-            "source": transaction.source or "ocr",
-            "error": None,
-        }
-    except Exception as exc:
-        return {
-            "montant": None,
-            "date": None,
-            "source": "ocr",
-            "error": str(exc),
-        }
 

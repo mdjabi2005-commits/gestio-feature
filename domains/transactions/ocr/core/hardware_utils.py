@@ -10,7 +10,7 @@ import psutil
 
 logger = logging.getLogger(__name__)
 
-# RAM minimale par worker RapidOCR (modèle ONNX ~0.5 Go par process)
+# RAM minimale requise (le modèle ONNX partagé prend ~0.5 Go en RAM total)
 _RAM_PER_WORKER_GB: float = 0.5
 
 
@@ -57,11 +57,11 @@ def get_optimal_batch_size() -> int:
 
 def get_optimal_workers(task_count: int) -> int:
     """
-    Calcule le nombre de workers ProcessPoolExecutor à utiliser.
+    Calcule le nombre de workers (Threads) à utiliser pour le pool OCR.
 
     Borne le résultat par :
-    - le nombre de tâches  (inutile de spawner plus de process que de fichiers)
-    - la RAM disponible    (chaque worker charge un modèle ONNX en mémoire)
+    - le nombre de tâches  (inutile de spawner plus de threads que de fichiers)
+    - la RAM disponible    (bien que partagée, on garde une limite de sécurité)
     - le nombre de cœurs  (via get_optimal_batch_size)
 
     Args:

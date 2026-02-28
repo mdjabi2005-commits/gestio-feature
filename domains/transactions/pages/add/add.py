@@ -88,65 +88,37 @@ def render_ocr_upload_fragment():
                 p.write_bytes(f.read())  # type: ignore[union-attr]
                 paths.append(str(p))
 
-            # Import ici pour éviter tout effet de bord au niveau module
-            from ...ocr.services.ocr_service import process_ticket_standalone
-
+            from ...ocr.services.ocr_service import OCRService
+            
+            ocr_service = OCRService()
             start_time = time.time()
-
-            executor = concurrent.futures.ProcessPoolExecutor(max_workers=max_workers)
+            
+            # Délégation complète de la logique de traitement par lot (Threads/Workers) au service
+            # Le callback mettra à jour l'interface Streamlit en temps réel
+            def update_ui_progress(fname, count, total_files, elapsed: float):
+                # Gérer l'annulation
+                if st.session_state.get("ocr_cancel", False):
+                    raise InterruptedError("Annulé par l'utilisateur")
+                
+                progress_bar.progress(count / total_files)
+                status_text.text(f"✅ Traité : {fname}  ({count}/{total_files})")
+                timer_text.caption(f"⏱️ Temps écoulé : {elapsed:.1f}s")
+            
             try:
-                future_to_name = {
-                    executor.submit(process_ticket_standalone, p): Path(p).name
-                    for p in paths
-                }
-
-                for future in concurrent.futures.as_completed(future_to_name):
-                    # Vérifier si l'utilisateur a cliqué Annuler
-                    if st.session_state.get("ocr_cancel", False):
-                        executor.shutdown(wait=False, cancel_futures=True)
-                        status_text.warning("⚠️ Traitement annulé.")
-                        progress_bar.empty()
-                        timer_text.empty()
-                        break
-
-                    fname = future_to_name[future]
-                    elapsed = time.time() - start_time
-
-                    try:
-                        result_dict = future.result()
-                        # Reconstruire la Transaction depuis le dict (frontière inter-process)
-                        if result_dict["error"] is None:
-                            parsed_date = (
-                                datetime.fromisoformat(result_dict["date"]).date()
-                                if result_dict["date"] else date.today()
-                            )
-                            trans = Transaction(
-                                type="Dépense",
-                                categorie="Non catégorisé",
-                                montant=result_dict["montant"] or 0.0,
-                                date=parsed_date,
-                                description="",
-                                source="ocr",
-                                sous_categorie=None,
-                                recurrence=None,
-                                date_fin=None,
-                                compte_iban=None,
-                                external_id=None,
-                                id=None,
-                            )
-                            results.append((fname, trans, None))
-                        else:
-                            results.append((fname, None, result_dict["error"]))
-                    except Exception as e:
-                        results.append((fname, None, str(e)))
-
-                    processed_count += 1
-                    progress_bar.progress(processed_count / total)
-                    status_text.text(f"✅ Traité : {fname}  ({processed_count}/{total})")
-                    timer_text.caption(f"⏱️ Temps écoulé : {elapsed:.1f}s")
-
-            finally:
-                executor.shutdown(wait=False)
+                results = ocr_service.process_batch_tickets(
+                    image_paths=paths,
+                    max_workers=max_workers,
+                    progress_callback=update_ui_progress
+                )
+                processed_count = len([r for r in results if r[2] is None])
+            except InterruptedError:
+                status_text.warning("⚠️ Traitement annulé.")
+                progress_bar.empty()
+                timer_text.empty()
+                results = [] # On vide les résultats en cas d'annulation totale
+            except Exception as e:
+                status_text.error(f"Erreur inattendue : {e}")
+                results = []
 
             # Mise à jour session
             st.session_state.ocr_batch = {}
@@ -463,12 +435,14 @@ def render_benchmark_fragment():
 
     if st.button("🚀 Lancer le benchmark", type="primary", key="btn_benchmark"):
 
-        from ...ocr.services.ocr_service import process_ticket_standalone
+        from ...ocr.services.ocr_service import OCRService
         from ...ocr.core.hardware_utils import get_optimal_workers, get_cpu_info
 
         total = len(uploaded_files)
         info = get_cpu_info()
         workers_parallel = get_optimal_workers(total)
+        
+        ocr_service = OCRService()
 
         # Sauvegarde des fichiers sur disque
         TEMP_OCR_DIR.mkdir(exist_ok=True)
@@ -496,7 +470,7 @@ def render_benchmark_fragment():
         t_seq_start = time.time()
         for i, p in enumerate(paths):
             t0 = time.time()
-            process_ticket_standalone(p)
+            ocr_service.process_ticket(p)
             seq_times.append(time.time() - t0)
             prog_seq.progress((i + 1) / total)
             status_seq.caption(f"Ticket {i+1}/{total} — {seq_times[-1]:.2f}s")
@@ -512,28 +486,18 @@ def render_benchmark_fragment():
         status_par = st.empty()
 
         par_times = []
-        completed_par = 0
         t_par_start = time.time()
 
-        executor = concurrent.futures.ProcessPoolExecutor(max_workers=workers_parallel)
-        try:
-            future_map = {
-                executor.submit(process_ticket_standalone, p): Path(p).name
-                for p in paths
-            }
-            for future in concurrent.futures.as_completed(future_map):
-                fname = future_map[future]
-                try:
-                    future.result()
-                except Exception:
-                    pass
-                completed_par += 1
-                elapsed = time.time() - t_par_start
-                par_times.append(elapsed)
-                prog_par.progress(completed_par / total)
-                status_par.caption(f"Ticket {completed_par}/{total} — {elapsed:.2f}s cumulé")
-        finally:
-            executor.shutdown(wait=False)
+        def bench_progress_callback(fname, count, total_files, elapsed: float):
+            par_times.append(elapsed)
+            prog_par.progress(count / total_files)
+            status_par.caption(f"Ticket {count}/{total_files} — {elapsed:.2f}s cumulé")
+
+        ocr_service.process_batch_tickets(
+            image_paths=paths,
+            max_workers=workers_parallel,
+            progress_callback=bench_progress_callback
+        )
 
         total_par = time.time() - t_par_start
         prog_par.empty()
