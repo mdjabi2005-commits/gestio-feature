@@ -80,8 +80,6 @@ def render_ocr_upload_fragment():
                 progress_bar = st.progress(0)
                 status_text = st.empty()
                 timer_text = st.empty()
-                # Info workers
-                st.caption(f"⚙️ {max_workers} workers CPU activés pour {total} ticket(s)")
 
             # Assurer que le dossier temp existe
             TEMP_OCR_DIR.mkdir(exist_ok=True)
@@ -141,8 +139,7 @@ def render_ocr_upload_fragment():
             total_elapsed = time.time() - start_time
             if processed_count > 0:
                 st.toast(
-                    f"✅ {processed_count} ticket(s) traité(s) en {total_elapsed:.1f}s "
-                    f"({max_workers} cœurs)",
+                    f"✅ {processed_count} ticket(s) traité(s) en {total_elapsed:.1f}s",
                     icon="📸"
                 )
 
@@ -283,7 +280,11 @@ def render_pdf_fragment():
     """
     st.subheader("📄 Import PDF (Revenus)")
 
-    uploaded_file = st.file_uploader("Choisissez un PDF (Relevé, Facture...)", type=["pdf"], key="pdf_uploader")
+    # Clé dynamique pour forcer la purge du st.file_uploader PDF
+    if "pdf_uploader_key" not in st.session_state:
+        st.session_state.pdf_uploader_key = "pdf_uploader_0"
+
+    uploaded_file = st.file_uploader("Choisissez un PDF (Relevé, Facture...)", type=["pdf"], key=st.session_state.pdf_uploader_key)
 
     if uploaded_file:
         if st.button("Traiter le PDF", type="primary", key="btn_pdf_process"):
@@ -334,11 +335,15 @@ def render_pdf_fragment():
                                 subcategory=sub,
                                 transaction_type="Revenu"
                             )
-                            toast_success("PDF importé et rangé !")
                             
                             st.session_state.pop("all_transactions_df", None)
                             st.cache_data.clear()
                             
+                            # Réinitialiser la liste visuelle du uploader PDF
+                            st.session_state.pdf_uploader_key = f"pdf_uploader_{time.time()}"
+                            
+                            import time
+                            time.sleep(1.5)
                             st.rerun()
                         else:
                             toast_error("Erreur")
