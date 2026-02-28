@@ -208,52 +208,42 @@ class OCRService:
             log_error(e, f"Erreur traitement image ticket {Path(image_path).name}")
             raise
 
-    def process_batch_tickets(self, image_paths: list[str], max_workers: int = 4, progress_callback=None) -> list[tuple[str, Transaction | None, str | None, float]]:
+    def process_batch_tickets(self, image_paths: list[str], max_workers: int = 1, progress_callback=None) -> list[tuple[str, Transaction | None, str | None, float]]:
         """
         Traite un lot d'images (tickets) via le module OCR interne de l'instance.
-        Architecture "V4 Indestructible (Fail-Safe)" : Les OS Windows gèrent très mal
-        l'accès concurrentiel (spawn) d'ONNX Runtime en multiprocessing depuis Streamlit, 
-        causant des goulots d'étranglement de + 60s. On utilise donc un parcourt séquentiel 
-        maitrisé au sein d'un Thread d'arrière plan unique pour décharger l'UI principale.
+        Architecture "V4 Indestructible (Fail-Safe)" : 
+        - Après de nombreux tests, l'accès concurrentiel (Threads ou Processes) d'ONNX Runtime 
+          sous Windows + Streamlit est trop instable (GIL Lock, I/O Spawns).
+        - Le multiprocessing est officiellement retiré de la V4 locale.
+        - On utilise une boucle séquentielle stricte (1 thread, 1 process) pour 100% de fiabilité.
         """
         import time
-        import concurrent.futures
         
         results = []
         total = len(image_paths)
         processed_count = 0
         start_time = time.time()
         
-        logger.info(f"Démarrage process_batch_tickets: {total} fichiers (Séquentiel optimisé)")
+        logger.info(f"Démarrage process_batch_tickets: {total} fichiers (Séquentiel pur)")
 
-        # L'utilisation d'un ThreadPool permet au batch d'être géré sans freezer le main thread Streamlit.
-        # Mais le traitement se fait en file indienne pour le moteur C++ ONNX (1 worker).
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            # Soumission séquentielle (pour l'UI callback)
-            future_to_path = {
-                executor.submit(self.process_ticket, path): path 
-                for path in image_paths
-            }
+        for path in image_paths:
+            fname = Path(path).name
+            t0_ticket = time.time()
             
-            for future in concurrent.futures.as_completed(future_to_path):
-                path = future_to_path[future]
-                fname = Path(path).name
-                t0_ticket = time.time()
+            try:
+                transaction = self.process_ticket(path)
+                img_elapsed = time.time() - t0_ticket
+                results.append((fname, transaction, None, img_elapsed))
+            except Exception as e:
+                logger.error(f"Erreur OCR sur {fname}: {e}")
+                img_elapsed = time.time() - t0_ticket
+                results.append((fname, None, str(e), img_elapsed))
+            
+            processed_count += 1
+            
+            if progress_callback:
+                progress_callback(fname, processed_count, total, time.time() - start_time)
                 
-                try:
-                    transaction = future.result()
-                    img_elapsed = time.time() - t0_ticket
-                    results.append((fname, transaction, None, img_elapsed))
-                except Exception as e:
-                    logger.error(f"Erreur thread OCR sur {fname}: {e}")
-                    img_elapsed = time.time() - t0_ticket
-                    results.append((fname, None, str(e), img_elapsed))
-                
-                processed_count += 1
-                
-                if progress_callback:
-                    progress_callback(fname, processed_count, total, time.time() - start_time)
-                    
         return results
 
 
