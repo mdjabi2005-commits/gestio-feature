@@ -122,7 +122,7 @@ def render_ocr_upload_fragment():
 
             # Mise à jour session
             st.session_state.ocr_batch = {}
-            for fname, trans, err in results:
+            for fname, trans, err, _time_taken in results:
                 st.session_state.ocr_batch[fname] = {
                     "transaction": trans,
                     "error": err,
@@ -485,19 +485,25 @@ def render_benchmark_fragment():
         prog_par = st.progress(0)
         status_par = st.empty()
 
-        par_times = []
+        par_total_times = []
         t_par_start = time.time()
 
         def bench_progress_callback(fname, count, total_files, elapsed: float):
-            par_times.append(elapsed)
+            par_total_times.append(elapsed)
             prog_par.progress(count / total_files)
             status_par.caption(f"Ticket {count}/{total_files} — {elapsed:.2f}s cumulé")
 
-        ocr_service.process_batch_tickets(
+        # La nouvelle version retourne : [(fname, trans, err, img_elapsed), ...]
+        par_results = ocr_service.process_batch_tickets(
             image_paths=paths,
             max_workers=workers_parallel,
             progress_callback=bench_progress_callback
         )
+        
+        # On extrait les temps d'image par image (assurés dans le même ordre)
+        # On recarte le dict sur le fname pour retrouver facilement l'image
+        par_times_dict = {res[0]: res[3] for res in par_results}
+        par_times = [par_times_dict.get(Path(p).name, 0.0) for p in paths]
 
         total_par = time.time() - t_par_start
         prog_par.empty()
@@ -525,6 +531,7 @@ def render_benchmark_fragment():
         df_bench = pd.DataFrame({
             "Ticket": [Path(p).name.replace("bench_", "") for p in paths],
             "Séquentiel (s)": [round(t, 2) for t in seq_times],
+            "Parallèle (s)": [round(t, 2) for t in par_times],
         })
         st.dataframe(df_bench, use_container_width=True, hide_index=True)
 
