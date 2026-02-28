@@ -84,8 +84,7 @@ v4/
 │
 └── .github/
     └── workflows/
-        ├── build.yml                ← Build Windows + signature Azure + Release
-        └── deploy-site.yml          ← Déploiement site docs (GitHub Pages)
+        └── build.yml                ← Build Windows + signature Azure + Release
 ```
 
 ---
