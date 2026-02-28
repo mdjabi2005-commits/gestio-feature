@@ -8,7 +8,8 @@ Refactorisé avec st.fragment pour pywebview.
 
 import concurrent.futures
 import logging
-from datetime import date
+import time
+from datetime import date, datetime
 from pathlib import Path
 
 import streamlit as st
@@ -17,7 +18,7 @@ from shared.ui.toast_components import toast_success, toast_error
 from ..import_page.import_page import import_transactions_page
 from ...database.model import Transaction
 from ...database.constants import TRANSACTION_CATEGORIES, TRANSACTION_TYPES
-from ...ocr.core.hardware_utils import get_optimal_batch_size
+from ...ocr.core.hardware_utils import get_optimal_workers
 from ...services.attachment_service import attachment_service
 from ...services.transaction_service import transaction_service
 
@@ -49,46 +50,103 @@ def render_ocr_upload_fragment():
     # 2. SESSION STATE
     if "ocr_batch" not in st.session_state:
         st.session_state.ocr_batch = {}
+    if "ocr_cancel" not in st.session_state:
+        st.session_state.ocr_cancel = False
 
     # 3. EXTRACTION
     if uploaded_files:
-        if st.button("🔍 Lancer le traitement", type="primary", key="btn_ocr_start"):
-            files_to_process = uploaded_files
-            max_workers = get_optimal_batch_size()
+        col_btn, col_cancel = st.columns([3, 1])
+        with col_btn:
+            start = st.button("🔍 Lancer le traitement", type="primary", key="btn_ocr_start")
+        with col_cancel:
+            if st.button("❌ Annuler", key="btn_ocr_cancel"):
+                st.session_state.ocr_cancel = True
+
+        if start:
+            st.session_state.ocr_cancel = False
+            total = len(uploaded_files)
+            max_workers = get_optimal_workers(total)
 
             results = []
             processed_count = 0
 
             progress_bar = st.progress(0)
             status_text = st.empty()
+            timer_text = st.empty()
 
-            with st.spinner("Traitement en cours..."):  # type: ignore[attr-defined]
-                # Assurer que le dossier temp existe
-                TEMP_OCR_DIR.mkdir(exist_ok=True)
+            # Info workers
+            st.caption(f"⚙️ {max_workers} workers CPU activés pour {total} ticket(s)")
 
-                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                    paths = []
-                    for f in files_to_process:
-                        p = TEMP_OCR_DIR / f.name  # type: ignore[union-attr]
-                        f.seek(0)  # type: ignore[union-attr]
-                        p.write_bytes(f.read())  # type: ignore[union-attr]
-                        paths.append(str(p))
+            # Assurer que le dossier temp existe
+            TEMP_OCR_DIR.mkdir(exist_ok=True)
 
-                    # OCR
-                    from ...ocr.services.ocr_service import OCRService
-                    param_map = {executor.submit(OCRService().process_ticket, p): Path(p).name for p in paths}
+            # Sauvegarde des fichiers uploadés sur disque
+            paths = []
+            for f in uploaded_files:
+                p = TEMP_OCR_DIR / f.name  # type: ignore[union-attr]
+                f.seek(0)  # type: ignore[union-attr]
+                p.write_bytes(f.read())  # type: ignore[union-attr]
+                paths.append(str(p))
 
-                    for i, future in enumerate(concurrent.futures.as_completed(param_map)):
-                        fname = param_map[future]
-                        try:
-                            trans = future.result()
+            # Import ici pour éviter tout effet de bord au niveau module
+            from ...ocr.services.ocr_service import process_ticket_standalone
+
+            start_time = time.time()
+
+            executor = concurrent.futures.ProcessPoolExecutor(max_workers=max_workers)
+            try:
+                future_to_name = {
+                    executor.submit(process_ticket_standalone, p): Path(p).name
+                    for p in paths
+                }
+
+                for future in concurrent.futures.as_completed(future_to_name):
+                    # Vérifier si l'utilisateur a cliqué Annuler
+                    if st.session_state.get("ocr_cancel", False):
+                        executor.shutdown(wait=False, cancel_futures=True)
+                        status_text.warning("⚠️ Traitement annulé.")
+                        progress_bar.empty()
+                        timer_text.empty()
+                        break
+
+                    fname = future_to_name[future]
+                    elapsed = time.time() - start_time
+
+                    try:
+                        result_dict = future.result()
+                        # Reconstruire la Transaction depuis le dict (frontière inter-process)
+                        if result_dict["error"] is None:
+                            parsed_date = (
+                                datetime.fromisoformat(result_dict["date"]).date()
+                                if result_dict["date"] else date.today()
+                            )
+                            trans = Transaction(
+                                type="Dépense",
+                                categorie="Non catégorisé",
+                                montant=result_dict["montant"] or 0.0,
+                                date=parsed_date,
+                                description="",
+                                source="ocr",
+                                sous_categorie=None,
+                                recurrence=None,
+                                date_fin=None,
+                                compte_iban=None,
+                                external_id=None,
+                                id=None,
+                            )
                             results.append((fname, trans, None))
-                        except Exception as e:
-                            results.append((fname, None, str(e)))
+                        else:
+                            results.append((fname, None, result_dict["error"]))
+                    except Exception as e:
+                        results.append((fname, None, str(e)))
 
-                        processed_count += 1
-                        progress_bar.progress(processed_count / len(files_to_process))
-                        status_text.text(f"Traité: {fname}")
+                    processed_count += 1
+                    progress_bar.progress(processed_count / total)
+                    status_text.text(f"✅ Traité : {fname}  ({processed_count}/{total})")
+                    timer_text.caption(f"⏱️ Temps écoulé : {elapsed:.1f}s")
+
+            finally:
+                executor.shutdown(wait=False)
 
             # Mise à jour session
             st.session_state.ocr_batch = {}
@@ -100,10 +158,17 @@ def render_ocr_upload_fragment():
                     "temp_path": str(TEMP_OCR_DIR / fname)
                 }
 
+            total_elapsed = time.time() - start_time
             if processed_count > 0:
-                st.toast(f"✅ {processed_count} tickets traités !", icon="📸")
+                st.toast(
+                    f"✅ {processed_count} ticket(s) traité(s) en {total_elapsed:.1f}s "
+                    f"({max_workers} cœurs)",
+                    icon="📸"
+                )
             status_text.empty()
             progress_bar.empty()
+            timer_text.empty()
+
 
 
 # ============================================================
