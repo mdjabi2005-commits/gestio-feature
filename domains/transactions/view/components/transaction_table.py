@@ -235,18 +235,20 @@ def render_transaction_table(filtered_df, transaction_repository):
                         success_msgs.append(f"✏️ {len(edited_rows)} modifiée(s)")
 
                     toast_success(" | ".join(success_msgs) if success_msgs else "Modifications sauvegardées !", duration=4000)
-                    st.balloons()
                     
-                    # Forcer le rechargement depuis la BDD sur la page view
+                    # On purge les données globales dans tous les cas pour être sûr d'avoir la version amputée
                     st.session_state.pop("all_transactions_df", None)
                     st.cache_data.clear() # <- INDISPENSABLE: vider le cache de _load_all_transactions
-                    
-                    # C'est LA clé manquante : vider l'état interne de Streamlit pour le tableau DataEditor
                     st.session_state.pop("transaction_editor", None)
                     
-                    import time
-                    time.sleep(2) # Laisser les ballons et le Toast s'afficher
-                    st.rerun()
+                    # Condition importante :
+                    # S'il y a des fichiers physiques en suspens, on NE RERUN PAS !
+                    # On laisse le script descendre à la ligne 260 pour afficher la popup.
+                    # Le rerun final sera déclenché par les boutons de la popup.
+                    if not st.session_state.get('pending_physical_delete'):
+                        import time
+                        time.sleep(1.5) # Laisser le Toast s'afficher
+                        st.rerun()
 
                 except Exception as e:
                     trace_id = log_error(e, "Erreur sauvegarde tableau transactions")
@@ -282,11 +284,7 @@ def render_transaction_table(filtered_df, transaction_repository):
                 st.session_state.pop('pending_physical_delete', None)
                 toast_success(f"{deleted_count} fichier(s) supprimé(s)")
                 
-                # Forcer le rechargement depuis la BDD
-                st.session_state.pop("all_transactions_df", None)
-                st.cache_data.clear() # <- Indispensable pour purger @st.cache_data
-                st.session_state.pop("transaction_editor", None)
-                    
+                # Le nettoyage de BDD/Cache a déjà été fait plus haut, on relance juste
                 import time
                 time.sleep(1.5)
                 st.rerun()
@@ -295,11 +293,7 @@ def render_transaction_table(filtered_df, transaction_repository):
                 st.session_state.pop('pending_physical_delete', None)
                 toast_success("Fichiers conservés sur le disque")
                 
-                # Forcer le rechargement depuis BDD et purger le cache UI
-                st.session_state.pop("all_transactions_df", None)
-                st.cache_data.clear() # <- Indispensable pour purger @st.cache_data
-                st.session_state.pop("transaction_editor", None)
-                
+                # Le nettoyage de BDD/Cache a déjà été fait plus haut, on relance juste
                 import time
                 time.sleep(1.5)
                 st.rerun()
