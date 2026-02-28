@@ -239,6 +239,7 @@ def render_transaction_table(filtered_df, transaction_repository):
                     
                     # Forcer le rechargement depuis la BDD sur la page view
                     st.session_state.pop("all_transactions_df", None)
+                    st.cache_data.clear() # <- INDISPENSABLE: vider le cache de _load_all_transactions
                     
                     # C'est LA clé manquante : vider l'état interne de Streamlit pour le tableau DataEditor
                     st.session_state.pop("transaction_editor", None)
@@ -283,6 +284,7 @@ def render_transaction_table(filtered_df, transaction_repository):
                 
                 # Forcer le rechargement depuis la BDD
                 st.session_state.pop("all_transactions_df", None)
+                st.cache_data.clear() # <- Indispensable pour purger @st.cache_data
                 st.session_state.pop("transaction_editor", None)
                     
                 import time
@@ -295,6 +297,7 @@ def render_transaction_table(filtered_df, transaction_repository):
                 
                 # Forcer le rechargement depuis BDD et purger le cache UI
                 st.session_state.pop("all_transactions_df", None)
+                st.cache_data.clear() # <- Indispensable pour purger @st.cache_data
                 st.session_state.pop("transaction_editor", None)
                 
                 import time
