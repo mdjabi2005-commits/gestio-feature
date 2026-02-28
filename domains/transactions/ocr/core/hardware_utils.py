@@ -10,8 +10,8 @@ import psutil
 
 logger = logging.getLogger(__name__)
 
-# RAM minimale requise (le modèle ONNX partagé prend ~0.5 Go en RAM total)
-_RAM_PER_WORKER_GB: float = 0.5
+# RAM requise estimée par worker (Modèle ONNX + Buffers image = ~150-200 Mo)
+_RAM_PER_WORKER_GB: float = 0.2
 
 
 def get_cpu_info() -> dict:
@@ -84,17 +84,17 @@ def get_optimal_workers(task_count: int) -> int:
     except Exception:
         ram_workers = cpu_workers
 
-    # 3. Pas plus de workers que de tâches à traiter
-    optimal = min(cpu_workers, ram_workers, task_count)
-    optimal = max(1, optimal)
+    # 3. Limite OS (Prévention du goulot "Spawn" sur Windows)
+    # Lancer N sessions C++ ONNX en "spawn" d'un coup fige le CPU scheduler de Windows (effet DDOS).
+    # On limite à max 6 pour garder une fluidité système ou CPU/2 max pour les très gros CPU.
+    max_safe_spawns = max(4, min(6, cpu_workers // 2))
 
-    # 4. OVERRIDE V4 INDESTRUCTIBLE
-    # On bride à 4 maximum pour éviter le goulot d'étranglement 
-    # de Windows lors de l'instanciation simultanée massive de sessions ONNX en multiprocessing
-    optimal = min(optimal, 4)
+    # 4. Synthèse finale (Pas plus que le nombre de tâches)
+    optimal = min(cpu_workers, ram_workers, task_count, max_safe_spawns)
+    optimal = max(1, optimal)
 
     logger.info(
         f"Workers calculés : {optimal} "
-        f"(cpu_limit={cpu_workers}, ram_limit={ram_workers}, tâches={task_count}, max_v4=4)"
+        f"(cpu={cpu_workers}, ram={ram_workers}, tâches={task_count}, max_safe_spawn={max_safe_spawns})"
     )
     return optimal
