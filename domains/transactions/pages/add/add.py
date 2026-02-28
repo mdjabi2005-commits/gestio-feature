@@ -70,12 +70,14 @@ def render_ocr_upload_fragment():
             results = []
             processed_count = 0
 
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            timer_text = st.empty()
-
-            # Info workers
-            st.caption(f"⚙️ {max_workers} workers CPU activés pour {total} ticket(s)")
+            # Zone d'interface amovible pour la progression
+            ui_placeholder = st.empty()
+            with ui_placeholder.container():
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                timer_text = st.empty()
+                # Info workers
+                st.caption(f"⚙️ {max_workers} workers CPU activés pour {total} ticket(s)")
 
             # Assurer que le dossier temp existe
             TEMP_OCR_DIR.mkdir(exist_ok=True)
@@ -113,13 +115,14 @@ def render_ocr_upload_fragment():
                     )
                 processed_count = len([r for r in results if r[2] is None])
             except InterruptedError:
-                status_text.warning("⚠️ Traitement annulé.")
-                progress_bar.empty()
-                timer_text.empty()
+                st.warning("⚠️ Traitement annulé.")
                 results = [] # On vide les résultats en cas d'annulation totale
             except Exception as e:
-                status_text.error(f"Erreur inattendue : {e}")
+                st.error(f"Erreur inattendue : {e}")
                 results = []
+
+            # Nettoyage de la zone de progression pour ne pas laisser de fantômes UI
+            ui_placeholder.empty()
 
             # Mise à jour session
             st.session_state.ocr_batch = {}
@@ -138,9 +141,6 @@ def render_ocr_upload_fragment():
                     f"({max_workers} cœurs)",
                     icon="📸"
                 )
-            status_text.empty()
-            progress_bar.empty()
-            timer_text.empty()
 
 
 
