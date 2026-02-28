@@ -23,6 +23,7 @@ dependencies = [
     "pyjwt",
     "cryptography",
     "ollama>=0.6.1",
+    "pytest>=9.0.2",
 ]
 
 [project.scripts]

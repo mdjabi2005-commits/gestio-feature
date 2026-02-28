@@ -8,8 +8,12 @@ from datetime import date
 from pathlib import Path
 
 from .pattern_manager import PatternManager
-# FIN WORKERS
-# ---------------------------------------------------------------------------
+from ..core.rapidocr_engine import RapidOCREngine
+from ..core.groq_parser import GroqParser
+from domains.transactions.database.model import Transaction
+from ..core.parser import parse_amount, parse_date
+
+logger = logging.getLogger(__name__)
 
 
 class OCRService:
@@ -24,8 +28,9 @@ class OCRService:
         """Initialise l'OCR Service avec ses dépendances."""
         self.ocr_engine = RapidOCREngine()
         self.pattern_manager = PatternManager()
+        self.llm_parser = GroqParser()
 
-        logger.info("OCRService unifié initialisé")
+        logger.info("OCRService unifié initialisé avec LLM Groq")
 
     @staticmethod
     def _detect_file_type(file_path: str) -> str:
@@ -176,23 +181,34 @@ class OCRService:
             amount = parse_amount(raw_text, amount_patterns)
             transaction_date = parse_date(raw_text, date_patterns)
 
-            # 5. Validation
+            # 5. Extraction Sémantique Intelligente via Groq (Catégorisation)
+            logger.info("Soumission du texte brut à l'IA Groq pour catégorisation...")
+            semantic_data = self.llm_parser.parse(raw_text)
+            
+            category = semantic_data.get("category", "Autre")
+            subcategory = semantic_data.get("subcategory", None)
+            
+            # La description issue du LLM correspond souvent au nom du magasin
+            description = semantic_data.get("description", "")
+            if len(description) > 50:
+                 description = description[:50]  # Sécurité de longueur DB
+                 
+            # 6. Validation Montant
             if amount is None:
                 from config.logging_config import log_error
                 err = ValueError("Montant non trouvé dans le ticket")
                 log_error(err, f"Echec extraction montant ticket {Path(image_path).name}")
-                # Au lieu de crasher, on assigne 0.0 pour laisser l'utilisateur corriger via l'UI
                 amount = 0.0
 
-            # 6. Construction Transaction unifiée
+            # 7. Construction Transaction unifiée et "Intelligente"
             transaction = Transaction(
                 type="Dépense",
-                categorie="Non catégorisé",
+                categorie=category,
                 montant=amount,
                 date=transaction_date or date.today(),
-                description="",
+                description=description,
                 source="ocr",
-                sous_categorie=None,
+                sous_categorie=subcategory,
                 recurrence=None,
                 date_fin=None,
                 compte_iban=None,
