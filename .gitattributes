@@ -1,0 +1,40 @@
+# ── Normalisation des fins de ligne ──────────────────────────────────────────
+# Forcer LF sur tous les fichiers texte (évite les diffs parasites Windows/Mac/Linux)
+* text=auto eol=lf
+
+# ── Python ────────────────────────────────────────────────────────────────────
+*.py        text eol=lf diff=python
+*.pyi       text eol=lf diff=python
+
+# ── Web / Config ──────────────────────────────────────────────────────────────
+*.json      text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf
+*.toml      text eol=lf
+*.md        text eol=lf diff=markdown
+*.txt       text eol=lf
+*.css       text eol=lf
+*.html      text eol=lf
+
+# ── Scripts shell (toujours LF même sur Windows) ─────────────────────────────
+*.sh        text eol=lf
+*.bash      text eol=lf
+
+# ── Binaires (ne pas toucher aux fins de ligne) ───────────────────────────────
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.icns      binary
+*.pdf       binary
+*.db        binary
+*.sqlite    binary
+*.sqlite3   binary
+*.zip       binary
+*.tar       binary
+*.gz        binary
+*.exe       binary
+*.dll       binary
+*.whl       binary
+

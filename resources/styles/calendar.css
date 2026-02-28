@@ -1,0 +1,72 @@
+/* ==========================================================
+   GESTIO — Calendrier (page Transactions > Vue)
+   Chargée via apply_css('calendar.css')
+   ========================================================== */
+
+/* ----------------------------------------------------------
+   1. CALENDRIER
+   ---------------------------------------------------------- */
+.gestio-cal-title {
+    text-align:  center !important;
+    margin:      0      !important;
+    color:       var(--foreground) !important;
+    font-size:   1.1rem !important;
+    font-weight: 700    !important;
+}
+
+.gestio-cal-header {
+    text-align:    center;
+    font-weight:   700;
+    color:         var(--muted-foreground);
+    font-size:     0.7rem;
+    padding:       2px;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.gestio-cal-spacer {
+    height:     34px;
+    min-height: 34px;
+}
+
+.gestio-cal-week-gap {
+    height: 2px;
+}
+
+.gestio-cal-day-empty {
+    text-align:      center;
+    padding:         4px 2px;
+    color:           var(--muted-foreground);
+    font-size:       0.78rem;
+    line-height:     1.2;
+    min-height:      34px;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+}
+
+/* ----------------------------------------------------------
+   2. BOUTONS COMPACTS — jours du calendrier
+       Les colonnes x7 sont très étroites : on réduit padding
+       et taille de police pour que "18" tienne sur 1 ligne.
+   ---------------------------------------------------------- */
+
+/* Calendrier : boutons de jours compacts (scopé via marker) */
+.gestio-calendar-grid + div .stButton > button,
+.gestio-calendar-grid ~ div .stButton > button {
+    padding:     2px 1px  !important;
+    font-size:   0.7rem   !important;
+    min-height:  36px     !important;
+    line-height: 1.15     !important;
+}
+
+/* Boutons dans stHorizontalBlock (toutes les colonnes) */
+[data-testid="stHorizontalBlock"] [data-testid="stColumn"] .stButton > button {
+    padding:     2px 1px  !important;
+    font-size:   0.78rem  !important;
+    min-height:  32px     !important;
+    line-height: 1.1      !important;
+    white-space: nowrap   !important;
+}
+

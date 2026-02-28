@@ -1,0 +1,33 @@
+# Patterns de base pour extraction OCR
+# Ces patterns seront fusionnés avec learned_patterns.yaml
+
+amount:
+  - "TOTAL\\s*:?\\s*([\\dOo]+[.,][\\dOo]{2})"
+  - "NET\\s+A\\s+PAYER\\s*:?\\s*([\\dOo]+[.,][\\dOo]{2})"
+  - "MONTANT\\s+TTC\\s*:?\\s*([\\dOo]+[.,][\\dOo]{2})"
+  - "TOTAL\\s+TTC\\s*:?\\s*([\\dOo]+[.,][\\dOo]{2})"
+  - "([\\dOo]+[.,][\\dOo]{2})\\s*€"
+  # Patterns ajoutes via ocr_app
+  - "MON[TY]ANT\\s*REEL\\s*:?\\s*([\\dOo]+[.,][\\dOo]{2})"
+  - "NET\\s*A\\s+PAYER\\s*EN\\s*EUROS\\s*:?\\s*([\\dOo]+[.,][\\dOo]{2})"
+  - "Tota[l7]\\s+\\d+\\s+articles\\s*:?\\s*([\\dOo]+[.,][\\dOo]{2})"
+  - "([\\dOo]+[.,][\\dOo]{2})\\s+Tota[l7]\\s+TTC\\s+EUR"
+  # Modified Bureau Vallee pattern (Handles standard colon and wide colon U+FF1A)
+  - 'Tota[l7]\s+TTC\s*[:：]?\s*([\dOo]+[.,][\dOo]{2})'
+  # Generic MONTANT/MONYANT pattern with various separators
+  - 'MON[TY]ANT\s*[:;：]?\s*([\dOo]+[.,][\dOo]{2})'
+  # Tota7/Total typo fix
+  - "Tota[l7]\\s+\\d+\\s+articles\\s*:?\\s*([\\dOo]+[.,][\\dOo]{2})"
+  # CB Payment pattern
+  - "CB\\s*[:]?\\s*([\\dOo]+[.,][\\dOo]{2})"
+  # NEW: Patterns for text without spaces (FEU VERT style)
+  - "NET\\s*A?\\s*PAYER\\s*EN\\s*EUROS\\s*\\n\\s*([\\dOo]+[.,][\\dOo]{2})"
+  - "PAIEMENT\\s*EN\\s*EUROS\\s*\\n?\\s*(?:Carte\\s+Bancaire\\s*:?\\s*)?([\\dOo]+[.,][\\dOo]{2})"
+  # Generic fallback: amount on its own line (common in receipts)
+  - "^\\s*([\\dOo]+[.,][\\dOo]{2})\\s*$"
+
+date:
+  - "(\\d{2}[/\\-.]\\d{2}[/\\-.]\\d{2,4})"
+  - "DATE\\s*:?\\s*(\\d{2}[/\\-.]\\d{2}[/\\-.]\\d{2,4})"
+  # Flexible pattern for noisy OCR (e.g. 17y12/25) - Any char separator, MUST start with LE
+  - "LE\\s*(\\d{2}).(\\d{2}).(\\d{2,4})"
