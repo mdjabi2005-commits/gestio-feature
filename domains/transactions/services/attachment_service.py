@@ -47,6 +47,7 @@ class AttachmentService:
             attachment = TransactionAttachment(
                 transaction_id=transaction_id,
                 file_name=unique_name,
+                file_path=str(target_path),
                 file_type=Path(filename).suffix.lower(),
             )
             new_id = attachment_repository.add_attachment(attachment)
@@ -79,6 +80,7 @@ class AttachmentService:
                 id=int(row['id']),
                 transaction_id=int(row['transaction_id']),
                 file_name=row['file_name'],
+                file_path=row.get('file_path', ''),
                 file_type=row.get('file_type'),
                 upload_date=row['upload_date'],
             )
