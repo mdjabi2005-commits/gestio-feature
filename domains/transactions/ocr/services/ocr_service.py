@@ -222,3 +222,47 @@ class OCRService:
                 from config.logging_config import log_error
                 log_error(e, f"Erreur traitement image ticket {Path(image_path).name}")
             raise
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fonction TOP-LEVEL (picklable) pour ProcessPoolExecutor
+# IMPORTANT : doit rester au niveau module, PAS dans une classe.
+# Sur Windows (spawn), ProcessPoolExecutor ne peut envoyer aux workers
+# que des objets sérialisables (pickle). Une méthode de classe ou une
+# lambda NE SONT PAS picklables — une fonction module-level l'est.
+# ─────────────────────────────────────────────────────────────────────────────
+def process_ticket_standalone(image_path: str) -> dict:
+    """
+    Traite un ticket image dans un worker ProcessPoolExecutor.
+
+    Chaque worker instancie son propre OCRService (et donc son propre
+    moteur RapidOCR). Le résultat est un dict sérialisable (pas un objet
+    Pydantic) pour traverser la frontière inter-processus sans erreur pickle.
+
+    Args:
+        image_path: Chemin absolu vers l'image du ticket.
+
+    Returns:
+        dict avec les clés :
+          - "montant"  (float | None)
+          - "date"     (str ISO "YYYY-MM-DD" | None)
+          - "source"   (str)
+          - "error"    (str | None)  — rempli si exception
+    """
+    try:
+        service = OCRService()
+        transaction = service.process_ticket(image_path)
+        return {
+            "montant": float(transaction.montant) if transaction.montant is not None else None,
+            "date": transaction.date.isoformat() if transaction.date else None,
+            "source": transaction.source or "ocr",
+            "error": None,
+        }
+    except Exception as exc:
+        return {
+            "montant": None,
+            "date": None,
+            "source": "ocr",
+            "error": str(exc),
+        }
+
