@@ -112,6 +112,8 @@ def render_transaction_table(filtered_df, transaction_repository):
                     )
                     if success_count > 0:
                         toast_success(f"{success_count} fichier(s) ajouté(s) !")
+                        import time
+                        time.sleep(1.5)
                         st.rerun()
                     else:
                         toast_error("Erreur lors de l'envoi")
@@ -135,6 +137,8 @@ def render_transaction_table(filtered_df, transaction_repository):
                         if st.button("🗑️", key=f"del_att_{att.id}"):
                             if attachment_service.delete_attachment(att.id):
                                 toast_success("Supprimé !")
+                                import time
+                                time.sleep(1.5)
                                 st.rerun()
 
     # ========== DÉTECTION DES CHANGEMENTS (SAUVEGARDE) ==========
@@ -232,6 +236,15 @@ def render_transaction_table(filtered_df, transaction_repository):
 
                     toast_success(" | ".join(success_msgs) if success_msgs else "Modifications sauvegardées !", duration=4000)
                     st.balloons()
+                    
+                    # Forcer le rechargement depuis la BDD sur la page view
+                    st.session_state.pop("all_transactions_df", None)
+                    
+                    # C'est LA clé manquante : vider l'état interne de Streamlit pour le tableau DataEditor
+                    st.session_state.pop("transaction_editor", None)
+                    
+                    import time
+                    time.sleep(2) # Laisser les ballons et le Toast s'afficher
                     st.rerun()
 
                 except Exception as e:
@@ -267,11 +280,25 @@ def render_transaction_table(filtered_df, transaction_repository):
                         logger.warning(f"Impossible de supprimer {fpath}: {e}")
                 st.session_state.pop('pending_physical_delete', None)
                 toast_success(f"{deleted_count} fichier(s) supprimé(s)")
+                
+                # Forcer le rechargement depuis la BDD
+                st.session_state.pop("all_transactions_df", None)
+                st.session_state.pop("transaction_editor", None)
+                    
+                import time
+                time.sleep(1.5)
                 st.rerun()
         with col_no:
             if st.button("📁 Conserver les fichiers", use_container_width=True):
                 st.session_state.pop('pending_physical_delete', None)
                 toast_success("Fichiers conservés sur le disque")
+                
+                # Forcer le rechargement depuis BDD et purger le cache UI
+                st.session_state.pop("all_transactions_df", None)
+                st.session_state.pop("transaction_editor", None)
+                
+                import time
+                time.sleep(1.5)
                 st.rerun()
 
     if 'last_save_logs' in st.session_state and st.session_state['last_save_logs']:
