@@ -403,176 +403,6 @@ def render_recurrence_fragment():
 
 
 # ============================================================
-# FRAGMENT BENCHMARK : Séquentiel vs Parallèle
-# ============================================================
-def render_benchmark_fragment():
-    """
-    Compare le traitement OCR séquentiel vs parallèle sur les mêmes fichiers.
-    Affiche un tableau et un graphique de comparaison des temps.
-    """
-    import pandas as pd
-    import plotly.graph_objects as go
-
-    st.subheader("⚡ Benchmark — Séquentiel vs Parallèle")
-    st.info(
-        "💡 Uploadez plusieurs tickets pour comparer le temps de traitement "
-        "avec 1 cœur (séquentiel) vs processus multiples optimisés (parallèle)."
-    )
-
-    uploaded_files = st.file_uploader(
-        "Choisissez vos images pour le benchmark",
-        type=["jpg", "jpeg", "png"],
-        accept_multiple_files=True,
-        key="benchmark_uploader"
-    )
-
-    if not uploaded_files:
-        return
-
-    if len(uploaded_files) < 2:
-        st.warning("⚠️ Uploadez au moins 2 tickets pour un benchmark pertinent.")
-        return
-
-    if st.button("🚀 Lancer le benchmark", type="primary", key="btn_benchmark"):
-
-        from ...ocr.services.ocr_service import OCRService
-        from ...ocr.core.hardware_utils import get_optimal_workers, get_cpu_info
-
-        total = len(uploaded_files)
-        info = get_cpu_info()
-        workers_parallel = get_optimal_workers(total)
-        
-        ocr_service = OCRService()
-
-        # Sauvegarde des fichiers sur disque
-        TEMP_OCR_DIR.mkdir(exist_ok=True)
-        paths = []
-        for f in uploaded_files:
-            p = TEMP_OCR_DIR / f"bench_{f.name}"  # type: ignore[union-attr]
-            f.seek(0)  # type: ignore[union-attr]
-            p.write_bytes(f.read())  # type: ignore[union-attr]
-            paths.append(str(p))
-
-        # ── INFO MACHINE ───────────────────────────────────────
-        st.markdown("#### 🖥️ Votre machine")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Cœurs logiques", info.get("logical_cores", "?"))
-        c2.metric("RAM disponible", f"{info.get('available_ram_gb', '?')} Go")
-        c3.metric("Workers parallèles", workers_parallel)
-        st.markdown("---")
-
-        # ── RUN SÉQUENTIEL ─────────────────────────────────────
-        st.markdown("#### 1️⃣ Traitement séquentiel (1 cœur)")
-        prog_seq = st.progress(0)
-        status_seq = st.empty()
-
-        seq_times = []
-        t_seq_start = time.time()
-        for i, p in enumerate(paths):
-            t0 = time.time()
-            ocr_service.process_ticket(p)
-            seq_times.append(time.time() - t0)
-            prog_seq.progress((i + 1) / total)
-            status_seq.caption(f"Ticket {i+1}/{total} — {seq_times[-1]:.2f}s")
-
-        total_seq = time.time() - t_seq_start
-        prog_seq.empty()
-        status_seq.empty()
-        st.success(f"✅ Séquentiel terminé en **{total_seq:.2f}s**")
-
-        # ── RUN PARALLÈLE ──────────────────────────────────────
-        st.markdown(f"#### 2️⃣ Traitement parallèle ({workers_parallel} cœurs)")
-        prog_par = st.progress(0)
-        status_par = st.empty()
-
-        par_total_times = []
-        t_par_start = time.time()
-
-        def bench_progress_callback(fname, count, total_files, elapsed: float):
-            par_total_times.append(elapsed)
-            prog_par.progress(count / total_files)
-            status_par.caption(f"Ticket {count}/{total_files} — {elapsed:.2f}s cumulé")
-
-        # La nouvelle version retourne : [(fname, trans, err, img_elapsed), ...]
-        par_results = ocr_service.process_batch_tickets(
-            image_paths=paths,
-            max_workers=workers_parallel,
-            progress_callback=bench_progress_callback
-        )
-        
-        # On extrait les temps d'image par image (assurés dans le même ordre)
-        # On recarte le dict sur le fname pour retrouver facilement l'image
-        par_times_dict = {res[0]: res[3] for res in par_results}
-        par_times = [par_times_dict.get(Path(p).name, 0.0) for p in paths]
-
-        total_par = time.time() - t_par_start
-        prog_par.empty()
-        status_par.empty()
-        st.success(f"✅ Parallèle terminé en **{total_par:.2f}s**")
-
-        # ── RÉSULTATS ──────────────────────────────────────────
-        st.markdown("---")
-        st.markdown("#### 📊 Comparaison")
-
-        speedup = total_seq / total_par if total_par > 0 else 1.0
-        gain = ((total_seq - total_par) / total_seq * 100) if total_seq > 0 else 0.0
-
-        col_a, col_b, col_c = st.columns(3)
-        col_a.metric("⏱️ Séquentiel", f"{total_seq:.2f}s")
-        col_b.metric(
-            "⚡ Parallèle", f"{total_par:.2f}s",
-            delta=f"-{total_seq - total_par:.2f}s",
-            delta_color="inverse"
-        )
-        col_c.metric("🚀 Accélération", f"×{speedup:.1f}", delta=f"{gain:.0f}% plus rapide")
-
-        # Tableau ticket par ticket
-        st.markdown("##### Détail par ticket")
-        df_bench = pd.DataFrame({
-            "Ticket": [Path(p).name.replace("bench_", "") for p in paths],
-            "Séquentiel (s)": [round(t, 2) for t in seq_times],
-            "Parallèle (s)": [round(t, 2) for t in par_times],
-        })
-        st.dataframe(df_bench, use_container_width=True, hide_index=True)
-
-        # Graphique barres
-        fig = go.Figure()
-        fig.add_bar(
-            name="Séquentiel",
-            x=["Total"],
-            y=[round(total_seq, 2)],
-            marker_color="#EF4444",
-            text=[f"{total_seq:.2f}s"],
-            textposition="outside",
-        )
-        fig.add_bar(
-            name=f"Parallèle ({workers_parallel} cœurs)",
-            x=["Total"],
-            y=[round(total_par, 2)],
-            marker_color="#10B981",
-            text=[f"{total_par:.2f}s"],
-            textposition="outside",
-        )
-        fig.update_layout(
-            title=f"Temps total — {total} ticket(s)",
-            yaxis_title="Secondes",
-            barmode="group",
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            font_color="#F8FAFC",
-            height=350,
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-        # Nettoyage fichiers benchmark
-        for p in paths:
-            try:
-                Path(p).unlink(missing_ok=True)
-            except Exception:
-                pass
-
-
-# ============================================================
 # PAGE PRINCIPALE
 # ============================================================
 
@@ -593,7 +423,6 @@ def interface_add_transaction():
             "📄 Import PDF",
             "📄 Import CSV/Excel",
             "🔁 Transaction Récurrente",
-            "⚡ Benchmark OCR",
         ],
         key="mode_selector",
         help="Sélectionnez comment vous souhaitez ajouter vos transactions"
@@ -611,9 +440,6 @@ def interface_add_transaction():
 
     elif mode == "📄 Import CSV/Excel":
         render_csv_fragment()
-
-    elif mode == "⚡ Benchmark OCR":
-        render_benchmark_fragment()
 
     else:  # Transaction Récurrente
         render_recurrence_fragment()
