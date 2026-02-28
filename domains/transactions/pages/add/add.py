@@ -247,7 +247,14 @@ def render_ocr_validation_fragment():
 
                             if success:
                                 toast_success("Ticket validé et rangé !")
-                                st.session_state.ocr_batch[fname]["saved"] = True
+                                # Nettoyer l'entrée du dictionnaire OCR plutôt que de la marquer "saved"
+                                if fname in st.session_state.ocr_batch:
+                                    del st.session_state.ocr_batch[fname]
+                                
+                                # Si c'était le dernier ticket du batch, on purge proprement l'état pour une remise à neuf totale
+                                if not st.session_state.ocr_batch:
+                                    st.session_state.ocr_cancel = False
+                                    
                                 time.sleep(1.5) # Laisser le temps au Toast de s'afficher
                                 st.rerun()
                             else:
