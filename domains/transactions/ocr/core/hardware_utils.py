@@ -88,8 +88,13 @@ def get_optimal_workers(task_count: int) -> int:
     optimal = min(cpu_workers, ram_workers, task_count)
     optimal = max(1, optimal)
 
+    # 4. OVERRIDE V4 INDESTRUCTIBLE
+    # On bride à 4 maximum pour éviter le goulot d'étranglement 
+    # de Windows lors de l'instanciation simultanée massive de sessions ONNX en multiprocessing
+    optimal = min(optimal, 4)
+
     logger.info(
         f"Workers calculés : {optimal} "
-        f"(cpu_limit={cpu_workers}, ram_limit={ram_workers}, tâches={task_count})"
+        f"(cpu_limit={cpu_workers}, ram_limit={ram_workers}, tâches={task_count}, max_v4=4)"
     )
     return optimal

@@ -416,7 +416,7 @@ def render_benchmark_fragment():
     st.subheader("⚡ Benchmark — Séquentiel vs Parallèle")
     st.info(
         "💡 Uploadez plusieurs tickets pour comparer le temps de traitement "
-        "avec 1 cœur (séquentiel) vs tous vos cœurs disponibles (parallèle)."
+        "avec 1 cœur (séquentiel) vs processus multiples optimisés (parallèle)."
     )
 
     uploaded_files = st.file_uploader(
