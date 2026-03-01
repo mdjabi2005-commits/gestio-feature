@@ -171,31 +171,26 @@ def _render_pdf_form(fname: str, data: dict) -> None:
             st.warning("Impossible d'extraire les données de ce PDF.")
             return
 
-        # ── Sélection catégorie HORS form (permet st.rerun) ──
-        cat, sub = category_selector(
-            default_category=trans.categorie or "Autre",
-            default_subcategory=trans.sous_categorie or "Relevé",
-            key_prefix=f"pdf_{fname}"
-        )
+        c1, c2 = st.columns(2)
+        with c1:
+            cat, sub = category_selector(
+                default_category=trans.categorie or "Autre",
+                default_subcategory=trans.sous_categorie or "Relevé",
+                key_prefix=f"pdf_{fname}"
+            )
+            desc = st.text_input("Description", value=trans.description or "", key=f"pdesc_{fname}")
+        with c2:
+            amt = st.number_input("Montant (€)", value=float(trans.montant) if trans.montant else 0.0,
+                                  step=0.01, key=f"pamt_{fname}")
+            dt = st.date_input("Date", value=trans.date if trans.date else date_type.today(), key=f"pdt_{fname}")
+            tx_type = st.selectbox(
+                "Type", TRANSACTION_TYPES,
+                index=TRANSACTION_TYPES.index(trans.type) if trans.type in TRANSACTION_TYPES else 0,
+                key=f"ptype_{fname}"
+            )
 
-        with st.form(key=f"pdf_form_{fname}"):
-            c1, c2 = st.columns(2)
-            with c1:
-                st.text_input("Catégorie", value=cat, disabled=True, key=f"pcat_ro_{fname}")
-                st.text_input("Sous-catégorie", value=sub, disabled=True, key=f"psub_ro_{fname}")
-                desc = st.text_input("Description", value=trans.description or "", key=f"pdesc_{fname}")
-            with c2:
-                amt = st.number_input("Montant (€)", value=float(trans.montant) if trans.montant else 0.0,
-                                      step=0.01, key=f"pamt_{fname}")
-                dt = st.date_input("Date", value=trans.date if trans.date else date_type.today(), key=f"pdt_{fname}")
-                tx_type = st.selectbox(
-                    "Type", TRANSACTION_TYPES,
-                    index=TRANSACTION_TYPES.index(trans.type) if trans.type in TRANSACTION_TYPES else 0,
-                    key=f"ptype_{fname}"
-                )
-
-            if st.form_submit_button("💾 Valider et Ranger", use_container_width=True, type="primary"):
-                _save_pdf(fname, tx_type, cat, sub, desc, amt, dt, temp_path)
+        if st.button("💾 Valider et Ranger", key=f"save_pdf_{fname}", use_container_width=True, type="primary"):
+            _save_pdf(fname, tx_type, cat, sub, desc, amt, dt, temp_path)
 
 
 def _save_pdf(fname: str, tx_type: str, cat: str, sub: str,

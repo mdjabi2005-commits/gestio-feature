@@ -171,27 +171,22 @@ def _render_ocr_ticket_form(fname: str, data: dict) -> None:
                 st.warning("Impossible de lire ce ticket.")
                 return
 
-            # ── Sélection catégorie HORS form (permet st.rerun) ──
-            f_cat, f_sub = category_selector(
-                default_category=trans.categorie or "Autre",
-                default_subcategory=trans.sous_categorie or "",
-                key_prefix=f"ocr_{fname}"
-            )
+            st.caption(f"📄 {fname}")
+            c1, c2 = st.columns(2)
+            with c1:
+                f_cat, f_sub = category_selector(
+                    default_category=trans.categorie or "Autre",
+                    default_subcategory=trans.sous_categorie or "",
+                    key_prefix=f"ocr_{fname}"
+                )
+                f_desc = st.text_input("Description", value=trans.description or "", key=f"desc_{fname}")
+            with c2:
+                f_type = st.selectbox("Type", TRANSACTION_TYPES, index=0, key=f"type_{fname}")
+                f_amt = st.number_input("Montant (€)", value=float(trans.montant), step=0.01, key=f"amt_{fname}")
+                f_date = st.date_input("Date", value=trans.date, key=f"date_{fname}")
 
-            with st.form(key=f"form_{fname}"):
-                st.caption(f"Fichier : {fname}")
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.text_input("Catégorie", value=f_cat, disabled=True, key=f"cat_ro_{fname}")
-                    st.text_input("Sous-catégorie", value=f_sub, disabled=True, key=f"sub_ro_{fname}")
-                    f_desc = st.text_input("Description", value=trans.description or "", key=f"desc_{fname}")
-                with c2:
-                    f_type = st.selectbox("Type", TRANSACTION_TYPES, index=0, key=f"type_{fname}")
-                    f_amt = st.number_input("Montant (€)", value=float(trans.montant), step=0.01, key=f"amt_{fname}")
-                    f_date = st.date_input("Date", value=trans.date, key=f"date_{fname}")
-
-                if st.form_submit_button("💾 Valider et Ranger", use_container_width=True, type="primary"):
-                    _save_ocr_ticket(fname, f_type, f_cat, f_sub, f_desc, f_amt, f_date, temp_path)
+            if st.button("💾 Valider et Ranger", key=f"save_{fname}", use_container_width=True, type="primary"):
+                _save_ocr_ticket(fname, f_type, f_cat, f_sub, f_desc, f_amt, f_date, temp_path)
 
 
 def _save_ocr_ticket(fname: str, f_type: str, f_cat: str, f_sub: str,

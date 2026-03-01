@@ -19,25 +19,18 @@ def render_recurrence_fragment():
     """Formulaire de création d'une transaction récurrente."""
     st.subheader("🔁 Transaction Récurrente")
 
-    # ── Sélection catégorie HORS form (permet st.rerun) ──────
-    col_a, col_b = st.columns(2)
-    with col_a:
+    col1, col2 = st.columns(2)
+    with col1:
+        transaction_type = st.selectbox("Type", TRANSACTION_TYPES, key="rec_type")
         category, subcategory = category_selector(key_prefix="rec")
+        amount = st.number_input("Montant (€)", step=0.01, min_value=0.0, key="rec_amount")
+    with col2:
+        frequence = st.selectbox("Fréquence", ["Quotidien", "Hebdomadaire", "Mensuel", "Annuel"], key="rec_freq")
+        date_debut = st.date_input("Date de début", value=date.today(), key="rec_date_debut")
+        date_fin = st.date_input("Date de fin (optionnel)", value=None, key="rec_date_fin")
 
-    with st.form("recurrence_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            transaction_type = st.selectbox("Type", TRANSACTION_TYPES)
-            st.text_input("Catégorie", value=category, disabled=True, key="rec_cat_ro")
-            st.text_input("Sous-catégorie", value=subcategory, disabled=True, key="rec_sub_ro")
-            amount = st.number_input("Montant (€)", step=0.01, min_value=0.0)
-        with col2:
-            frequence = st.selectbox("Fréquence", ["Quotidien", "Hebdomadaire", "Mensuel", "Annuel"])
-            date_debut = st.date_input("Date de début", value=date.today())
-            date_fin = st.date_input("Date de fin (optionnel)", value=None)
-
-        if st.form_submit_button("💾 Créer la récurrence", type="primary"):
-            _save_recurrence(transaction_type, category, subcategory, amount, frequence, date_debut, date_fin)
+    if st.button("💾 Créer la récurrence", type="primary", use_container_width=True, key="rec_submit"):
+        _save_recurrence(transaction_type, category, subcategory, amount, frequence, date_debut, date_fin)
 
 
 def _save_recurrence(transaction_type: str, category: str, subcategory: str,
