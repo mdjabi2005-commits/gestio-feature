@@ -9,7 +9,8 @@ from datetime import date
 import streamlit as st
 
 from shared.ui.toast_components import toast_success, toast_error
-from ...database.constants import TRANSACTION_CATEGORIES, TRANSACTION_TYPES
+from ...database.constants import TRANSACTION_TYPES
+from shared.ui.category_manager import category_selector_in_form
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +23,7 @@ def render_recurrence_fragment():
         col1, col2 = st.columns(2)
         with col1:
             transaction_type = st.selectbox("Type", TRANSACTION_TYPES)
-            cat_options = TRANSACTION_CATEGORIES + ["➕ Autre..."]
-            category_sel = st.selectbox("Catégorie", cat_options)
-            category = st.text_input("Nom de la catégorie") if category_sel == "➕ Autre..." else category_sel
-            subcategory = st.text_input("Sous-catégorie")
+            category, subcategory = category_selector_in_form(key_prefix="rec")
             amount = st.number_input("Montant (€)", step=0.01, min_value=0.0)
         with col2:
             frequence = st.selectbox("Fréquence", ["Quotidien", "Hebdomadaire", "Mensuel", "Annuel"])

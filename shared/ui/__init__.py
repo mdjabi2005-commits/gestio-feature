@@ -16,6 +16,7 @@ from .page_helpers import (
     create_uploader_key,
     get_column_config,
 )
+from .category_manager import category_selector, category_selector_in_form
 
 __all__ = [
     # Styles

@@ -70,6 +70,73 @@ def get_all_subcategories() -> Dict[str, List[str]]:
     }
 
 
+def save_category(name: str) -> bool:
+    """
+    Ajoute une nouvelle catégorie dans le YAML si elle n'existe pas déjà.
+    Retourne True si ajoutée, False si déjà existante.
+    """
+    name = name.strip().title()
+    if not name:
+        return False
+
+    data = _load()
+    categories = data.get("categories", [])
+
+    if any(c["name"] == name for c in categories):
+        return False
+
+    categories.append({"name": name, "subcategories": []})
+    data["categories"] = categories
+    _write(data)
+    logger.info(f"Catégorie ajoutée : {name}")
+    return True
+
+
+def save_subcategory(category: str, subcategory: str) -> bool:
+    """
+    Ajoute une sous-catégorie à une catégorie existante.
+    Crée la catégorie si elle n'existe pas.
+    Retourne True si ajoutée, False si déjà existante.
+    """
+    category = category.strip().title()
+    subcategory = subcategory.strip().title()
+    if not category or not subcategory:
+        return False
+
+    data = _load()
+    categories = data.get("categories", [])
+
+    for cat in categories:
+        if cat["name"] == category:
+            subs = cat.get("subcategories", [])
+            if subcategory in subs:
+                return False
+            subs.append(subcategory)
+            cat["subcategories"] = subs
+            data["categories"] = categories
+            _write(data)
+            logger.info(f"Sous-catégorie ajoutée : {category} > {subcategory}")
+            return True
+
+    # Catégorie inexistante → la créer avec la sous-catégorie
+    categories.append({"name": category, "subcategories": [subcategory]})
+    data["categories"] = categories
+    _write(data)
+    logger.info(f"Catégorie créée avec sous-catégorie : {category} > {subcategory}")
+    return True
+
+
+def _write(data: Dict) -> None:
+    """Écrit les données dans le YAML et invalide le cache."""
+    global _cache
+    try:
+        with open(_YAML_PATH, "w", encoding="utf-8") as f:
+            yaml.dump(data, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+        _cache = data
+    except Exception as e:
+        logger.error(f"Erreur écriture categories.yaml : {e}")
+
+
 def reload() -> None:
     """Force le rechargement du YAML (utile après modification utilisateur)."""
     global _cache

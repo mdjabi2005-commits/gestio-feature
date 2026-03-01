@@ -11,7 +11,7 @@ import streamlit as st
 
 from shared.ui.toast_components import toast_success, toast_error, toast_warning
 from shared.utils import parse_amount
-from ...database.constants import TRANSACTION_CATEGORIES
+from shared.utils.categories_loader import get_categories
 from ...database.repository import transaction_repository
 
 logger = logging.getLogger(__name__)
@@ -91,7 +91,7 @@ def _step_config(df: pd.DataFrame) -> None:
                 cat = "Autre"
                 if cat_col != "Aucune":
                     raw = str(row[cat_col]).strip().lower()
-                    cat = next((c for c in TRANSACTION_CATEGORIES if c.lower() == raw), "Autre")
+                    cat = next((c for c in get_categories() if c.lower() == raw), "Autre")
 
                 rows.append({
                     "date": d,
@@ -122,7 +122,7 @@ def _step_editor() -> None:
         "date": st.column_config.DateColumn("Date", required=True, format="DD/MM/YYYY"),
         "type": st.column_config.SelectboxColumn("Type", options=["Revenu", "Dépense"], required=True),
         "montant": st.column_config.NumberColumn("Montant €", min_value=0.0, format="%.2f"),
-        "categorie": st.column_config.SelectboxColumn("Catégorie", options=TRANSACTION_CATEGORIES, required=True),
+        "categorie": st.column_config.SelectboxColumn("Catégorie", options=get_categories(), required=True),
         "sous_categorie": st.column_config.TextColumn("Sous-Catégorie"),
         "description": st.column_config.TextColumn("Description"),
     }

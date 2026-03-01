@@ -11,7 +11,8 @@ import streamlit as st
 
 from shared.ui.toast_components import toast_success, toast_error
 from ...database.model import Transaction
-from ...database.constants import TRANSACTION_CATEGORIES, TRANSACTION_TYPES
+from ...database.constants import TRANSACTION_TYPES
+from shared.ui.category_manager import category_selector_in_form
 from ...services.attachment_service import attachment_service
 from ...services.transaction_service import transaction_service
 from config.paths import TO_SCAN_DIR
@@ -174,11 +175,11 @@ def _render_ocr_ticket_form(fname: str, data: dict) -> None:
                 st.caption(f"Fichier : {fname}")
                 c1, c2 = st.columns(2)
                 with c1:
-                    cat_options = TRANSACTION_CATEGORIES + ["➕ Autre..."]
-                    default_index = cat_options.index(trans.categorie) if trans.categorie in cat_options else 0
-                    f_cat_sel = st.selectbox("Catégorie", cat_options, index=default_index, key=f"cat_{fname}")
-                    f_cat = st.text_input("Nouvelle catégorie", key=f"newcat_{fname}") if f_cat_sel == "➕ Autre..." else f_cat_sel
-                    f_sub = st.text_input("Sous-catégorie", value=trans.sous_categorie or "", key=f"sub_{fname}")
+                    f_cat, f_sub = category_selector_in_form(
+                        default_category=trans.categorie or "Autre",
+                        default_subcategory=trans.sous_categorie or "",
+                        key_prefix=f"ocr_{fname}"
+                    )
                     f_desc = st.text_input("Description", value=trans.description or "", key=f"desc_{fname}")
                 with c2:
                     f_type = st.selectbox("Type", TRANSACTION_TYPES, index=0, key=f"type_{fname}")
