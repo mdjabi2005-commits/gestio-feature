@@ -65,9 +65,28 @@ class AttachmentRepository:
         try:
             conn = get_db_connection(db_path=self.db_path)
             cursor = conn.cursor()
+            
+            # 1. Obtenir le chemin du fichier avant suppression
+            cursor.execute("SELECT file_path FROM transaction_attachments WHERE id = ?", (attachment_id,))
+            result = cursor.fetchone()
+            file_path = result[0] if result else None
+            
+            # 2. Supprimer l'entrée en base
             cursor.execute("DELETE FROM transaction_attachments WHERE id = ?", (attachment_id,))
+            deleted = cursor.rowcount > 0
             conn.commit()
-            return cursor.rowcount > 0
+            
+            # 3. Supprimer le fichier physiquement (si l'entrée a bien été supprimée)
+            if deleted and file_path:
+                try:
+                    import os
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        logger.info(f"Fichier physique supprimé: {file_path}")
+                except OSError as e:
+                    logger.warning(f"Impossible de supprimer le fichier physique {file_path}: {e}")
+                    
+            return deleted
         except sqlite3.Error as e:
             logger.error(f"Erreur delete_attachment: {e}")
             return False
