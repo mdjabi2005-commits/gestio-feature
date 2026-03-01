@@ -16,6 +16,7 @@ import streamlit as st
 
 from shared.ui.toast_components import toast_success, toast_error
 from ..import_page.import_page import import_transactions_page
+from ...database.model import Transaction
 from ...database.constants import TRANSACTION_CATEGORIES, TRANSACTION_TYPES
 from ...services.attachment_service import attachment_service
 from ...services.transaction_service import transaction_service
