@@ -5,6 +5,7 @@ import streamlit as st
 from domains.transactions.database.constants import TRANSACTION_CATEGORIES
 from domains.transactions.database.repository import transaction_repository
 from shared.ui.toast_components import toast_success, toast_error, toast_warning
+from shared.utils import parse_amount
 
 
 # =========================================================
@@ -27,27 +28,6 @@ def load_data(uploaded_file) -> pd.DataFrame:
     df.columns = df.columns.astype(str).str.strip()
     return df
 
-
-def parse_amount(value) -> float:
-    """Convertit un montant en float."""
-    if pd.isna(value) or value == "":
-        return 0.0
-
-    s = str(value).strip()
-    s = s.replace("€", "").replace("EUR", "").replace("$", "").replace(" ", "").replace("\xa0", "")
-
-    if "," in s and "." not in s:
-        s = s.replace(",", ".")
-    elif "," in s and "." in s:
-        if s.rfind(",") > s.rfind("."):
-            s = s.replace(".", "").replace(",", ".")
-        else:
-            s = s.replace(",", "")
-
-    try:
-        return float(s)
-    except ValueError:
-        return 0.0
 
 
 def detect_columns(df: pd.DataFrame) -> dict:
