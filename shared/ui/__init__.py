@@ -12,6 +12,10 @@ from .toast_components import (
     afficher_documents_associes,
     get_badge_icon
 )
+from .page_helpers import (
+    create_uploader_key,
+    get_column_config,
+)
 
 __all__ = [
     # Styles
@@ -21,6 +25,10 @@ __all__ = [
     'refresh_and_rerun',
     'insert_transaction_batch',
     'load_transactions',
+
+    # Page helpers
+    'create_uploader_key',
+    'get_column_config',
 
     # Toasts
     'toast_success',

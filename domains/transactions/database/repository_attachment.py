@@ -9,6 +9,7 @@ from typing import Optional
 import pandas as pd
 
 from shared.database.connection import get_db_connection, close_connection
+from shared.utils import convert_attachment_df, create_empty_attachment_df
 from .model_attachment import TransactionAttachment
 
 logger = logging.getLogger(__name__)
@@ -25,20 +26,14 @@ class AttachmentRepository:
             conn = get_db_connection(db_path=self.db_path)
             df = pd.read_sql_query("SELECT * FROM transaction_attachments", conn)
             if df.empty:
-                return self._empty_df()
-            df['upload_date'] = pd.to_datetime(df['upload_date'])
-            df['id'] = df['id'].astype(int)
-            df['transaction_id'] = df['transaction_id'].astype(int)
-            return df
+                return create_empty_attachment_df()
+            return convert_attachment_df(df)
         except sqlite3.Error as e:
             logger.error(f"Erreur get_all_attachments: {e}")
-            return self._empty_df()
+            return create_empty_attachment_df()
         finally:
             close_connection(conn)
 
-    @staticmethod
-    def _empty_df() -> pd.DataFrame:
-        return pd.DataFrame(columns=['id', 'transaction_id', 'file_name', 'file_path', 'file_type', 'upload_date'])
 
     def add_attachment(self, attachment: TransactionAttachment) -> Optional[int]:
         conn = None

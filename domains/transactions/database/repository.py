@@ -11,6 +11,7 @@ from typing import List, Optional, Dict
 import pandas as pd
 
 from shared.database.connection import get_db_connection, close_connection
+from shared.utils import create_empty_transaction_df, convert_transaction_df
 from .model import Transaction
 
 logger = logging.getLogger(__name__)
@@ -32,31 +33,13 @@ class TransactionRepository:
             query = "SELECT * FROM transactions ORDER BY date DESC"
             df = pd.read_sql_query(query, conn)
 
-            if df.empty:
-                return self._get_empty_df()
-
-            # Conversion des types
-            df["date"] = pd.to_datetime(df["date"]).apply(
-                lambda x: x.date() if pd.notna(x) else None
-            )
-            df["montant"] = df["montant"].astype(float)
-            df["id"] = df["id"].astype(int)
-
-            return df
+            return convert_transaction_df(df)
 
         except sqlite3.Error as e:
             logger.error(f"Erreur SQL: {e}")
-            return self._get_empty_df()
+            return create_empty_transaction_df()
         finally:
             close_connection(conn)
-
-    @staticmethod
-    def _get_empty_df() -> pd.DataFrame:
-        return pd.DataFrame(columns=[
-            "id", "type", "categorie", "sous_categorie", "description",
-            "montant", "date", "source", "recurrence", "date_fin",
-            "compte_iban", "external_id"
-        ])
 
     @staticmethod
     def _to_validated_db_dict(transaction) -> dict:
@@ -231,20 +214,13 @@ class TransactionRepository:
             df = pd.read_sql_query(query, conn, params=params)
 
             if df.empty:
-                return self._get_empty_df()
+                return create_empty_transaction_df()
 
-            # Conversion des types
-            df["date"] = pd.to_datetime(df["date"]).apply(
-                lambda x: x.date() if pd.notna(x) else None
-            )
-            df["montant"] = df["montant"].astype(float)
-            df["id"] = df["id"].astype(int)
-
-            return df
+            return convert_transaction_df(df)
 
         except sqlite3.Error as e:
             logger.error(f"Erreur get_filtered: {e}")
-            return self._get_empty_df()
+            return create_empty_transaction_df()
         finally:
             close_connection(conn)
 

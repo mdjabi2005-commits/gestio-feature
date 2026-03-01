@@ -7,11 +7,13 @@ import logging
 from datetime import date
 from pathlib import Path
 
+from config.logging_config import log_error
 from .pattern_manager import PatternManager
 from ..core.rapidocr_engine import RapidOCREngine
 from ..core.groq_parser import GroqParser
+from ..core import pdf_engine as _pdf_module
 from domains.transactions.database.model import Transaction
-from ..core.parser import parse_amount, parse_date
+from ..core.parser import parse_amount, parse_date, parse_pdf_revenue
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +72,6 @@ class OCRService:
         path = Path(file_path)
 
         if not path.exists():
-            from config.logging_config import log_error
             err = FileNotFoundError(f"Le fichier n'existe pas: {file_path}")
             log_error(err, "Fichier introuvable pour OCR")
             raise err
@@ -86,12 +87,10 @@ class OCRService:
             else:
                 return self.process_ticket(file_path)
         except Exception as e:
-            from config.logging_config import log_error
             log_error(e, f"Echec traitement document {path.name}")
             raise
 
-    @staticmethod
-    def _process_pdf(pdf_path: str) -> Transaction:
+    def _process_pdf(self, pdf_path: str) -> Transaction:
         """
         Traite un PDF de relevé de revenus.
         
@@ -105,35 +104,29 @@ class OCRService:
             ImportError: Si pdfminer.six n'est pas installé
             ValueError: Si extraction échoue
         """
-        if not PDFMINER_AVAILABLE or pdf_engine is None:
+        if not _pdf_module.PDFMINER_AVAILABLE or _pdf_module.pdf_engine is None:
             err = ImportError(
                 "pdfminer.six est requis pour traiter les PDF. "
                 "Installez-le avec: pip install pdfminer.six"
             )
-            from config.logging_config import log_error
             log_error(err, "Dépendance manquante: pdfminer.six")
             raise err
 
         logger.info(f"Extraction PDF démarrée: {pdf_path}")
 
-        # 1. Extraction du texte
         try:
-            text = pdf_engine.extract_text_from_pdf(pdf_path)
+            text = _pdf_module.pdf_engine.extract_text_from_pdf(pdf_path)
         except Exception as e:
-            from config.logging_config import log_error
             log_error(e, f"Erreur extraction texte PDF {Path(pdf_path).name}")
             raise ValueError(f"Impossible d'extraire le texte du PDF: {e}")
 
-        # 2. Parsing spécifique revenus
         parsed_data = parse_pdf_revenue(text)
 
         if parsed_data is None:
-            from config.logging_config import log_error
             err = ValueError("Données non trouvées dans le PDF (parsing échoué)")
             log_error(err, f"Echec parsing contenu PDF {Path(pdf_path).name}")
             raise err
 
-        # 3. Construction Transaction
         try:
             transaction = Transaction(
                 type="Revenu",
@@ -153,7 +146,6 @@ class OCRService:
             logger.info(f"✅ Transaction PDF créée avec succès: {transaction.montant}€ ({transaction.description})")
             return transaction
         except Exception as e:
-            from config.logging_config import log_error
             log_error(e, "Erreur création objet Transaction depuis PDF")
             raise
 
@@ -195,7 +187,6 @@ class OCRService:
                  
             # 6. Validation Montant
             if amount is None:
-                from config.logging_config import log_error
                 err = ValueError("Montant non trouvé dans le ticket")
                 log_error(err, f"Echec extraction montant ticket {Path(image_path).name}")
                 amount = 0.0
@@ -220,7 +211,6 @@ class OCRService:
             return transaction
 
         except Exception as e:
-            from config.logging_config import log_error
             log_error(e, f"Erreur traitement image ticket {Path(image_path).name}")
             raise
 
