@@ -23,6 +23,8 @@ dependencies = [
     "pyjwt",
     "cryptography",
     "ollama>=0.6.1",
+    "pytest>=9.0.2",
+    "pandas-stubs~=2.3.3",
 ]
 
 [project.scripts]

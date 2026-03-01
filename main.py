@@ -21,6 +21,10 @@ os.environ.setdefault("STREAMLIT_THEME_TEXT_COLOR",                 "#F8FAFC")
 os.environ.setdefault("STREAMLIT_THEME_FONT",                       "sans serif")
 
 import streamlit as st
+from dotenv import load_dotenv
+
+# Charger de force les variables d'environnement du fichier .env à la racine
+load_dotenv()
 
 # Initialize logging system FIRST (before any other imports)
 from config.logging_config import setup_logging
