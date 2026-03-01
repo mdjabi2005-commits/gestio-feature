@@ -16,9 +16,10 @@ from shared.utils.categories_loader import (
     save_category,
     save_subcategory,
 )
+from shared.ui.toast_components import toast_success, toast_error, toast_warning
 
-_NEW_CAT_OPTION = "✏️ Nouvelle catégorie..."
-_NEW_SUB_OPTION = "✏️ Nouvelle sous-catégorie..."
+_NEW_CAT_OPTION = "➕ Nouvelle catégorie"
+_NEW_SUB_OPTION = "➕ Nouvelle sous-catégorie"
 
 
 def category_selector(
@@ -28,70 +29,76 @@ def category_selector(
 ) -> tuple[str, str]:
     """
     Composant de sélection catégorie + sous-catégorie avec ajout dynamique.
+    Affiche les deux colonnes en parallèle — la sous-catégorie n'est jamais masquée.
     À utiliser HORS d'un st.form() — utilise st.rerun() après création.
 
     Retourne (categorie, sous_categorie) sélectionnées.
     """
     categories = get_categories()
     cat_options = categories + [_NEW_CAT_OPTION]
-    default_idx = categories.index(default_category) if default_category in categories else 0
+    default_cat_idx = categories.index(default_category) if default_category in categories else 0
 
-    selected_cat = st.selectbox(
-        "Catégorie", cat_options, index=default_idx, key=f"{key_prefix}_cat_sel"
-    )
+    col_cat, col_sub = st.columns(2)
 
-    # ── Création nouvelle catégorie ──────────────────────────
-    if selected_cat == _NEW_CAT_OPTION:
-        new_cat = st.text_input(
-            "Nom de la nouvelle catégorie",
-            placeholder="ex: Animaux, Jardinage...",
-            key=f"{key_prefix}_new_cat"
+    # ── Colonne gauche : Catégorie ───────────────────────────
+    with col_cat:
+        selected_cat = st.selectbox(
+            "Catégorie", cat_options, index=default_cat_idx, key=f"{key_prefix}_cat_sel"
         )
-        if st.button("✅ Créer", key=f"{key_prefix}_btn_new_cat", type="primary"):
-            if new_cat.strip():
-                added = save_category(new_cat)
-                if added:
-                    st.success(f"✅ Catégorie **{new_cat.title()}** ajoutée !")
-                    st.rerun()
+
+        if selected_cat == _NEW_CAT_OPTION:
+            new_cat = st.text_input(
+                "Nom de la nouvelle catégorie",
+                placeholder="ex: Animaux, Jardinage...",
+                key=f"{key_prefix}_new_cat",
+            )
+            if st.button("✅ Créer la catégorie", key=f"{key_prefix}_btn_new_cat", type="primary"):
+                if new_cat.strip():
+                    added = save_category(new_cat)
+                    if added:
+                        toast_success(f"Catégorie **{new_cat.title()}** ajoutée !")
+                        st.rerun()
+                    else:
+                        toast_warning("Cette catégorie existe déjà.")
                 else:
-                    st.warning("⚠️ Cette catégorie existe déjà.")
-            else:
-                st.error("❌ Le nom ne peut pas être vide.")
-        return default_category, default_subcategory
+                    toast_error("Le nom ne peut pas être vide.")
+            # Tant que la nouvelle cat n'est pas confirmée, on utilise la valeur par défaut
+            category = default_category
+        else:
+            category = selected_cat
 
-    category = selected_cat
-
-    # ── Sous-catégories ──────────────────────────────────────
-    subcategories = get_subcategories(category)
-    sub_options = subcategories + [_NEW_SUB_OPTION]
-    default_sub_idx = (
-        subcategories.index(default_subcategory)
-        if default_subcategory in subcategories
-        else len(subcategories)
-    )
-
-    selected_sub = st.selectbox(
-        "Sous-catégorie", sub_options, index=default_sub_idx, key=f"{key_prefix}_sub_sel"
-    )
-
-    # ── Création nouvelle sous-catégorie ─────────────────────
-    if selected_sub == _NEW_SUB_OPTION:
-        new_sub = st.text_input(
-            f"Nouvelle sous-catégorie pour **{category}**",
-            placeholder="ex: Supermarché, Essence...",
-            key=f"{key_prefix}_new_sub"
+    # ── Colonne droite : Sous-catégorie ─────────────────────
+    with col_sub:
+        subcategories = get_subcategories(category)
+        sub_options = subcategories + [_NEW_SUB_OPTION]
+        default_sub_idx = (
+            subcategories.index(default_subcategory)
+            if default_subcategory in subcategories
+            else len(subcategories)
         )
-        if st.button("✅ Créer", key=f"{key_prefix}_btn_new_sub", type="primary"):
-            if new_sub.strip():
-                added = save_subcategory(category, new_sub)
-                if added:
-                    st.success(f"✅ Sous-catégorie **{new_sub.title()}** ajoutée sous **{category}** !")
-                    st.rerun()
+
+        selected_sub = st.selectbox(
+            "Sous-catégorie", sub_options, index=default_sub_idx, key=f"{key_prefix}_sub_sel"
+        )
+
+        if selected_sub == _NEW_SUB_OPTION:
+            new_sub = st.text_input(
+                f"Nouvelle sous-catégorie",
+                placeholder="ex: Supermarché, Essence...",
+                key=f"{key_prefix}_new_sub",
+            )
+            if st.button("✅ Créer la sous-catégorie", key=f"{key_prefix}_btn_new_sub", type="primary"):
+                if new_sub.strip():
+                    added = save_subcategory(category, new_sub)
+                    if added:
+                        toast_success(f"Sous-catégorie **{new_sub.title()}** ajoutée sous **{category}** !")
+                        st.rerun()
+                    else:
+                        toast_warning("Cette sous-catégorie existe déjà.")
                 else:
-                    st.warning("⚠️ Cette sous-catégorie existe déjà.")
-            else:
-                st.error("❌ Le nom ne peut pas être vide.")
-        return category, default_subcategory
+                    toast_error("Le nom ne peut pas être vide.")
+            subcategory = default_subcategory
+        else:
+            subcategory = selected_sub
 
-    return category, selected_sub
-
+    return category, subcategory

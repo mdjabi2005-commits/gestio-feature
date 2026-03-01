@@ -1,112 +1,74 @@
-# ============================================================
-# Catégories et sous-catégories des transactions
-# ============================================================
-# Ce fichier est la SOURCE UNIQUE DE VÉRITÉ pour les catégories.
-# L'IA Groq utilise ces valeurs pour catégoriser automatiquement
-# les tickets OCR et les PDFs.
-#
-# ➕ Pour ajouter une catégorie : ajouter un bloc sous "categories"
-# ➕ Pour ajouter une sous-catégorie : ajouter une entrée dans "subcategories"
-# ============================================================
-
 categories:
-
-  - name: Alimentation
-    subcategories:
-      - Supermarché
-      - Boulangerie
-      - Boucherie
-      - Marché
-      - Fast Food
-      - Restaurant
-      - Café / Bar
-      - Épicerie
-      - Livraison repas
-
-  - name: Voiture
-    subcategories:
-      - Essence
-      - Diesel
-      - Péage
-      - Parking
-      - Entretien
-      - Réparation
-      - Contrôle technique
-      - Assurance auto
-      - Lavage
-
-  - name: Logement
-    subcategories:
-      - Loyer
-      - Électricité
-      - Gaz
-      - Eau
-      - Internet / Téléphone
-      - Assurance habitation
-      - Travaux
-      - Mobilier
-      - Électroménager
-
-  - name: Loisirs
-    subcategories:
-      - Cinéma
-      - Sport
-      - Jeux vidéo
-      - Musique
-      - Livres
-      - Sorties
-      - Voyages
-      - Streaming
-
-  - name: Santé
-    subcategories:
-      - Pharmacie
-      - Médecin
-      - Dentiste
-      - Optique
-      - Mutuelle
-      - Hôpital
-      - Parapharmacie
-
-  - name: Shopping
-    subcategories:
-      - Vêtements
-      - Chaussures
-      - Électronique
-      - Informatique
-      - Beauté / Cosmétiques
-      - Cadeaux
-      - Maison / Déco
-
-  - name: Services
-    subcategories:
-      - Abonnement
-      - Banque / Frais
-      - Impôts / Taxes
-      - Assurance
-      - Courrier / Colis
-      - Administratif
-
-  - name: Revenu
-    subcategories:
-      - Salaire
-      - Freelance
-      - Remboursement
-      - Allocation
-      - Vente
-      - Autre revenu
-
-  - name: Transfert+
-    subcategories:
-      - Virement reçu
-      - Remboursement reçu
-
-  - name: Transfert-
-    subcategories:
-      - Virement envoyé
-      - Remboursement envoyé
-
-  - name: Autre
-    subcategories:
-      - Divers
-
+- name: Alimentation
+  subcategories:
+  - Supermarché
+  - Boulangerie
+  - Boucherie
+  - Marché
+  - Fast Food
+  - Restaurant
+  - Café / Bar
+  - Épicerie
+- name: Voiture
+  subcategories:
+  - Essence
+  - Péage
+  - Parking
+  - Entretien
+  - Réparation
+  - Contrôle technique
+  - Assurance auto
+  - Lavage
+- name: Logement
+  subcategories:
+  - Loyer
+  - Électricité
+  - Gaz
+  - Eau
+  - Internet / Téléphone
+  - Assurance habitation
+  - Travaux
+  - Mobilier
+  - Électroménager
+- name: Loisirs
+  subcategories:
+  - Cinéma
+  - Sport
+  - Jeux vidéo
+  - Musique
+  - Livres
+  - Sorties
+  - Voyages
+  - Streaming
+- name: Santé
+  subcategories:
+  - Pharmacie
+  - Médecin
+  - Dentiste
+  - Optique
+  - Mutuelle
+  - Hôpital
+  - Parapharmacie
+- name: Shopping
+  subcategories:
+  - Vêtements
+  - Chaussures
+  - Électronique
+  - Informatique
+  - Beauté / Cosmétiques
+  - Cadeaux
+  - Maison / Déco
+- name: Services
+  subcategories:
+  - Abonnement
+  - Banque / Frais
+  - Impôts / Taxes
+  - Assurance
+  - Courrier / Colis
+  - Administratif
+- name: Autre
+  subcategories:
+  - Divers
+- name: Uber
+  subcategories:
+  - Livraison

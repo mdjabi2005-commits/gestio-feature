@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # 🔔 TOAST NOTIFICATIONS
 # ==============================
 
-def show_toast(message: str, toast_type: str = "success", duration: int = 3000) -> None:
+def show_toast(message: str, toast_type: str = "success", duration: int = 1500, rerun_after: bool = False) -> None:
     """
     Display a professional toast notification.
 
@@ -46,120 +46,53 @@ def show_toast(message: str, toast_type: str = "success", duration: int = 3000) 
     toast_id = f"toast_{int(time.time() * 1000)}_{random.randint(100,999)}"
 
     components.html(f"""
-        <div id="{toast_id}" class="custom-toast" style="
-            position:fixed;
-            right:30px;
-            /* Le bottom initial est caché, le script JS l'ajustera selon l'empilement */
-            bottom: -100px;
-            background:linear-gradient(135deg, {config['color']} 0%, {config['bg_light']} 100%);
-            color:#1f2937;
-            padding:12px 24px;
-            border-radius:12px;
-            font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-            font-weight:600;
-            box-shadow:0 4px 20px rgba(0,0,0,0.15);
-            border-left:4px solid {config['color']};
-            z-index:9999;
-            transition: bottom 0.3s ease;
-            animation: slideInCustom 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards, fadeOut 0.5s {duration / 1000}s forwards;">
-            <span style="font-size:18px;margin-right:8px;">{config['icon']}</span>
+        <style>
+        @keyframes slideIn {{
+          from {{ transform: translateX(400px); opacity: 0; }}
+          to {{ transform: translateX(0); opacity: 1; }}
+        }}
+        @keyframes fadeOut {{
+          0% {{ opacity: 1; }}
+          100% {{ opacity: 0; }}
+        }}
+        #toast {{
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, {config['color']} 0%, {config['bg_light']} 100%);
+            color: #1f2937;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            border-left: 4px solid {config['color']};
+            z-index: 9999;
+            animation: slideIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards,
+                       fadeOut 0.5s {duration / 1000}s forwards;
+        }}
+        </style>
+        <div id="toast">
+            <span style="font-size:18px; margin-right:8px;">{config['icon']}</span>
             {message}
         </div>
         <script>
-            setTimeout(() => {{
-                var doc = window.parent.document;
-                // Trouver ce toast précis
-                var currentToast = document.getElementById("{toast_id}");
-                if (!currentToast) return;
-                
-                // Le remonter dans le parent body pour échapper à l'iframe Streamlit
-                if (!currentToast.classList.contains('moved')) {{
-                    doc.body.appendChild(currentToast);
-                    currentToast.classList.add('moved');
-                }}
-                
-                // Empilement des toasts existants
-                var toasts = doc.querySelectorAll('.custom-toast');
-                var currentPosition = 30; // 30px du bas pour le premier
-                
-                // Trier par ordre d'apparition (du plus vieux au plus récent dans le DOM)
-                // Ici on veut afficher de bas en haut
-                for (var i = toasts.length - 1; i >= 0; i--) {{
-                    var t = toasts[i];
-                    t.style.bottom = currentPosition + 'px';
-                    // On ajoute la hauteur de la bulle (env. 50px) + un espace de 15px
-                    currentPosition += t.offsetHeight + 15;
-                }}
-                
-                // Suppression définitive du DOM après l'animation
-                setTimeout(() => {{
-                    if (currentToast && currentToast.parentNode) {{
-                        currentToast.parentNode.removeChild(currentToast);
-                    }}
-                }}, {duration + 500});
-            }}, 50); // Léger delai pour que Streamlit injecte le html
+            setTimeout(function() {{
+                var t = document.getElementById('toast');
+                if (t) t.remove();
+            }}, {duration + 600});
         </script>
-        <style>
-        .custom-toast {{
-            pointer-events: none; /* Ne pas géner le clic en dessous */
-        }}
-        @keyframes slideInCustom {{
-          from {{
-            transform: translateX(400px);
-            opacity: 0;
-          }}
-          to {{
-            transform: translateX(0);
-            opacity: 1;
-          }}
-        }}
-        @keyframes fadeOut {{
-          0% {{opacity:1;}}
-          100% {{opacity:0;visibility:hidden;}}
-        }}
-        </style>
-    """, height=0)
+    """, height=80)
 
 
-def toast_success(message: str, duration: int = 3000) -> None:
-    """
-    Display a success toast notification.
-
-    Args:
-        message: Success message to display
-        duration: Duration in milliseconds (default: 3000ms)
-
-    Example:
-        >>> toast_success("Transaction successfully saved!")
-    """
+def toast_success(message: str, duration: int = 1500) -> None:
     show_toast(message, "success", duration)
 
-
-def toast_warning(message: str, duration: int = 3000) -> None:
-    """
-    Display a warning toast notification.
-
-    Args:
-        message: Warning message to display
-        duration: Duration in milliseconds (default: 3000ms)
-
-    Example:
-        >>> toast_warning("Duplicate transaction detected")
-    """
+def toast_warning(message: str, duration: int = 1500) -> None:
     show_toast(message, "warning", duration)
 
-
-def toast_error(message: str, duration: int = 3000) -> None:
-    """
-    Display an error toast notification.
-
-    Args:
-        message: Error message to display
-        duration: Duration in milliseconds (default: 3000ms)
-
-    Example:
-        >>> toast_error("Failed to save transaction")
-    """
+def toast_error(message: str, duration: int = 1500) -> None:
     show_toast(message, "error", duration)
 
 
