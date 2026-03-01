@@ -23,7 +23,7 @@ from ...services.transaction_service import transaction_service
 
 logger = logging.getLogger(__name__)
 
-from ...config.paths import TO_SCAN_DIR, REVENUS_A_TRAITER
+from config.paths import TO_SCAN_DIR, REVENUS_A_TRAITER
 
 
 # ============================================================
