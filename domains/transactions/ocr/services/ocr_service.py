@@ -127,23 +127,31 @@ class OCRService:
             log_error(err, f"Echec parsing contenu PDF {Path(pdf_path).name}")
             raise err
 
+        # Catégorisation intelligente via Groq (même flux que process_ticket)
+        logger.info("Soumission du texte PDF à Groq pour catégorisation...")
+        semantic_data = self.llm_parser.parse(text)
+        category = semantic_data.get("category", "Revenu")
+        subcategory = semantic_data.get("subcategory", None)
+        description = semantic_data.get("description") or parsed_data['description']
+        if len(description) > 50:
+            description = description[:50]
+
         try:
             transaction = Transaction(
                 type="Revenu",
-                categorie="Revenu",
+                categorie=category,
                 montant=parsed_data['montant'],
                 date=parsed_data['date'],
-                description=parsed_data['description'],
+                description=description,
                 source="pdf",
-                sous_categorie=None,
+                sous_categorie=subcategory,
                 recurrence=None,
                 date_fin=None,
                 compte_iban=None,
                 external_id=None,
                 id=None,
             )
-
-            logger.info(f"✅ Transaction PDF créée avec succès: {transaction.montant}€ ({transaction.description})")
+            logger.info(f"✅ Transaction PDF créée: {transaction.montant}€ — {category} / {subcategory}")
             return transaction
         except Exception as e:
             log_error(e, "Erreur création objet Transaction depuis PDF")
