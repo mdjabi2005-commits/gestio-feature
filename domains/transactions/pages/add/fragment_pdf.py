@@ -11,7 +11,8 @@ import streamlit as st
 
 from shared.ui.toast_components import toast_success, toast_error
 from ...database.model import Transaction
-from ...database.constants import TRANSACTION_CATEGORIES, TRANSACTION_TYPES
+from ...database.constants import TRANSACTION_TYPES
+from shared.ui.category_manager import category_selector_in_form
 from ...services.attachment_service import attachment_service
 from ...services.transaction_service import transaction_service
 from config.paths import REVENUS_A_TRAITER
@@ -173,12 +174,11 @@ def _render_pdf_form(fname: str, data: dict) -> None:
         with st.form(key=f"pdf_form_{fname}"):
             c1, c2 = st.columns(2)
             with c1:
-                cat = st.selectbox(
-                    "Catégorie", TRANSACTION_CATEGORIES,
-                    index=TRANSACTION_CATEGORIES.index(trans.categorie) if trans.categorie in TRANSACTION_CATEGORIES else 0,
-                    key=f"pcat_{fname}"
+                cat, sub = category_selector_in_form(
+                    default_category=trans.categorie or "Autre",
+                    default_subcategory=trans.sous_categorie or "Relevé",
+                    key_prefix=f"pdf_{fname}"
                 )
-                sub = st.text_input("Sous-catégorie", value=trans.sous_categorie or "Relevé", key=f"psub_{fname}")
                 desc = st.text_input("Description", value=trans.description or "", key=f"pdesc_{fname}")
             with c2:
                 amt = st.number_input("Montant (€)", value=float(trans.montant) if trans.montant else 0.0,
