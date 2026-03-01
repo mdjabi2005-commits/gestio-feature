@@ -1,6 +1,4 @@
-"""
-Modèle pour les pièces jointes des transactions.
-"""
+"""Modèle pour les pièces jointes des transactions."""
 
 from datetime import datetime
 from typing import Optional
