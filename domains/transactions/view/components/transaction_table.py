@@ -10,7 +10,7 @@ import streamlit as st
 from config.logging_config import log_error
 from domains.transactions.database import TRANSACTION_TYPES
 from domains.transactions.services.attachment_service import attachment_service
-from shared.ui.toast_components import toast_success, toast_error, toast_warning
+from shared.ui.toast_components import toast_success, toast_error
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +112,8 @@ def render_transaction_table(filtered_df, transaction_repository):
                     )
                     if success_count > 0:
                         toast_success(f"{success_count} fichier(s) ajouté(s) !")
+                        import time
+                        time.sleep(1.5)
                         st.rerun()
                     else:
                         toast_error("Erreur lors de l'envoi")
@@ -135,6 +137,8 @@ def render_transaction_table(filtered_df, transaction_repository):
                         if st.button("🗑️", key=f"del_att_{att.id}"):
                             if attachment_service.delete_attachment(att.id):
                                 toast_success("Supprimé !")
+                                import time
+                                time.sleep(1.5)
                                 st.rerun()
 
     # ========== DÉTECTION DES CHANGEMENTS (SAUVEGARDE) ==========
@@ -168,23 +172,32 @@ def render_transaction_table(filtered_df, transaction_repository):
                     if deleted_ids:
                         logger.info(f"Suppression de {len(deleted_ids)} transaction(s): {deleted_ids}")
 
-                        # Détecter les fichiers physiques associés AVANT suppression DB
-                        files_to_ask = []
+                        # Collecter les fichiers physiques AVANT toute suppression DB
+                        files_found = []
                         for tid in deleted_ids:
                             atts = attachment_service.get_attachments(int(tid))
+                            logger.info(f"Transaction {tid} : {len(atts)} pièce(s) jointe(s) trouvée(s)")
                             for att in atts:
                                 physical = attachment_service.find_file(att.file_name)
+                                logger.info(f"  → find_file({att.file_name}) = {physical}")
                                 if physical and physical.exists():
-                                    files_to_ask.append((att.file_name, str(physical)))
+                                    files_found.append((att.file_name, str(physical)))
 
-                        # Suppression DB (CASCADE retire transaction_attachments automatiquement)
-                        if transaction_repository.delete(deleted_ids):
-                            toast_success(f"{len(deleted_ids)} transaction(s) supprimée(s) de la base")
-                            # Stocker les fichiers à demander en session_state
-                            if files_to_ask:
-                                st.session_state['pending_physical_delete'] = files_to_ask
+                        if files_found:
+                            # Stocker pour confirmation — ne pas encore supprimer
+                            st.session_state["pending_delete_ids"] = deleted_ids
+                            st.session_state["pending_physical_delete"] = files_found
+                            # Pas de rerun ici, on laisse afficher le bloc de confirmation ci-dessous
                         else:
-                            toast_error(f"Erreur lors de la suppression: {deleted_ids}")
+                            # Pas de fichiers → suppression directe
+                            if transaction_repository.delete(deleted_ids):
+                                toast_success(f"{len(deleted_ids)} transaction(s) supprimée(s)")
+                                st.session_state.pop("all_transactions_df", None)
+                                st.cache_data.clear()
+                                st.session_state.pop("transaction_editor", None)
+                                import time; time.sleep(1.5); st.rerun()
+                            else:
+                                toast_error(f"Erreur lors de la suppression: {deleted_ids}")
 
                     # 2. Modifications
                     # Champs connus du modèle Transaction (+ id pour l'update)
@@ -194,6 +207,15 @@ def render_transaction_table(filtered_df, transaction_repository):
                         "compte_iban", "external_id"
                     }
                     for row_idx, changes in edited_rows.items():
+                        tx_id_to_edit = result.iloc[row_idx].get('id')
+                        # Normaliser en scalaire pour éviter ambiguïté pandas Series
+                        if hasattr(tx_id_to_edit, 'item'):
+                            tx_id_to_edit = tx_id_to_edit.item()
+
+                        # Ne pas mettre à jour une transaction qu'on vient de supprimer
+                        if tx_id_to_edit in deleted_ids:
+                            continue
+                            
                         updated_row = {
                             k: v for k, v in result.iloc[row_idx].to_dict().items()
                             if k in _KNOWN_FIELDS
@@ -219,20 +241,24 @@ def render_transaction_table(filtered_df, transaction_repository):
                         if not success:
                             logger.error("Echec ajout nouvelle transaction depuis tableau")
 
-                    st.session_state['last_save_logs'] = debug_logs
                     logger.info("Fin sauvegarde modifications tableau")
 
-                    success_msgs = []
-                    if deleted_ids:
-                        success_msgs.append(f"🗑️ {len(deleted_ids)} supprimée(s)")
-                    if added_rows:
-                        success_msgs.append(f"➕ {len(added_rows)} ajoutée(s)")
-                    if edited_rows:
-                        success_msgs.append(f"✏️ {len(edited_rows)} modifiée(s)")
+                    if not st.session_state.get("pending_physical_delete"):
+                        success_msgs = []
+                        if deleted_ids:
+                            success_msgs.append(f"🗑️ {len(deleted_ids)} supprimée(s)")
+                        if added_rows:
+                            success_msgs.append(f"➕ {len(added_rows)} ajoutée(s)")
+                        if real_edits:
+                            success_msgs.append(f"✏️ {real_edits} modifiée(s)")
+                        toast_success(" | ".join(success_msgs) if success_msgs else "Modifications sauvegardées !", duration=4000)
 
-                    toast_success(" | ".join(success_msgs) if success_msgs else "Modifications sauvegardées !", duration=4000)
-                    st.balloons()
-                    st.rerun()
+                        st.session_state.pop("all_transactions_df", None)
+                        st.cache_data.clear()
+                        st.session_state.pop("transaction_editor", None)
+                        import time
+                        time.sleep(1.5)
+                        st.rerun()
 
                 except Exception as e:
                     trace_id = log_error(e, "Erreur sauvegarde tableau transactions")
@@ -243,42 +269,49 @@ def render_transaction_table(filtered_df, transaction_repository):
                 st.rerun()
 
     # ========== CONFIRMATION SUPPRESSION FICHIERS PHYSIQUES ==========
-    pending = st.session_state.get('pending_physical_delete', [])
-    if pending:
-        toast_warning(
-            f"⚠️ {len(pending)} fichier(s) physique(s) associé(s) aux transactions supprimées :"
-        )
-        for fname, fpath in pending:
-            st.caption(f"📄 `{fname}`")
+    pending_files = st.session_state.get("pending_physical_delete", [])
+    pending_ids = st.session_state.get("pending_delete_ids", [])
+    if pending_files and pending_ids:
+        from shared.ui.toast_components import toast_warning
+        toast_warning(f"{len(pending_files)} fichier(s) associé(s) seront supprimés du disque")
+        for fname, fpath in pending_files:
+            st.caption(f"📄 `{fname}`  —  `{fpath}`")
 
         col_yes, col_no = st.columns(2)
         with col_yes:
-            if st.button("🗑️ Supprimer aussi les fichiers", type="primary", use_container_width=True):
+            if st.button("🗑️ Supprimer les fichiers", type="primary", use_container_width=True):
+                # 1. Supprimer les fichiers physiques
                 deleted_count = 0
-                for fname, fpath in pending:
+                from pathlib import Path as _Path
+                for fname, fpath in pending_files:
                     try:
-                        from pathlib import Path as _Path
                         p = _Path(fpath)
                         if p.exists():
                             p.unlink()
                             deleted_count += 1
-                            logger.info(f"Fichier physique supprimé: {p}")
+                            logger.info(f"Fichier supprimé : {p}")
                     except Exception as e:
-                        logger.warning(f"Impossible de supprimer {fpath}: {e}")
-                st.session_state.pop('pending_physical_delete', None)
-                toast_success(f"{deleted_count} fichier(s) supprimé(s)")
-                st.rerun()
-        with col_no:
-            if st.button("📁 Conserver les fichiers", use_container_width=True):
-                st.session_state.pop('pending_physical_delete', None)
-                toast_success("Fichiers conservés sur le disque")
-                st.rerun()
+                        logger.warning(f"Impossible de supprimer {fpath} : {e}")
+                # 2. Supprimer la transaction en DB
+                transaction_repository.delete(pending_ids)
+                st.session_state.pop("pending_physical_delete", None)
+                st.session_state.pop("pending_delete_ids", None)
+                st.session_state.pop("all_transactions_df", None)
+                st.cache_data.clear()
+                st.session_state.pop("transaction_editor", None)
+                toast_success(f"{len(pending_ids)} transaction(s) + {deleted_count} fichier(s) supprimé(s)")
+                import time; time.sleep(1.5); st.rerun()
 
-    if 'last_save_logs' in st.session_state and st.session_state['last_save_logs']:
-        with st.expander("📋 Logs de la dernière sauvegarde", expanded=True):
-            for log in st.session_state['last_save_logs']:
-                st.write(log)
-            if st.button("🗑️ Effacer les logs"):
-                st.session_state['last_save_logs'] = []
-                st.rerun()
+        with col_no:
+            if st.button("📁 Supprimer sans les fichiers", use_container_width=True):
+                # Supprimer uniquement la transaction, garder les fichiers
+                transaction_repository.delete(pending_ids)
+                st.session_state.pop("pending_physical_delete", None)
+                st.session_state.pop("pending_delete_ids", None)
+                st.session_state.pop("all_transactions_df", None)
+                st.cache_data.clear()
+                st.session_state.pop("transaction_editor", None)
+                toast_success(f"{len(pending_ids)} transaction(s) supprimée(s), fichiers conservés")
+                import time; time.sleep(1.5); st.rerun()
+
 

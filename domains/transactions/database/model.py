@@ -38,7 +38,7 @@ class Transaction(BaseModel):
 
     # Champs avec valeurs par défaut
     categorie: str = Field("Non catégorisé", description="Catégorie principale")
-    montant: float = Field(..., description="Montant en euros", gt=0)
+    montant: float = Field(..., description="Montant en euros", ge=0)
 
     # Champs optionnels
     sous_categorie: Optional[str] = Field(None, description="Sous-catégorie")
@@ -82,8 +82,8 @@ class Transaction(BaseModel):
             value = abs(float(v))
         except (ValueError, TypeError):
             raise ValueError(f"Montant invalide: {v!r}")
-        if value <= 0:
-            raise ValueError("Le montant doit être supérieur à 0")
+        if value < 0:
+            raise ValueError("Le montant doit être positif ou nul")
         return round(value, 2)
 
     @field_validator("categorie", mode="before")

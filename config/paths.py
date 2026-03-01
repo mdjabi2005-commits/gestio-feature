@@ -1,16 +1,23 @@
 import os
+import sys
 from pathlib import Path
 
 # Base directory
 _home = Path.home()
 
-# TEST MODE - Switch between production and test databases
-TEST_MODE = os.getenv('TEST_MODE', 'false').lower() == 'true'
+# TEST MODE — actif si :
+#   1. Variable d'env TEST_MODE=true (manuel ou CI)
+#   2. Lancé via pytest (détection automatique)
+_pytest_running = "pytest" in sys.modules or any("pytest" in arg for arg in sys.argv)
+TEST_MODE = os.getenv('TEST_MODE', 'false').lower() == 'true' or _pytest_running
 
 # Folder paths - Switches based on TEST_MODE
 if TEST_MODE:
     DATA_DIR = str(_home / "test")
-    print("⚠️ MODE TEST ACTIVÉ - Utilisation de test")
+    if _pytest_running:
+        print("⚠️ MODE TEST ACTIVÉ (pytest détecté) - Utilisation de ~/test")
+    else:
+        print("⚠️ MODE TEST ACTIVÉ - Utilisation de ~/test")
 else:
     DATA_DIR = str(_home / "analyse")
 

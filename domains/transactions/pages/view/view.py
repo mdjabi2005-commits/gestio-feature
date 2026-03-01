@@ -118,22 +118,37 @@ def render_table():
     Fragment pour le tableau et le graphique.
     Contient les interactions (edit, delete).
     """
-    # Appliquer les filtres
     filtered_df = _get_filtered_data()
 
     if filtered_df is None or filtered_df.empty:
         st.info("Aucune transaction à afficher.")
         return
 
-    col_chart, col_table = st.columns([1.1, 0.9])
+    # Sélecteur de vue
+    vue = st.radio(
+        "Affichage",
+        options=["📊 Graphique + Tableau", "📋 Tableau seul", "📈 Graphique seul"],
+        horizontal=True,
+        key="view_mode_radio",
+        label_visibility="collapsed",
+    )
 
-    # C. Graphique Évolution — titre ici pour aligner avec "Transactions (Éditable)"
-    with col_chart:
+    show_chart = vue in ("📊 Graphique + Tableau", "📈 Graphique seul")
+    show_table = vue in ("📊 Graphique + Tableau", "📋 Tableau seul")
+
+    if show_chart and show_table:
+        col_chart, col_table = st.columns([1.1, 0.9])
+        with col_chart:
+            st.subheader("📋 Détails")
+            render_evolution_chart(filtered_df, height=420)
+        with col_table:
+            render_transaction_table(filtered_df, transaction_repository)
+
+    elif show_chart:
         st.subheader("📋 Détails")
-        render_evolution_chart(filtered_df, height=420)
+        render_evolution_chart(filtered_df, height=500)
 
-    # D. Tableau Éditable
-    with col_table:
+    elif show_table:
         render_transaction_table(filtered_df, transaction_repository)
 
 

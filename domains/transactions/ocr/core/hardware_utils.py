@@ -10,6 +10,9 @@ import psutil
 
 logger = logging.getLogger(__name__)
 
+# RAM requise estimée par worker (Modèle ONNX + Buffers image = ~150-200 Mo)
+_RAM_PER_WORKER_GB: float = 0.2
+
 
 def get_cpu_info() -> dict:
     """Retourne les infos CPU/RAM"""
@@ -50,3 +53,48 @@ def get_optimal_batch_size() -> int:
     except Exception as e:
         logger.warning(f"Impossible de déterminer les workers, fallback à 1: {e}")
         return 1
+
+
+def get_optimal_workers(task_count: int) -> int:
+    """
+    Calcule le nombre de workers (Threads) à utiliser pour le pool OCR.
+
+    Borne le résultat par :
+    - le nombre de tâches  (inutile de spawner plus de threads que de fichiers)
+    - la RAM disponible    (bien que partagée, on garde une limite de sécurité)
+    - le nombre de cœurs  (via get_optimal_batch_size)
+
+    Args:
+        task_count: Nombre de fichiers à traiter.
+
+    Returns:
+        Nombre de workers >= 1.
+    """
+    if task_count <= 0:
+        return 1
+
+    # 1. Limite CPU
+    cpu_workers = get_optimal_batch_size()
+
+    # 2. Limite RAM
+    try:
+        info = get_cpu_info()
+        available_ram = info.get("available_ram_gb", 4.0)
+        ram_workers = max(1, int(available_ram / _RAM_PER_WORKER_GB))
+    except Exception:
+        ram_workers = cpu_workers
+
+    # 3. Limite OS (Prévention du goulot "Spawn" sur Windows)
+    # Lancer N sessions C++ ONNX en "spawn" d'un coup fige le CPU scheduler de Windows (effet DDOS).
+    # On limite à max 6 pour garder une fluidité système ou CPU/2 max pour les très gros CPU.
+    max_safe_spawns = max(4, min(6, cpu_workers // 2))
+
+    # 4. Synthèse finale (Pas plus que le nombre de tâches)
+    optimal = min(cpu_workers, ram_workers, task_count, max_safe_spawns)
+    optimal = max(1, optimal)
+
+    logger.info(
+        f"Workers calculés : {optimal} "
+        f"(cpu={cpu_workers}, ram={ram_workers}, tâches={task_count}, max_safe_spawn={max_safe_spawns})"
+    )
+    return optimal

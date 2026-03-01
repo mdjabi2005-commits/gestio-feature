@@ -173,6 +173,19 @@ def init_attachments_table(db_path: str = None) -> None:
                            )
                        """)
 
+        # Update the table if it exists with old schema
+        try:
+            cursor.execute("ALTER TABLE transaction_attachments ADD COLUMN file_path TEXT DEFAULT ''")
+            logger.info("Added 'file_path' column to transaction_attachments table")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+            
+        try:
+            cursor.execute("ALTER TABLE transaction_attachments ADD COLUMN size INTEGER")
+            logger.info("Added 'size' column to transaction_attachments table")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # Index pour recherche rapide par transaction
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_attachments_tx_id ON transaction_attachments(transaction_id)")
 

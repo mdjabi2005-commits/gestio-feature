@@ -1,6 +1,4 @@
-"""
-Modèle pour les pièces jointes des transactions.
-"""
+"""Modèle pour les pièces jointes des transactions."""
 
 from datetime import datetime
 from typing import Optional
@@ -14,5 +12,6 @@ class TransactionAttachment(BaseModel):
     id: Optional[int] = None
     transaction_id: int = Field(..., description="ID de la transaction parente")
     file_name: str = Field(..., description="Nom original du fichier")
+    file_path: str = Field(..., description="Chemin de stockage local du fichier")
     file_type: Optional[str] = Field(None, description="Extension du fichier")
     upload_date: datetime = Field(default_factory=datetime.now)
