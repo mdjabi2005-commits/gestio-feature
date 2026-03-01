@@ -11,8 +11,8 @@ from typing import Dict, Any
 
 from groq import Groq
 
-# Import depuis le domaine métier pour garantir la conformité
-from domains.transactions.database.constants import TRANSACTION_CATEGORIES
+# Chargement dynamique depuis categories.yaml
+from shared.utils.categories_loader import get_categories, get_all_subcategories
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ class GroqParser:
     """
     Parser utilisant l'API Groq (LPU) pour extraire instantanément des informations
     structurées depuis du texte OCR "bruité".
+    Catégories et sous-catégories chargées depuis categories.yaml.
     """
 
     def __init__(self, model_name: str = "llama-3.3-70b-versatile"):
@@ -40,12 +41,19 @@ class GroqParser:
         else:
             self.client = Groq(api_key=self.api_key)
             
-        # On construit un prompt robuste avec la liste exacte de nos catégories
-        categories_str = ", ".join(f"'{cat}'" for cat in TRANSACTION_CATEGORIES)
-        
+        # Construction du prompt avec catégories + sous-catégories depuis le YAML
+        categories = get_categories()
+        subcategories_map = get_all_subcategories()
+        categories_str = ", ".join(f"'{cat}'" for cat in categories)
+        subcat_lines = "\n".join(
+            f"  - {cat}: {', '.join(subs)}"
+            for cat, subs in subcategories_map.items()
+            if subs
+        )
+
         self.system_prompt = f"""
 Tu es un expert comptable ultra-rapide.
-Ta tâche : Analyser un texte brut OCR extrait d'un ticket de caisse ou d'une facture.
+Ta tâche : Analyser un texte brut OCR extrait d'un ticket de caisse, d'une facture ou d'un PDF.
 Tu dois extraire le nom du commerçant et classifier la transaction.
 
 Tu dois répondre OBLIGATOIREMENT ET UNIQUEMENT par un objet JSON strict ("type": "json_object").
@@ -55,11 +63,16 @@ Règles de classification cruciales (ANTI-BIAIS) :
 la catégorie DOIT ÊTRE ABSOLUMENT "Voiture", MÊME SI l'enseigne est un supermarché (ex: Carrefour, Auchan, Leclerc).
 2. Si c'est un ticket de supermarché standard sans mention de carburant, c'est "Alimentation".
 
+Catégories disponibles : [{categories_str}]
+
+Sous-catégories suggérées par catégorie (choisis la plus proche ou propose une variante courte) :
+{subcat_lines}
+
 Règles de sortie du JSON :
 {{
-  "category": "Choisis OBLIGATOIREMENT une SEULE catégorie parmi cette liste exacte : [{categories_str}]. Si aucune ne correspond bien, choisis 'Autre'.",
-  "subcategory": "Invente une sous-catégorie précise en 1 ou 2 mots max (ex: 'Essence', 'Fast Food', 'Supermarché').",
-  "description": "Le nom du commerçant principal trouvé dans le ticket en Majuscules (ex: 'CARREFOUR MARKET', 'TOTAL ENERGIES'). S'il n'y a rien, mets 'Achat'."
+  "category": "Choisis OBLIGATOIREMENT une SEULE catégorie parmi la liste exacte ci-dessus. Si aucune ne correspond, choisis 'Autre'.",
+  "subcategory": "Choisis ou adapte une sous-catégorie de la liste ci-dessus (1-2 mots max).",
+  "description": "Le nom du commerçant principal en Majuscules (ex: 'CARREFOUR MARKET'). Si introuvable, mets 'Achat'."
 }}
 
 Rien d'autre ne doit être renvoyé à part l'objet JSON contenant ces 3 clés.
@@ -102,7 +115,7 @@ Rien d'autre ne doit être renvoyé à part l'objet JSON contenant ces 3 clés.
             data = json.loads(content)
             
             # Validation finale de sécurité (au cas où "Autre" n'est pas utilisé)
-            if data.get("category") not in TRANSACTION_CATEGORIES:
+            if data.get("category") not in get_categories():
                  data["category"] = "Autre"
                  
             return data

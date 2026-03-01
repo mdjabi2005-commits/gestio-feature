@@ -1,6 +1,6 @@
 """
 Constantes du domaine Transactions.
-Source unique de vérité — ne jamais dupliquer ces valeurs ailleurs.
+Les catégories sont chargées depuis categories.yaml (modifiable par l'utilisateur).
 Toutes les clés sont en FRANÇAIS.
 """
 
@@ -21,10 +21,11 @@ TRANSACTION_TYPES: list[str] = [
 ]
 
 # =========================================================
-# CATÉGORIES
+# CATÉGORIES — chargées depuis categories.yaml
 # =========================================================
 
-TRANSACTION_CATEGORIES: list[str] = [
+# Fallback utilisé si le YAML est absent ou corrompu
+_FALLBACK_CATEGORIES: list[str] = [
     "Alimentation",
     "Voiture",
     "Logement",
@@ -35,6 +36,16 @@ TRANSACTION_CATEGORIES: list[str] = [
     "Autre",
 ]
 
+def _load_categories() -> list[str]:
+    try:
+        from shared.utils.categories_loader import get_categories
+        cats = get_categories()
+        return cats if cats else _FALLBACK_CATEGORIES
+    except Exception:
+        return _FALLBACK_CATEGORIES
+
+TRANSACTION_CATEGORIES: list[str] = _load_categories()
+
 # =========================================================
 # SOURCES
 # =========================================================
@@ -42,12 +53,12 @@ TRANSACTION_CATEGORIES: list[str] = [
 SOURCE_DEFAULT = "manual"
 
 TRANSACTION_SOURCES: list[str] = [
-    "manual",       # Saisie manuelle
-    "ocr",          # Ticket scanné via OCR
-    "pdf",          # Relevé ou facture PDF
-    "csv",          # Import CSV
-    "import_v2",    # Import CSV/Excel via la page d'import
-    "ofx",          # Import fichier OFX/QFX bancaire
-    "enable_banking",  # Import via API Enable Banking
+    "manual",
+    "ocr",
+    "pdf",
+    "csv",
+    "import_v2",
+    "ofx",
+    "enable_banking",
 ]
 
