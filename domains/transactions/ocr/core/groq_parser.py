@@ -59,20 +59,21 @@ Tu dois extraire le nom du commerçant et classifier la transaction.
 Tu dois répondre OBLIGATOIREMENT ET UNIQUEMENT par un objet JSON strict ("type": "json_object").
 
 Règles de classification cruciales (ANTI-BIAIS) :
-1. Si tu détectes des mots liés au carburant ("Carburant", "Gazole", "SP95", "Litre", "Pompe", "Station"),
-la catégorie DOIT ÊTRE ABSOLUMENT "Voiture", MÊME SI l'enseigne est un supermarché (ex: Carrefour, Auchan, Leclerc).
-2. Si c'est un ticket de supermarché standard sans mention de carburant, c'est "Alimentation".
+1. Si tu détectes des mots liés au carburant ("Carburant", "Gazole", "SP95", "SP98", "E10", "E85", "Litre", "Pompe", "Station", "Piste", "Total", "BP", "Shell", "Esso", "Intermarché carburant", "Leclerc carburant"),
+   la catégorie DOIT ÊTRE "Voiture" ET la sous-catégorie DOIT ÊTRE "Essence", MÊME SI l'enseigne est un supermarché.
+2. Si c'est un ticket de supermarché standard sans mention de carburant, c'est "Alimentation" > "Supermarché".
+3. Pour les stations-service (Total, BP, Shell, Esso, Q8), catégorie "Voiture", sous-catégorie "Essence".
 
 Catégories disponibles : [{categories_str}]
 
-Sous-catégories suggérées par catégorie (choisis la plus proche ou propose une variante courte) :
+Sous-catégories disponibles par catégorie (utilise EXACTEMENT ces termes) :
 {subcat_lines}
 
 Règles de sortie du JSON :
 {{
-  "category": "Choisis OBLIGATOIREMENT une SEULE catégorie parmi la liste exacte ci-dessus. Si aucune ne correspond, choisis 'Autre'.",
-  "subcategory": "Choisis ou adapte une sous-catégorie de la liste ci-dessus (1-2 mots max).",
-  "description": "Le nom du commerçant principal en Majuscules (ex: 'CARREFOUR MARKET'). Si introuvable, mets 'Achat'."
+  "category": "Choisis OBLIGATOIREMENT une SEULE catégorie parmi la liste exacte ci-dessus.",
+  "subcategory": "Choisis OBLIGATOIREMENT une sous-catégorie EXACTE de la liste ci-dessus pour la catégorie choisie.",
+  "description": "Le nom du commerçant principal en Majuscules (ex: 'TOTAL STATION'). Si introuvable, mets 'Achat'."
 }}
 
 Rien d'autre ne doit être renvoyé à part l'objet JSON contenant ces 3 clés.
@@ -113,11 +114,32 @@ Rien d'autre ne doit être renvoyé à part l'objet JSON contenant ces 3 clés.
             logger.debug(f"Réponse JSON de Groq: {content}")
 
             data = json.loads(content)
-            
-            # Validation finale de sécurité (au cas où "Autre" n'est pas utilisé)
+
+            # Validation catégorie
             if data.get("category") not in get_categories():
-                 data["category"] = "Autre"
-                 
+                data["category"] = "Autre"
+
+            # Validation sous-catégorie : cherche la correspondance la plus proche
+            category = data.get("category", "Autre")
+            subcategory = data.get("subcategory", "")
+            valid_subs = get_all_subcategories().get(category, [])
+
+            if valid_subs and subcategory:
+                # Correspondance exacte
+                if subcategory not in valid_subs:
+                    # Correspondance insensible à la casse
+                    sub_lower = subcategory.lower()
+                    match = next((s for s in valid_subs if s.lower() == sub_lower), None)
+                    if match:
+                        data["subcategory"] = match
+                    else:
+                        # Correspondance partielle (ex: "Gazole" → "Essence")
+                        match = next((s for s in valid_subs if s.lower() in sub_lower or sub_lower in s.lower()), None)
+                        data["subcategory"] = match if match else valid_subs[0]
+                        logger.info(f"Sous-catégorie '{subcategory}' → '{data['subcategory']}' (correction)")
+            elif valid_subs and not subcategory:
+                data["subcategory"] = valid_subs[0]
+
             return data
 
         except Exception as e:
