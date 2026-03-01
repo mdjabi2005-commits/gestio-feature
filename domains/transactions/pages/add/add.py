@@ -431,6 +431,9 @@ def render_recurrence_fragment():
                     toast_success("Récurrence créée !")
                     st.session_state.pop("all_transactions_df", None)
                     st.cache_data.clear()
+                    
+                    import time
+                    time.sleep(1.5)
                     st.rerun()
                 else:
                     toast_error("Erreur")

@@ -223,7 +223,7 @@ def render_transaction_table(filtered_df, transaction_repository):
                         if not success:
                             logger.error("Echec ajout nouvelle transaction depuis tableau")
 
-                    st.session_state['last_save_logs'] = debug_logs
+                    
                     logger.info("Fin sauvegarde modifications tableau")
 
                     success_msgs = []
@@ -296,13 +296,5 @@ def render_transaction_table(filtered_df, transaction_repository):
                 # Le nettoyage de BDD/Cache a déjà été fait plus haut, on relance juste
                 import time
                 time.sleep(1.5)
-                st.rerun()
-
-    if 'last_save_logs' in st.session_state and st.session_state['last_save_logs']:
-        with st.expander("📋 Logs de la dernière sauvegarde", expanded=True):
-            for log in st.session_state['last_save_logs']:
-                st.write(log)
-            if st.button("🗑️ Effacer les logs"):
-                st.session_state['last_save_logs'] = []
                 st.rerun()
 
