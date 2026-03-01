@@ -12,7 +12,7 @@ import streamlit as st
 from shared.ui.toast_components import toast_success, toast_error
 from ...database.model import Transaction
 from ...database.constants import TRANSACTION_TYPES
-from shared.ui.category_manager import category_selector_in_form
+from shared.ui.category_manager import category_selector
 from ...services.attachment_service import attachment_service
 from ...services.transaction_service import transaction_service
 from config.paths import REVENUS_A_TRAITER
@@ -171,14 +171,18 @@ def _render_pdf_form(fname: str, data: dict) -> None:
             st.warning("Impossible d'extraire les données de ce PDF.")
             return
 
+        # ── Sélection catégorie HORS form (permet st.rerun) ──
+        cat, sub = category_selector(
+            default_category=trans.categorie or "Autre",
+            default_subcategory=trans.sous_categorie or "Relevé",
+            key_prefix=f"pdf_{fname}"
+        )
+
         with st.form(key=f"pdf_form_{fname}"):
             c1, c2 = st.columns(2)
             with c1:
-                cat, sub = category_selector_in_form(
-                    default_category=trans.categorie or "Autre",
-                    default_subcategory=trans.sous_categorie or "Relevé",
-                    key_prefix=f"pdf_{fname}"
-                )
+                st.text_input("Catégorie", value=cat, disabled=True, key=f"pcat_ro_{fname}")
+                st.text_input("Sous-catégorie", value=sub, disabled=True, key=f"psub_ro_{fname}")
                 desc = st.text_input("Description", value=trans.description or "", key=f"pdesc_{fname}")
             with c2:
                 amt = st.number_input("Montant (€)", value=float(trans.montant) if trans.montant else 0.0,

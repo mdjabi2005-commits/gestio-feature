@@ -2,6 +2,10 @@
 Category Manager — Composant Streamlit partagé.
 Permet de sélectionner une catégorie et une sous-catégorie,
 avec la possibilité d'en créer de nouvelles directement sauvegardées dans categories.yaml.
+
+IMPORTANT : category_selector() doit être utilisé HORS d'un st.form().
+Les fragments OCR/PDF/Récurrence doivent extraire la sélection catégorie
+hors du form et ne passer que les valeurs choisies au form.
 """
 
 import streamlit as st
@@ -13,6 +17,9 @@ from shared.utils.categories_loader import (
     save_subcategory,
 )
 
+_NEW_CAT_OPTION = "✏️ Nouvelle catégorie..."
+_NEW_SUB_OPTION = "✏️ Nouvelle sous-catégorie..."
+
 
 def category_selector(
     default_category: str = "Autre",
@@ -21,108 +28,70 @@ def category_selector(
 ) -> tuple[str, str]:
     """
     Composant de sélection catégorie + sous-catégorie avec ajout dynamique.
-
-    Affiche :
-    - Un selectbox catégorie (+ option "➕ Nouvelle catégorie...")
-    - Un selectbox sous-catégorie (+ option "➕ Nouvelle sous-catégorie...")
-    - Un formulaire d'ajout si l'utilisateur choisit "➕"
+    À utiliser HORS d'un st.form() — utilise st.rerun() après création.
 
     Retourne (categorie, sous_categorie) sélectionnées.
-    NB : à utiliser HORS d'un st.form() car utilise st.rerun().
     """
     categories = get_categories()
-    cat_options = categories + ["➕ Nouvelle catégorie..."]
-
+    cat_options = categories + [_NEW_CAT_OPTION]
     default_idx = categories.index(default_category) if default_category in categories else 0
 
     selected_cat = st.selectbox(
-        "Catégorie",
-        cat_options,
-        index=default_idx,
-        key=f"{key_prefix}_cat_sel"
+        "Catégorie", cat_options, index=default_idx, key=f"{key_prefix}_cat_sel"
     )
 
-    # Ajout d'une nouvelle catégorie
-    if selected_cat == "➕ Nouvelle catégorie...":
-        new_cat = st.text_input("Nom de la nouvelle catégorie", key=f"{key_prefix}_new_cat")
-        if st.button("✅ Créer la catégorie", key=f"{key_prefix}_btn_new_cat"):
+    # ── Création nouvelle catégorie ──────────────────────────
+    if selected_cat == _NEW_CAT_OPTION:
+        new_cat = st.text_input(
+            "Nom de la nouvelle catégorie",
+            placeholder="ex: Animaux, Jardinage...",
+            key=f"{key_prefix}_new_cat"
+        )
+        if st.button("✅ Créer", key=f"{key_prefix}_btn_new_cat", type="primary"):
             if new_cat.strip():
                 added = save_category(new_cat)
                 if added:
-                    st.success(f"Catégorie **{new_cat.title()}** ajoutée !")
+                    st.success(f"✅ Catégorie **{new_cat.title()}** ajoutée !")
                     st.rerun()
                 else:
-                    st.warning("Cette catégorie existe déjà.")
+                    st.warning("⚠️ Cette catégorie existe déjà.")
             else:
-                st.error("Le nom ne peut pas être vide.")
+                st.error("❌ Le nom ne peut pas être vide.")
         return default_category, default_subcategory
 
     category = selected_cat
 
-    # Sous-catégories de la catégorie sélectionnée
+    # ── Sous-catégories ──────────────────────────────────────
     subcategories = get_subcategories(category)
-    sub_options = subcategories + ["➕ Nouvelle sous-catégorie..."]
-
-    default_sub_idx = subcategories.index(default_subcategory) if default_subcategory in subcategories else len(subcategories)
-
-    selected_sub = st.selectbox(
-        "Sous-catégorie",
-        sub_options,
-        index=default_sub_idx,
-        key=f"{key_prefix}_sub_sel"
+    sub_options = subcategories + [_NEW_SUB_OPTION]
+    default_sub_idx = (
+        subcategories.index(default_subcategory)
+        if default_subcategory in subcategories
+        else len(subcategories)
     )
 
-    # Ajout d'une nouvelle sous-catégorie
-    if selected_sub == "➕ Nouvelle sous-catégorie...":
+    selected_sub = st.selectbox(
+        "Sous-catégorie", sub_options, index=default_sub_idx, key=f"{key_prefix}_sub_sel"
+    )
+
+    # ── Création nouvelle sous-catégorie ─────────────────────
+    if selected_sub == _NEW_SUB_OPTION:
         new_sub = st.text_input(
             f"Nouvelle sous-catégorie pour **{category}**",
+            placeholder="ex: Supermarché, Essence...",
             key=f"{key_prefix}_new_sub"
         )
-        if st.button("✅ Créer la sous-catégorie", key=f"{key_prefix}_btn_new_sub"):
+        if st.button("✅ Créer", key=f"{key_prefix}_btn_new_sub", type="primary"):
             if new_sub.strip():
                 added = save_subcategory(category, new_sub)
                 if added:
-                    st.success(f"Sous-catégorie **{new_sub.title()}** ajoutée sous **{category}** !")
+                    st.success(f"✅ Sous-catégorie **{new_sub.title()}** ajoutée sous **{category}** !")
                     st.rerun()
                 else:
-                    st.warning("Cette sous-catégorie existe déjà.")
+                    st.warning("⚠️ Cette sous-catégorie existe déjà.")
             else:
-                st.error("Le nom ne peut pas être vide.")
+                st.error("❌ Le nom ne peut pas être vide.")
         return category, default_subcategory
 
     return category, selected_sub
-
-
-def category_selector_in_form(
-    default_category: str = "Autre",
-    default_subcategory: str = "",
-    key_prefix: str = "cat",
-) -> tuple[str, str]:
-    """
-    Version simplifiée pour usage DANS un st.form().
-    Pas d'ajout dynamique (impossible dans un form), mais affiche
-    un champ texte libre si "➕ Autre..." est sélectionné.
-    """
-    categories = get_categories()
-    cat_options = categories + ["➕ Autre..."]
-    default_idx = categories.index(default_category) if default_category in categories else 0
-
-    selected_cat = st.selectbox(
-        "Catégorie", cat_options, index=default_idx, key=f"{key_prefix}_cat"
-    )
-    if selected_cat == "➕ Autre...":
-        category = st.text_input("Nom de la catégorie", key=f"{key_prefix}_cat_txt")
-    else:
-        category = selected_cat
-
-    subcategories = get_subcategories(category) if category else []
-    sub_options = subcategories + ["✏️ Autre..."]
-    default_sub_idx = subcategories.index(default_subcategory) if default_subcategory in subcategories else len(subcategories)
-
-    selected_sub = st.selectbox(
-        "Sous-catégorie", sub_options, index=default_sub_idx, key=f"{key_prefix}_sub"
-    )
-    subcategory = st.text_input("Nom de la sous-catégorie", key=f"{key_prefix}_sub_txt") if selected_sub == "✏️ Autre..." else selected_sub
-
-    return category, subcategory
 
