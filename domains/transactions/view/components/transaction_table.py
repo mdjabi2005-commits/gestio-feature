@@ -198,6 +198,12 @@ def render_transaction_table(filtered_df, transaction_repository):
                         "compte_iban", "external_id"
                     }
                     for row_idx, changes in edited_rows.items():
+                        tx_id_to_edit = result.iloc[row_idx].get('id')
+                        
+                        # Ne pas mettre à jour une transaction qu'on vient de supprimer
+                        if tx_id_to_edit in deleted_ids:
+                            continue
+                            
                         updated_row = {
                             k: v for k, v in result.iloc[row_idx].to_dict().items()
                             if k in _KNOWN_FIELDS
