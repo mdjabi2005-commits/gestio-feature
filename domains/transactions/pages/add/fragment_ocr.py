@@ -12,7 +12,7 @@ import streamlit as st
 from shared.ui.toast_components import toast_success, toast_error
 from ...database.model import Transaction
 from ...database.constants import TRANSACTION_TYPES
-from shared.ui.category_manager import category_selector_in_form
+from shared.ui.category_manager import category_selector
 from ...services.attachment_service import attachment_service
 from ...services.transaction_service import transaction_service
 from config.paths import TO_SCAN_DIR
@@ -171,15 +171,19 @@ def _render_ocr_ticket_form(fname: str, data: dict) -> None:
                 st.warning("Impossible de lire ce ticket.")
                 return
 
+            # ── Sélection catégorie HORS form (permet st.rerun) ──
+            f_cat, f_sub = category_selector(
+                default_category=trans.categorie or "Autre",
+                default_subcategory=trans.sous_categorie or "",
+                key_prefix=f"ocr_{fname}"
+            )
+
             with st.form(key=f"form_{fname}"):
                 st.caption(f"Fichier : {fname}")
                 c1, c2 = st.columns(2)
                 with c1:
-                    f_cat, f_sub = category_selector_in_form(
-                        default_category=trans.categorie or "Autre",
-                        default_subcategory=trans.sous_categorie or "",
-                        key_prefix=f"ocr_{fname}"
-                    )
+                    st.text_input("Catégorie", value=f_cat, disabled=True, key=f"cat_ro_{fname}")
+                    st.text_input("Sous-catégorie", value=f_sub, disabled=True, key=f"sub_ro_{fname}")
                     f_desc = st.text_input("Description", value=trans.description or "", key=f"desc_{fname}")
                 with c2:
                     f_type = st.selectbox("Type", TRANSACTION_TYPES, index=0, key=f"type_{fname}")
