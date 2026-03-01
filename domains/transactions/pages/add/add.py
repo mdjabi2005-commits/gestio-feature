@@ -23,7 +23,7 @@ from ...services.transaction_service import transaction_service
 
 logger = logging.getLogger(__name__)
 
-TEMP_OCR_DIR = Path("temp_ocr")
+from ...config.paths import TO_SCAN_DIR, REVENUS_A_TRAITER
 
 
 # ============================================================
@@ -40,9 +40,21 @@ def render_ocr_fragment():
     if "ocr_uploader_key" not in st.session_state:
         st.session_state.ocr_uploader_key = "ocr_uploader_0"
 
-    # 1. UPLOAD
+    scan_dir_path = Path(TO_SCAN_DIR)
+    
+    # 1. FICHIERS EN ATTENTE SUR LE DISQUE
+    existing_files = [f for f in scan_dir_path.iterdir() if f.is_file() and f.suffix.lower() in [".jpg", ".jpeg", ".png"]]
+    
+    if existing_files:
+        st.warning(f"📁 **{len(existing_files)} ticket(s) en attente détecté(s)** dans le dossier de scan.")
+        if st.button(f"🚀 Analyser ces {len(existing_files)} tickets maintenant", type="primary", key="btn_ocr_disk"):
+            st.session_state.ocr_disk_trigger = existing_files
+    
+    st.markdown("---")
+    
+    # 2. UPLOAD MANUEL
     uploaded_files = st.file_uploader(
-        "Choisissez vos images (Tickets)",
+        "Ou glissez-déposez de nouveaux tickets ici",
         type=["jpg", "jpeg", "png"],
         accept_multiple_files=True,
         key=st.session_state.ocr_uploader_key
@@ -55,7 +67,10 @@ def render_ocr_fragment():
         st.session_state.ocr_cancel = False
 
     # 3. EXTRACTION
-    if uploaded_files:
+    disk_files_to_process = st.session_state.pop("ocr_disk_trigger", [])
+    files_to_process = disk_files_to_process or uploaded_files
+    
+    if files_to_process:
         col_btn, col_cancel = st.columns([3, 1])
         with col_btn:
             start = st.button("🔍 Lancer le traitement", type="primary", key="btn_ocr_start")
@@ -63,9 +78,9 @@ def render_ocr_fragment():
             if st.button("❌ Annuler", key="btn_ocr_cancel"):
                 st.session_state.ocr_cancel = True
 
-        if start:
+        if start or disk_files_to_process:
             st.session_state.ocr_cancel = False
-            total = len(uploaded_files)
+            total = len(files_to_process)
 
             results = []
             
@@ -76,9 +91,7 @@ def render_ocr_fragment():
                 status_text = st.empty()
                 timer_text = st.empty()
 
-            # Assurer que le dossier temp existe
-            TEMP_OCR_DIR.mkdir(exist_ok=True)
-
+            # On travaille directement sur les chemins
             from ...ocr.services.ocr_service import OCRService
             
             ocr_service = OCRService()
@@ -86,16 +99,21 @@ def render_ocr_fragment():
             
             try:
                 with st.spinner("🤖 Groq analyse vos tickets... (Super Rapide)"):
-                    for count, f in enumerate(uploaded_files, 1):
+                    for count, f in enumerate(files_to_process, 1):
                         if st.session_state.get("ocr_cancel", False):
                             raise InterruptedError("Annulé par l'utilisateur")
                             
-                        # Sauvegarde temp
-                        fname = f.name # type: ignore[union-attr]
-                        p = TEMP_OCR_DIR / fname
-                        f.seek(0) # type: ignore[union-attr]
-                        p.write_bytes(f.read()) # type: ignore[union-attr]
-                        
+                        # Si c'est un fichier uploaded via Streamlit, on le sauve sur le disque
+                        if hasattr(f, 'name') and hasattr(f, 'read'):
+                            fname = f.name # type: ignore[union-attr]
+                            p = scan_dir_path / fname
+                            f.seek(0) # type: ignore[union-attr]
+                            p.write_bytes(f.read()) # type: ignore[union-attr]
+                        else:
+                            # C'est un Pathlib object du disque
+                            p = f
+                            fname = p.name
+                            
                         # Interface
                         progress_bar.progress((count - 1) / total)
                         status_text.text(f"⏳ Traitement de : {fname}  ({count}/{total})")
@@ -131,7 +149,7 @@ def render_ocr_fragment():
                     "transaction": trans,
                     "error": err,
                     "saved": False,
-                    "temp_path": str(TEMP_OCR_DIR / fname)
+                    "temp_path": str(scan_dir_path / fname)
                 }
 
             total_elapsed = time.time() - start_time
@@ -277,14 +295,40 @@ def render_pdf_fragment():
     if "pdf_uploader_key" not in st.session_state:
         st.session_state.pdf_uploader_key = "pdf_uploader_0"
 
-    uploaded_file = st.file_uploader("Choisissez un PDF (Relevé, Facture...)", type=["pdf"], key=st.session_state.pdf_uploader_key)
+    revenus_dir_path = Path(REVENUS_A_TRAITER)
+    
+    # 1. FICHIERS EN ATTENTE SUR LE DISQUE
+    existing_pdfs = [f for f in revenus_dir_path.iterdir() if f.is_file() and f.suffix.lower() == ".pdf"]
+    
+    if existing_pdfs:
+        st.warning(f"📁 **{len(existing_pdfs)} PDF(s) en attente détecté(s)** dans le dossier revenus.")
+        if st.button(f"🚀 Analyser ces {len(existing_pdfs)} PDFs maintenant", type="primary", key="btn_pdf_disk"):
+            st.session_state.pdf_disk_trigger = existing_pdfs
+            
+    st.markdown("---")
 
-    if uploaded_file:
-        if st.button("Traiter le PDF", type="primary", key="btn_pdf_process"):
-            # Save temp
-            TEMP_OCR_DIR.mkdir(exist_ok=True)
-            temp_path = TEMP_OCR_DIR / uploaded_file.name
-            temp_path.write_bytes(uploaded_file.read())
+    uploaded_file = st.file_uploader("Ou glissez-déposez un nouveau PDF ici", type=["pdf"], key=st.session_state.pdf_uploader_key)
+
+    disk_pdfs_to_process = st.session_state.pop("pdf_disk_trigger", [])
+    
+    # Pour la simplification actuelle, on ne traite qu'un seul PDF à la fois par ce workflow
+    active_pdf = None
+    is_disk_file = False
+    
+    if disk_pdfs_to_process:
+        active_pdf = disk_pdfs_to_process[0] # On prend le premier
+        is_disk_file = True
+    elif uploaded_file:
+        active_pdf = uploaded_file
+
+    if active_pdf:
+        if is_disk_file or st.button("Traiter le PDF", type="primary", key="btn_pdf_process"):
+            if not is_disk_file:
+                # Save temp from streamlit
+                temp_path = revenus_dir_path / active_pdf.name
+                temp_path.write_bytes(active_pdf.read())
+            else:
+                temp_path = active_pdf
 
             try:
                 from ...ocr.services.ocr_service import OCRService
@@ -323,7 +367,7 @@ def render_pdf_fragment():
                             attachment_service.add_attachment(
                                 transaction_id=nid,
                                 file_obj=str(temp_path),
-                                filename=uploaded_file.name,
+                                filename=temp_path.name,
                                 category=cat,
                                 subcategory=sub,
                                 transaction_type="Revenu"
@@ -444,8 +488,7 @@ def interface_add_transaction():
 
     st.header("➕ Ajouter une Transaction")
 
-    # Assurer que le dossier temp existe
-    TEMP_OCR_DIR.mkdir(exist_ok=True)
+    # (Les dossiers d'extraction exist-ok sont désormais couverts par l'init de la config)
 
     # === SELECTBOX PRINCIPALE ===
     mode = st.selectbox(
