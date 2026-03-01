@@ -221,6 +221,11 @@ def render_ocr_fragment():
                         f_desc = st.text_input("Description", value=trans.description or "", key=f"desc_{fname}")
 
                     with c2:
+                        f_type = st.selectbox(
+                            "Type", TRANSACTION_TYPES,
+                            index=0,  # "Dépense" par défaut
+                            key=f"type_{fname}"
+                        )
                         f_amt = st.number_input("Montant (€)", value=float(trans.montant), step=0.01,
                                                 key=f"amt_{fname}")
                         f_date = st.date_input("Date", value=trans.date, key=f"date_{fname}")
@@ -230,7 +235,7 @@ def render_ocr_fragment():
                     if sender:
                         # 1. Créer Transaction (avec clés FR)
                         final_t = Transaction(
-                            type="Dépense",
+                            type=f_type,
                             categorie=f_cat,
                             sous_categorie=f_sub,
                             description=f_desc,
@@ -254,7 +259,7 @@ def render_ocr_fragment():
                                 filename=fname,
                                 category=f_cat,
                                 subcategory=f_sub,
-                                transaction_type="Dépense"
+                                transaction_type=f_type
                             )
 
                             if success:
@@ -570,8 +575,6 @@ def render_recurrence_fragment():
                     toast_success("Récurrence créée !")
                     st.session_state.pop("all_transactions_df", None)
                     st.cache_data.clear()
-                    
-                    import time
                     time.sleep(1.5)
                     st.rerun()
                 else:
