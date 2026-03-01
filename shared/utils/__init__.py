@@ -9,6 +9,7 @@ from .dataframe_utils import (
     convert_attachment_df,
 )
 from .amount_parser import parse_amount
+from .categories_loader import get_categories, get_subcategories, get_all_subcategories, reload as reload_categories
 
 __all__ = [
     # Converters
@@ -23,5 +24,10 @@ __all__ = [
     "convert_attachment_df",
     # Amount parser
     "parse_amount",
+    # Categories loader
+    "get_categories",
+    "get_subcategories",
+    "get_all_subcategories",
+    "reload_categories",
 ]
 
