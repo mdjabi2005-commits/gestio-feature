@@ -16,9 +16,7 @@ import streamlit as st
 
 from shared.ui.toast_components import toast_success, toast_error
 from ..import_page.import_page import import_transactions_page
-from ...database.model import Transaction
 from ...database.constants import TRANSACTION_CATEGORIES, TRANSACTION_TYPES
-from ...ocr.core.hardware_utils import get_optimal_workers
 from ...services.attachment_service import attachment_service
 from ...services.transaction_service import transaction_service
 
@@ -29,12 +27,11 @@ TEMP_OCR_DIR = Path("temp_ocr")
 
 
 # ============================================================
-# FRAGMENT 1: OCR UPLOAD & TRAITEMENT
+# FRAGMENT 1 & 2: OCR IMPORT & VALIDATION
 # ============================================================
-def render_ocr_upload_fragment():
+def render_ocr_fragment():
     """
-    Fragment pour l'upload et le traitement OCR.
-    Se recharge indépendamment lors de l'upload de nouveaux fichiers.
+    Gère l'upload, l'extraction OCR séquentielle, et la validation des tickets.
     """
     st.subheader("📸 Scan par OCR (Simple & Rapide)")
     st.info("💡 Chargez vos tickets, vérifiez, et validez. Ils seront automatiquement rangés.")
@@ -69,11 +66,9 @@ def render_ocr_upload_fragment():
         if start:
             st.session_state.ocr_cancel = False
             total = len(uploaded_files)
-            max_workers = get_optimal_workers(total)
 
             results = []
-            processed_count = 0
-
+            
             # Zone d'interface amovible pour la progression
             ui_placeholder = st.empty()
             with ui_placeholder.container():
@@ -84,46 +79,49 @@ def render_ocr_upload_fragment():
             # Assurer que le dossier temp existe
             TEMP_OCR_DIR.mkdir(exist_ok=True)
 
-            # Sauvegarde des fichiers uploadés sur disque
-            paths = []
-            for f in uploaded_files:
-                p = TEMP_OCR_DIR / f.name  # type: ignore[union-attr]
-                f.seek(0)  # type: ignore[union-attr]
-                p.write_bytes(f.read())  # type: ignore[union-attr]
-                paths.append(str(p))
-
             from ...ocr.services.ocr_service import OCRService
             
             ocr_service = OCRService()
             start_time = time.time()
             
-            # Délégation complète de la logique de traitement par lot (Threads/Workers) au service
-            # Le callback mettra à jour l'interface Streamlit en temps réel
-            def update_ui_progress(fname, count, total_files, elapsed: float):
-                # Gérer l'annulation
-                if st.session_state.get("ocr_cancel", False):
-                    raise InterruptedError("Annulé par l'utilisateur")
-                
-                progress_bar.progress(count / total_files)
-                status_text.text(f"✅ Traité : {fname}  ({count}/{total_files})")
-                timer_text.caption(f"⏱️ Temps écoulé : {elapsed:.1f}s")
-            
             try:
-                with st.spinner("🤖 Groq analyse vos tickets en temps réel... (Super Rapide)"):
-                    results = ocr_service.process_batch_tickets(
-                        image_paths=paths,
-                        max_workers=max_workers,
-                        progress_callback=update_ui_progress
-                    )
+                with st.spinner("🤖 Groq analyse vos tickets... (Super Rapide)"):
+                    for count, f in enumerate(uploaded_files, 1):
+                        if st.session_state.get("ocr_cancel", False):
+                            raise InterruptedError("Annulé par l'utilisateur")
+                            
+                        # Sauvegarde temp
+                        fname = f.name # type: ignore[union-attr]
+                        p = TEMP_OCR_DIR / fname
+                        f.seek(0) # type: ignore[union-attr]
+                        p.write_bytes(f.read()) # type: ignore[union-attr]
+                        
+                        # Interface
+                        progress_bar.progress((count - 1) / total)
+                        status_text.text(f"⏳ Traitement de : {fname}  ({count}/{total})")
+                        
+                        doc_start_time = time.time()
+                        try:
+                            # Extraction simple
+                            trans = ocr_service.process_document(str(p))
+                            results.append((fname, trans, None, time.time() - doc_start_time))
+                        except Exception as e:
+                            results.append((fname, None, str(e), time.time() - doc_start_time))
+                            
+                        elapsed = time.time() - start_time
+                        progress_bar.progress(count / total)
+                        status_text.text(f"✅ Traité : {fname}  ({count}/{total})")
+                        timer_text.caption(f"⏱️ Temps écoulé : {elapsed:.1f}s")
+                        
                 processed_count = len([r for r in results if r[2] is None])
             except InterruptedError:
                 st.warning("⚠️ Traitement annulé.")
-                results = [] # On vide les résultats en cas d'annulation totale
+                results = []
             except Exception as e:
                 st.error(f"Erreur inattendue : {e}")
                 results = []
 
-            # Nettoyage de la zone de progression pour ne pas laisser de fantômes UI
+            # Nettoyage de la zone de progression
             ui_placeholder.empty()
 
             # Mise à jour session
@@ -145,14 +143,9 @@ def render_ocr_upload_fragment():
 
 
 
-# ============================================================
-# FRAGMENT 2: OCR VALIDATION
-# ============================================================
-def render_ocr_validation_fragment():
-    """
-    Fragment pour la validation des tickets OCR.
-    Se recharge indépendamment lors de la validation/modification.
-    """
+    # ============================================================
+    # 4. VALIDATION ET RANGEMENT
+    # ============================================================
     st.markdown("---")
     st.subheader("✅ Validation des Tickets")
 
@@ -471,8 +464,7 @@ def interface_add_transaction():
 
     # Afficher le fragment correspondant au mode
     if mode == "📸 Scan OCR (Image)":
-        render_ocr_upload_fragment()
-        render_ocr_validation_fragment()
+        render_ocr_fragment()
 
     elif mode == "📄 Import PDF":
         render_pdf_fragment()
