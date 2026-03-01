@@ -61,7 +61,7 @@ def show_toast(message: str, toast_type: str = "success", duration: int = 3000) 
             border-left:4px solid {config['color']};
             z-index:9999;
             transition: bottom 0.3s ease;
-            animation: slideInCustom 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards, fadeOut {duration / 1000}s {(duration - 1000) / 1000}s forwards;">
+            animation: slideInCustom 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards, fadeOut 0.5s {duration / 1000}s forwards;">
             <span style="font-size:18px;margin-right:8px;">{config['icon']}</span>
             {message}
         </div>
@@ -90,6 +90,13 @@ def show_toast(message: str, toast_type: str = "success", duration: int = 3000) 
                     // On ajoute la hauteur de la bulle (env. 50px) + un espace de 15px
                     currentPosition += t.offsetHeight + 15;
                 }}
+                
+                // Suppression définitive du DOM après l'animation
+                setTimeout(() => {{
+                    if (currentToast && currentToast.parentNode) {{
+                        currentToast.parentNode.removeChild(currentToast);
+                    }}
+                }}, {duration + 500});
             }}, 50); // Léger delai pour que Streamlit injecte le html
         </script>
         <style>
