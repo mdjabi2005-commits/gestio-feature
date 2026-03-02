@@ -2,13 +2,14 @@
 
 ## ⚡ Début de session obligatoire
 
-Avant toute modification de code, demander **obligatoirement** :
+Avant toute modification de code, effectuer **obligatoirement** dans cet ordre :
 
-1. **Sur quelle issue travaille-t-on ?** → ex: `#1`
-2. **Sur quelle branche sommes-nous ?** → vérifier avec `git branch --show-current`
+1. **Lire tous les fichiers du dossier `.agent/`** → contexte métier, décisions d'architecture, conventions en cours
+2. **Sur quelle issue travaille-t-on ?** → ex: `#1`
+3. **Sur quelle branche sommes-nous ?** → vérifier avec `git branch --show-current`
 
 - Référencer `#{numéro}` dans **chaque commit** de la session
-- Ne jamais commencer à modifier du code sans connaître l'issue et la branche
+- Ne jamais commencer à modifier du code sans avoir lu `.agent/`, connu l'issue et la branche
 
 ---
 
