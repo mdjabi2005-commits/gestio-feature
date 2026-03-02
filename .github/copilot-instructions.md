@@ -1,5 +1,17 @@
 # Instructions GitHub Copilot — Gestio V4
 
+## ⚡ Début de session obligatoire
+
+Avant toute modification de code, demander **obligatoirement** :
+
+1. **Sur quelle issue travaille-t-on ?** → ex: `#1`
+2. **Sur quelle branche sommes-nous ?** → vérifier avec `git branch --show-current`
+
+- Référencer `#{numéro}` dans **chaque commit** de la session
+- Ne jamais commencer à modifier du code sans connaître l'issue et la branche
+
+---
+
 ## Contexte du projet
 
 Application de **gestion financière personnelle** en Python avec Streamlit.
@@ -46,27 +58,39 @@ resources/       ← Assets statiques (icônes, CSS)
 - Utiliser **uv** pour gérer les dépendances (pas pip directement)
 - `uv add <package>` pour ajouter, `uv sync` pour installer
 
-## Conventions de nommage Git
+## Règles Clean Code
 
-### Branches
-- `main` — branche principale stable
-- `feat/description` — nouvelles fonctionnalités
-- `fix/description` — corrections de bugs
-- `chore/description` — maintenance, refactoring
+### Taille des fichiers (obligatoire)
+- **Seuil d'alerte : 200 lignes** → se poser la question d'un découpage
+- **Maximum absolu : 300 lignes** → tout fichier au-delà doit être découpé avant merge
+- Extraire les responsabilités distinctes dans des fichiers dédiés (SRP)
 
-### Commits (Conventional Commits)
-```
-feat: ajouter export PDF des transactions
-fix: corriger le calcul des récurrences mensuelles
-chore: mettre à jour les dépendances
-docs: documenter le module OCR
-refactor: extraire la logique de filtrage dans un service
-test: ajouter tests unitaires pour transaction_service
-```
+### Tests obligatoires à la création
+Tout nouveau fichier de logique métier **doit avoir un fichier de test associé** dans le même commit ou le suivant :
+
+| Fichier créé | Test requis | Emplacement |
+|---|---|---|
+| `services/mon_service.py` | ✅ Oui | `tests/test_services/test_mon_service.py` |
+| `shared/utils/mon_util.py` | ✅ Oui | `tests/test_shared/test_mon_util.py` |
+| `database/repository_x.py` | ✅ Oui | `tests/test_transactions/test_repository_x.py` |
+| `pages/fragment_x.py` (UI pure) | ❌ Non | — |
+
+Si l'utilisateur refuse les tests → ajouter `# TODO: tests manquants` en haut du fichier.
+
+### Notifications UI
+- **Toujours** utiliser `toast_success`, `toast_error`, `toast_warning` de `shared/ui/toast_components.py`
+- **Jamais** `st.success()`, `st.error()`, `st.warning()` directement
+
+### Autres règles
+- Pas de `print()` → utiliser `logger = logging.getLogger(__name__)`
+- Pas de code mort commenté → supprimer (YAGNI)
+- Pas de boucles `iterrows()` sur DataFrame → utiliser la vectorisation pandas
+- `time.sleep()` avant `st.rerun()` doit correspondre à la durée du toast (1.5s par défaut)
+
+---
 
 ## CI/CD
 
 - `.github/workflows/build.yml` — Build Windows + signature Azure + Release GitHub
 - `.github/workflows/deploy-site.yml` — Déploiement site de documentation sur GitHub Pages
 - Les releases se déclenchent sur les tags `v*.*.*`
-
