@@ -132,7 +132,7 @@ def _write(data: Dict) -> None:
     try:
         with open(_YAML_PATH, "w", encoding="utf-8") as f:
             yaml.dump(data, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
-        _cache = data
+        _cache = None  # Invalider pour forcer rechargement
     except Exception as e:
         logger.error(f"Erreur écriture categories.yaml : {e}")
 
