@@ -4,6 +4,8 @@ Remplace EasyOCR pour une exécution plus rapide et légère.
 """
 
 import logging
+import time
+import time
 
 try:
     # noinspection PyUnusedImports
@@ -24,7 +26,7 @@ class RapidOCREngine:
 
     def __init__(self):
         if not RAPIDOCR_AVAILABLE:
-            raise ImportError("rapidocr_onnxruntime n'est pas installé. pip install rapidocr_onnxruntime")
+            raise ImportError("rapidocr_onnxruntime n'est pas installe. uv add rapidocr-onnxruntime")
 
         # Initialisation du moteur
         # det_model_path, rec_model_path peuvent être configurés si besoin,
@@ -39,32 +41,25 @@ class RapidOCREngine:
     def extract_text(self, image_path: str) -> str:
         """
         Extrait le texte d'une image.
-        
-        Args:
-            image_path: Chemin vers l'image
-            
-        Returns:
-            Texte brut concaténé (lignes séparées par \n)
         """
+        t0 = time.time()
+        logger.info(f"[OCR] extract_text démarré pour : {image_path}")
+
         try:
-            # RapidOCR prend le chemin directement
-            # result = [[box, text, score], ...]
-            # result peut être None si rien trouvé
+            logger.info(f"[OCR] Appel RapidOCR engine... ({time.time()-t0:.2f}s)")
             result, elapse = self.engine(image_path)
+            logger.info(f"[OCR] RapidOCR terminé en {time.time()-t0:.2f}s — résultat: {type(result)}, nb lignes: {len(result) if result else 0}")
 
             if not result:
-                logger.warning(f"Aucun texte détecté par RapidOCR pour {image_path}")
+                logger.warning(f"[OCR] Aucun texte détecté pour {image_path} ({time.time()-t0:.2f}s)")
                 return ""
 
-            # Concaténation des lignes de texte
             text_lines = [line[1] for line in result]
             full_text = "\n".join(text_lines)
-
-            # elapse is often a list [det_time, cls_time, rec_time]
             total_time = sum(elapse) if isinstance(elapse, list) else float(elapse or 0.0)
-            logger.debug(f"RapidOCR: {len(text_lines)} lignes extraites en {total_time:.4f}s")
+            logger.info(f"[OCR] {len(text_lines)} lignes extraites, temps ONNX={total_time:.3f}s, total={time.time()-t0:.2f}s")
             return full_text
 
         except Exception as e:
-            logger.error(f"Erreur RapidOCR lors de l'extraction de {image_path}: {e}")
+            logger.error(f"[OCR] Erreur RapidOCR après {time.time()-t0:.2f}s : {e}")
             raise ValueError(f"Echec extraction OCR: {e}")

@@ -1,14 +1,20 @@
 """
 Fragment PDF — Import de PDFs (revenus) par batch.
 Flux : upload/disque → extraction OCR PDF → validation formulaire par PDF → save + attachment.
+Refactorisé pour utiliser le module partagé batch_uploader.
 """
 
 import logging
-import time
+from datetime import date as date_type
 from pathlib import Path
 
 import streamlit as st
 
+from shared.ui.batch_uploader import (
+    BatchConfig, init_batch_session, render_disk_files,
+    render_batch_controls, render_batch_progress, render_validation_section,
+    finalize_validation, run_batch_processing
+)
 from shared.ui.toast_components import toast_success, toast_error
 from ...database.model import Transaction
 from ...database.constants import TRANSACTION_TYPES
@@ -19,140 +25,56 @@ from config.paths import REVENUS_A_TRAITER
 
 logger = logging.getLogger(__name__)
 
+# Configuration batch PDF
+PDF_CONFIG = BatchConfig(
+    prefix="pdf",
+    title="PDFs",
+    extensions=[".pdf"],
+    dir_path=Path(REVENUS_A_TRAITER),
+    disk_key="pdf_disk_trigger"
+)
+
 
 def render_pdf_fragment():
     """Upload batch de PDFs → extraction → validation PDF par PDF."""
     st.subheader("📄 Import PDF (Revenus)")
     st.info("💡 Chargez vos PDFs, vérifiez les données extraites, et validez.")
 
-    if "pdf_uploader_key" not in st.session_state:
-        st.session_state.pdf_uploader_key = "pdf_uploader_0"
+    init_batch_session(PDF_CONFIG.prefix)
 
-    revenus_dir_path = Path(REVENUS_A_TRAITER)
-
-    # 1. FICHIERS EN ATTENTE SUR LE DISQUE
-    existing_pdfs = [f for f in revenus_dir_path.iterdir() if f.is_file() and f.suffix.lower() == ".pdf"]
-    if existing_pdfs:
-        st.warning(f"📁 **{len(existing_pdfs)} PDF(s) en attente** dans le dossier revenus.")
-        if st.button(f"🚀 Analyser ces {len(existing_pdfs)} PDFs", type="primary", key="btn_pdf_disk"):
-            st.session_state.pdf_disk_trigger = existing_pdfs
-
+    # 1. Fichiers sur le disque
     st.markdown("---")
+    render_disk_files(PDF_CONFIG)
 
-    # 2. UPLOAD MANUEL (multi-fichiers)
-    uploaded_files = st.file_uploader(
-        "Ou glissez-déposez vos PDFs ici",
-        type=["pdf"],
-        accept_multiple_files=True,
-        key=st.session_state.pdf_uploader_key
+    # 2. Upload + bouton lancer (file_uploader rendu UNE seule fois dans render_batch_controls)
+    render_batch_controls(PDF_CONFIG, _run_pdf_batch)
+
+    # 3. Validation
+    render_validation_section(PDF_CONFIG.prefix, PDF_CONFIG.title, _render_pdf_form)
+
+
+def _run_pdf_batch(files_to_process: list) -> None:
+    """Exécute l'extraction PDF sur le batch."""
+    from ...ocr.services.ocr_service import OCRService
+    ocr_service = OCRService()
+
+    results, start_time = run_batch_processing(
+        config=PDF_CONFIG,
+        files_to_process=files_to_process,
+        process_fn=ocr_service.process_document,
+        spinner_msg="Extraction des donnees PDF en cours...",
     )
 
-    if "pdf_batch" not in st.session_state:
-        st.session_state.pdf_batch = {}
-    if "pdf_cancel" not in st.session_state:
-        st.session_state.pdf_cancel = False
-
-    # 3. EXTRACTION BATCH
-    disk_pdfs_to_process = st.session_state.pop("pdf_disk_trigger", [])
-    files_to_process = disk_pdfs_to_process or uploaded_files
-
-    if files_to_process:
-        col_btn, col_cancel = st.columns([3, 1])
-        with col_btn:
-            start = st.button("🔍 Lancer l'extraction", type="primary", key="btn_pdf_start")
-        with col_cancel:
-            if st.button("❌ Annuler", key="btn_pdf_cancel"):
-                st.session_state.pdf_cancel = True
-
-        if start or disk_pdfs_to_process:
-            _run_pdf_batch(files_to_process, revenus_dir_path)
-
-    # 4. VALIDATION
-    st.markdown("---")
-    st.subheader("✅ Validation des PDFs")
-
-    if not st.session_state.get("pdf_batch"):
-        st.info("Aucun PDF à valider. Importez des fichiers ci-dessus.")
-        return
-
-    for fname, data in list(st.session_state.pdf_batch.items()):
-        if data.get("saved", False):
-            continue
-        _render_pdf_form(fname, data)
-
-
-def _run_pdf_batch(files_to_process: list, revenus_dir_path: Path) -> None:
-    """Exécute l'extraction PDF sur le batch et stocke les résultats en session."""
-    from ...ocr.services.ocr_service import OCRService
-
-    st.session_state.pdf_cancel = False
-    total = len(files_to_process)
-    results = []
-
-    ui_placeholder = st.empty()
-    with ui_placeholder.container():
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        timer_text = st.empty()
-
-    ocr_service = OCRService()
-    start_time = time.time()
-
-    try:
-        with st.spinner("📄 Extraction des données PDF en cours..."):
-            for count, f in enumerate(files_to_process, 1):
-                if st.session_state.get("pdf_cancel", False):
-                    raise InterruptedError("Annulé par l'utilisateur")
-
-                if hasattr(f, 'name') and hasattr(f, 'read'):
-                    fname = f.name
-                    p = revenus_dir_path / fname
-                    f.seek(0)
-                    p.write_bytes(f.read())
-                else:
-                    p = f
-                    fname = p.name
-
-                progress_bar.progress((count - 1) / total)
-                status_text.text(f"⏳ Traitement : {fname}  ({count}/{total})")
-                doc_start = time.time()
-                try:
-                    trans = ocr_service.process_document(str(p))
-                    results.append((fname, trans, None, time.time() - doc_start))
-                except Exception as e:
-                    results.append((fname, None, str(e), time.time() - doc_start))
-
-                elapsed = time.time() - start_time
-                progress_bar.progress(count / total)
-                status_text.text(f"✅ Traité : {fname}  ({count}/{total})")
-                timer_text.caption(f"⏱️ Temps écoulé : {elapsed:.1f}s")
-
-        processed_count = len([r for r in results if r[2] is None])
-    except InterruptedError:
-        st.warning("⚠️ Traitement annulé.")
-        results = []
-        processed_count = 0
-    except Exception as e:
-        st.error(f"Erreur inattendue : {e}")
-        results = []
-        processed_count = 0
-
-    ui_placeholder.empty()
-
     st.session_state.pdf_batch = {
-        fname: {"transaction": trans, "error": err, "saved": False, "temp_path": str(revenus_dir_path / fname)}
+        fname: {"transaction": trans, "error": err, "saved": False,
+                "temp_path": str(PDF_CONFIG.dir_path / fname)}
         for fname, trans, err, _ in results
     }
-
-    if processed_count > 0:
-        total_elapsed = time.time() - start_time
-        st.toast(f"✅ {processed_count} PDF(s) traité(s) en {total_elapsed:.1f}s", icon="📄")
+    render_batch_progress(PDF_CONFIG.prefix, len(files_to_process), results, start_time)
 
 
 def _render_pdf_form(fname: str, data: dict) -> None:
     """Affiche le formulaire de validation pour un PDF."""
-    from datetime import date as date_type
-
     trans = data.get("transaction")
     err = data.get("error")
     temp_path = data.get("temp_path")
@@ -208,14 +130,6 @@ def _save_pdf(fname: str, tx_type: str, cat: str, sub: str,
             category=cat, subcategory=sub, transaction_type=tx_type
         )
         toast_success("PDF validé et rangé !")
-        st.session_state.pdf_batch.pop(fname, None)
-        if not st.session_state.pdf_batch:
-            st.session_state.pdf_cancel = False
-            st.session_state.pdf_uploader_key = f"pdf_uploader_{time.time()}"
-        st.session_state.pop("all_transactions_df", None)
-        st.cache_data.clear()
-        time.sleep(1.5)
-        st.rerun()
+        finalize_validation(PDF_CONFIG.prefix, fname)
     else:
         toast_error("Erreur sauvegarde Transaction")
-

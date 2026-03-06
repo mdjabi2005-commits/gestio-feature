@@ -9,16 +9,6 @@ Refactored modular version
 @date: 2025-11-17
 """
 
-import os
-
-# Thème Gestio — défini AVANT import streamlit pour garantir
-# la palette même si .streamlit/config.toml n'est pas trouvé.
-os.environ.setdefault("STREAMLIT_THEME_BASE",                       "dark")
-os.environ.setdefault("STREAMLIT_THEME_PRIMARY_COLOR",              "#10B981")
-os.environ.setdefault("STREAMLIT_THEME_BACKGROUND_COLOR",           "#111827")
-os.environ.setdefault("STREAMLIT_THEME_SECONDARY_BACKGROUND_COLOR", "#1E293B")
-os.environ.setdefault("STREAMLIT_THEME_TEXT_COLOR",                 "#F8FAFC")
-os.environ.setdefault("STREAMLIT_THEME_FONT",                       "sans serif")
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -34,9 +24,12 @@ setup_logging()
 # ==============================
 # STREAMLIT CONFIGURATION
 # ==============================
+from config.paths import APP_ROOT
+
+# ==============================
 st.set_page_config(
-    page_title="Gestio V4 - Gestion Financière",
-    page_icon="💰",
+    page_title="Gestio - Gestion Financière",
+    page_icon=str(APP_ROOT / "resources" / "icons" / "logo.png"),
     layout="wide",
     initial_sidebar_state="expanded"
 )

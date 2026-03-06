@@ -33,7 +33,7 @@ class PDFEngine:
         if not PDFMINER_AVAILABLE:
             raise ImportError(
                 "pdfminer.six est requis pour l'extraction PDF. "
-                "Installez-le avec: pip install pdfminer.six"
+                "Installez-le avec: uv add pdfminer.six"
             )
 
     @staticmethod

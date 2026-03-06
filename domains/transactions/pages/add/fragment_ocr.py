@@ -1,14 +1,21 @@
 """
 Fragment OCR — Scan de tickets (images) par batch.
 Flux : upload/disque → extraction OCR → validation formulaire par ticket → save + attachment.
+Refactorisé pour utiliser le module partagé batch_uploader.
 """
 
 import logging
+import os
 import time
 from pathlib import Path
 
 import streamlit as st
 
+from shared.ui.batch_uploader import (
+    BatchConfig, init_batch_session, render_disk_files,
+    render_batch_controls, render_batch_progress, render_validation_section,
+    finalize_validation, handle_file_input, run_batch_processing
+)
 from shared.ui.toast_components import toast_success, toast_error
 from ...database.model import Transaction
 from ...database.constants import TRANSACTION_TYPES
@@ -19,134 +26,92 @@ from config.paths import TO_SCAN_DIR
 
 logger = logging.getLogger(__name__)
 
+# Configuration batch OCR
+OCR_CONFIG = BatchConfig(
+    prefix="ocr",
+    title="Tickets",
+    extensions=[".jpg", ".jpeg", ".png"],
+    dir_path=Path(TO_SCAN_DIR),
+    disk_key="ocr_disk_trigger"
+)
+
+
+def _render_groq_status_banner() -> bool:
+    """Affiche un bandeau selon l'état de la clé Groq."""
+    groq_key = os.getenv("GROQ_API_KEY", "").strip()
+    if groq_key:
+        st.success(
+            "🤖 **Catégorisation IA activée** — Groq analysera automatiquement vos tickets "
+            "(montant, catégorie, description).",
+            icon="✅",
+        )
+        return True
+    else:
+        st.warning(
+            "⚠️ **Catégorisation IA désactivée** — Aucune clé Groq configurée.\n\n"
+            "Sans Groq, l'OCR extrait uniquement le texte brut : les catégories et descriptions "
+            "seront vides et devront être renseignées manuellement.\n\n"
+            "👉 **Configurez votre clé Groq gratuitement dans ⚙️ Paramètres** pour automatiser "
+            "la catégorisation de vos tickets en 1 seconde.",
+        )
+        if st.button("⚙️ Configurer Groq maintenant", key="btn_goto_settings", type="primary"):
+            pages = st.session_state.get("pages", {})
+            settings_page = pages.get("settings")
+            if settings_page:
+                st.switch_page(settings_page)
+            else:
+                st.info("Rendez-vous dans ⚙️ **Paramètres** dans le menu de navigation.")
+        return False
+
 
 def render_ocr_fragment():
     """Upload batch de tickets images → OCR → validation ticket par ticket."""
     st.subheader("📸 Scan par OCR (Simple & Rapide)")
+
+    _render_groq_status_banner()
     st.info("💡 Chargez vos tickets, vérifiez, et validez. Ils seront automatiquement rangés.")
 
-    if "ocr_uploader_key" not in st.session_state:
-        st.session_state.ocr_uploader_key = "ocr_uploader_0"
+    init_batch_session(OCR_CONFIG.prefix)
 
-    scan_dir_path = Path(TO_SCAN_DIR)
-
-    # 1. FICHIERS EN ATTENTE SUR LE DISQUE
-    existing_files = [f for f in scan_dir_path.iterdir() if f.is_file() and f.suffix.lower() in [".jpg", ".jpeg", ".png"]]
-    if existing_files:
-        st.warning(f"📁 **{len(existing_files)} ticket(s) en attente** dans le dossier de scan.")
-        if st.button(f"🚀 Analyser ces {len(existing_files)} tickets maintenant", type="primary", key="btn_ocr_disk"):
-            st.session_state.ocr_disk_trigger = existing_files
-
+    # 1. Fichiers sur le disque
     st.markdown("---")
+    render_disk_files(OCR_CONFIG)
 
-    # 2. UPLOAD MANUEL
-    uploaded_files = st.file_uploader(
-        "Ou glissez-déposez de nouveaux tickets ici",
-        type=["jpg", "jpeg", "png"],
-        accept_multiple_files=True,
-        key=st.session_state.ocr_uploader_key
+    # 2. Upload + bouton lancer (file_uploader rendu UNE seule fois dans render_batch_controls)
+    render_batch_controls(OCR_CONFIG, _run_ocr_batch)
+
+    # 3. Validation
+    render_validation_section(OCR_CONFIG.prefix, OCR_CONFIG.title, _render_ocr_ticket_form)
+
+
+def _get_ocr_service():
+    """Retourne l'OCRService singleton process-level."""
+    from ...ocr.services.ocr_service import get_ocr_service
+    if "ocr_service_instance" not in st.session_state:
+        with st.spinner("⏳ Chargement des modèles OCR (première utilisation)..."):
+            st.session_state.ocr_service_instance = get_ocr_service()
+    return st.session_state.ocr_service_instance
+
+
+def _run_ocr_batch(files_to_process: list) -> None:
+    """Exécute l'extraction OCR sur le batch."""
+    ocr_service = _get_ocr_service()
+    groq_active = bool(os.getenv("GROQ_API_KEY", "").strip())
+    spinner_msg = "Groq categorise vos tickets..." if groq_active else "OCR en cours..."
+
+    results, start_time = run_batch_processing(
+        config=OCR_CONFIG,
+        files_to_process=files_to_process,
+        process_fn=ocr_service.process_document,
+        spinner_msg=spinner_msg,
     )
 
-    if "ocr_batch" not in st.session_state:
-        st.session_state.ocr_batch = {}
-    if "ocr_cancel" not in st.session_state:
-        st.session_state.ocr_cancel = False
-
-    # 3. EXTRACTION BATCH
-    disk_files_to_process = st.session_state.pop("ocr_disk_trigger", [])
-    files_to_process = disk_files_to_process or uploaded_files
-
-    if files_to_process:
-        col_btn, col_cancel = st.columns([3, 1])
-        with col_btn:
-            start = st.button("🔍 Lancer le traitement", type="primary", key="btn_ocr_start")
-        with col_cancel:
-            if st.button("❌ Annuler", key="btn_ocr_cancel"):
-                st.session_state.ocr_cancel = True
-
-        if start or disk_files_to_process:
-            _run_ocr_batch(files_to_process, scan_dir_path)
-
-    # 4. VALIDATION
-    st.markdown("---")
-    st.subheader("✅ Validation des Tickets")
-
-    if not st.session_state.get("ocr_batch"):
-        st.info("Aucun ticket à valider. Importez des images ci-dessus.")
-        return
-
-    for fname, data in list(st.session_state.ocr_batch.items()):
-        if data.get("saved", False):
-            continue
-        _render_ocr_ticket_form(fname, data)
-
-
-def _run_ocr_batch(files_to_process: list, scan_dir_path: Path) -> None:
-    """Exécute l'extraction OCR sur le batch et stocke les résultats en session."""
-    from ...ocr.services.ocr_service import OCRService
-
-    st.session_state.ocr_cancel = False
-    total = len(files_to_process)
-    results = []
-
-    ui_placeholder = st.empty()
-    with ui_placeholder.container():
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        timer_text = st.empty()
-
-    ocr_service = OCRService()
-    start_time = time.time()
-
-    try:
-        with st.spinner("🤖 Groq analyse vos tickets..."):
-            for count, f in enumerate(files_to_process, 1):
-                if st.session_state.get("ocr_cancel", False):
-                    raise InterruptedError("Annulé par l'utilisateur")
-
-                if hasattr(f, 'name') and hasattr(f, 'read'):
-                    fname = f.name
-                    p = scan_dir_path / fname
-                    f.seek(0)
-                    p.write_bytes(f.read())
-                else:
-                    p = f
-                    fname = p.name
-
-                progress_bar.progress((count - 1) / total)
-                status_text.text(f"⏳ Traitement : {fname}  ({count}/{total})")
-                doc_start = time.time()
-                try:
-                    trans = ocr_service.process_document(str(p))
-                    results.append((fname, trans, None, time.time() - doc_start))
-                except Exception as e:
-                    results.append((fname, None, str(e), time.time() - doc_start))
-
-                elapsed = time.time() - start_time
-                progress_bar.progress(count / total)
-                status_text.text(f"✅ Traité : {fname}  ({count}/{total})")
-                timer_text.caption(f"⏱️ Temps écoulé : {elapsed:.1f}s")
-
-        processed_count = len([r for r in results if r[2] is None])
-    except InterruptedError:
-        st.warning("⚠️ Traitement annulé.")
-        results = []
-        processed_count = 0
-    except Exception as e:
-        st.error(f"Erreur inattendue : {e}")
-        results = []
-        processed_count = 0
-
-    ui_placeholder.empty()
-
     st.session_state.ocr_batch = {
-        fname: {"transaction": trans, "error": err, "saved": False, "temp_path": str(scan_dir_path / fname)}
+        fname: {"transaction": trans, "error": err, "saved": False,
+                "temp_path": str(OCR_CONFIG.dir_path / fname)}
         for fname, trans, err, _ in results
     }
-
-    if processed_count > 0:
-        total_elapsed = time.time() - start_time
-        st.toast(f"✅ {processed_count} ticket(s) traité(s) en {total_elapsed:.1f}s", icon="📸")
+    render_batch_progress(OCR_CONFIG.prefix, len(files_to_process), results, start_time)
 
 
 def _render_ocr_ticket_form(fname: str, data: dict) -> None:
@@ -205,16 +170,8 @@ def _save_ocr_ticket(fname: str, f_type: str, f_cat: str, f_sub: str,
         )
         if success:
             toast_success("Ticket validé et rangé !")
-            st.session_state.ocr_batch.pop(fname, None)
-            if not st.session_state.ocr_batch:
-                st.session_state.ocr_cancel = False
-                st.session_state.ocr_uploader_key = f"ocr_uploader_{time.time()}"
-            st.session_state.pop("all_transactions_df", None)
-            st.cache_data.clear()
-            time.sleep(1.5)
-            st.rerun()
+            finalize_validation(OCR_CONFIG.prefix, fname)
         else:
             toast_error("Transaction sauvée mais erreur lors du rangement du fichier.")
     else:
         toast_error("Erreur sauvegarde Transaction")
-

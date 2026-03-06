@@ -92,7 +92,7 @@ class Transaction(BaseModel):
         """Normalise la catégorie en Title Case."""
         if not v or not str(v).strip():
             return "Autre"
-        return str(v).strip().title()
+        return str(v).strip().capitalize()
 
     @field_validator("sous_categorie", "description", mode="before")
     @classmethod

@@ -42,12 +42,13 @@ class GroqParser:
             self.client = Groq(api_key=self.api_key)
             
         # Construction du prompt avec catégories + sous-catégories depuis le YAML
-        categories = get_categories()
-        subcategories_map = get_all_subcategories()
-        categories_str = ", ".join(f"'{cat}'" for cat in categories)
+        # Mise en cache pour éviter rechargement à chaque parse()
+        GroqParser._categories = get_categories()
+        GroqParser._subcategories_map = get_all_subcategories()
+        categories_str = ", ".join(f"'{cat}'" for cat in GroqParser._categories)
         subcat_lines = "\n".join(
             f"  - {cat}: {', '.join(subs)}"
-            for cat, subs in subcategories_map.items()
+            for cat, subs in GroqParser._subcategories_map.items()
             if subs
         )
 
@@ -116,13 +117,13 @@ Rien d'autre ne doit être renvoyé à part l'objet JSON contenant ces 3 clés.
             data = json.loads(content)
 
             # Validation catégorie
-            if data.get("category") not in get_categories():
+            if data.get("category") not in GroqParser._categories:
                 data["category"] = "Autre"
 
             # Validation sous-catégorie : cherche la correspondance la plus proche
             category = data.get("category", "Autre")
             subcategory = data.get("subcategory", "")
-            valid_subs = get_all_subcategories().get(category, [])
+            valid_subs = GroqParser._subcategories_map.get(category, [])
 
             if valid_subs and subcategory:
                 # Correspondance exacte
