@@ -144,7 +144,6 @@ def parse_pdf_revenue(text: str) -> Optional[dict]:
     if amount is None:
         logger.info("Patterns spécifiques échoués, tentative pattern générique")
         # Fallback: chercher tous les montants avec € et prendre le plus grand
-        import re
         matches = re.findall(generic_amount_pattern, text_upper)
         if matches:
             # Convertir tous les montants et prendre le maximum
