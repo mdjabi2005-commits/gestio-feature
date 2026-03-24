@@ -6,12 +6,19 @@ Interface utilisateur React + TypeScript + Tailwind (Vite).
 
 ```
 src/
-├── app/               # Pages (dashboard, transactions, settings, recurrences)
-├── components/        # Composants réutilisables
-├── api.ts             # Client API (appels vers backend FastAPI)
-├── context/           # React Context (état global)
-├── hooks/             # Custom hooks
-└── lib/               # Utilitaires (utils, icons, categories)
+├── app/                    # Pages (Next.js App Router)
+│   ├── dashboard/          # Page dashboard
+│   ├── transactions/       # Page transactions
+│   ├── recurrences/       # Page récurrences (à implémenter)
+│   └── settings/           # Page paramètres (à implémenter)
+│
+├── components/             # Composants réutilisables
+│   └── dashboard/          # Composants spécifiques dashboard
+│
+├── api.ts                  # Client API (types + appels HTTP)
+├── context/                # React Context (FinancialDataContext)
+├── hooks/                  # Custom hooks (useFinancialData)
+└── lib/                    # Utilitaires (utils, categories)
 ```
 
 ## Commandes
@@ -33,6 +40,27 @@ import { api } from '@/api';
 const transactions = await api.getTransactions();
 await api.addTransaction(data);
 ```
+
+### Types TypeScript
+
+Les types sont définis dans `src/api.ts` et doivent correspondre aux modèles Pydantic du backend.
+
+**Important** : Si tu modifies un modèle Pydantic dans le backend, tu DOIS aussi modifier les types correspondants dans `src/api.ts`.
+
+## Data Flow
+
+```
+Page → Context → Hook → API → Backend → SQLite
+                   ↓
+              Composants
+```
+
+Voir les fichiers `LOGIC_FLOW.md` pour chaque page :
+
+- `src/app/dashboard/LOGIC_FLOW.md`
+- `src/app/transactions/LOGIC_FLOW.md`
+- `src/app/recurrences/LOGIC_FLOW.md`
+- `src/app/settings/LOGIC_FLOW.md`
 
 ## Conventions
 

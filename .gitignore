@@ -5,13 +5,24 @@ __pycache__/
 *.pyd
 *.egg-info/
 *.egg
-.eggs/
+*.eggs/
 dist/
 build/
 *.spec.bak
 
+# ── Node.js ────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
 # ── uv / virtualenv ───────────────────────────────────────────────────────────
 .venv/
+.venv2/
+venv/
+env/
 .env
 .env.*
 !.env.example
