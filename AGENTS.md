@@ -1,58 +1,63 @@
-# AGENTS.md — Gestio V4 (Feature Branch)
+# AGENTS.md — Gestio V4
 
-> Application Python + Streamlit + SQLite pour gestion financière personnelle.
+> Application de gestion financière personnelle. Architecture **FastAPI + Next.js**.
 
 ---
 
-## ⚡ Commandes de Build/Lint/Test
+## 🏗️ Architecture
 
-### Installation et lancement
-
-```bash
-uv sync                          # Installer les dépendances
-uv run streamlit run main.py     # Lancer en dev
 ```
-
-### Tests
-
-```bash
-pytest                           # Tous les tests
-pytest -v                        # Mode verbose
-pytest tests/path/test_file.py::test_function   # Test unitaire spécifique
-pytest --cov=domains --cov=shared --cov-report=html  # Avec coverage
-pytest -m unit                   # Tests unitaires purs
-pytest -m integration            # Tests avec DB
-```
-
-### Build
-
-```bash
-uv sync --group build
-uv run pyinstaller gestio.spec
+gestion-financiere/
+├── backend/           # API Python (FastAPI + SQLite)
+│   ├── main.py        # Point d'entrée
+│   ├── api/           # Endpoints REST
+│   ├── config/        # Configuration
+│   ├── domains/      # DDD - home/, transactions/
+│   ├── shared/       # DB, services partagés
+│   └── resources/    # Assets
+├── frontend/          # UI Next.js (React + TS + Tailwind)
+│   ├── src/app/      # Pages (App Router)
+│   ├── src/components/
+│   └── src/lib/     # API client, utils
+├── tests/            # Tests pytest
+└── .github/          # CI/CD
 ```
 
 ---
 
-## 📐 Conventions de Code
+## ⚡ Commandes
+
+### Backend
+```bash
+uv sync                              # Installer
+uv run uvicorn backend.main:app --reload   # Dev
+pytest tests/path/test_file.py::test_function   # Test unitaire
+pytest --cov=backend --cov-report=html          # Coverage
+```
+
+### Frontend
+```bash
+cd frontend && npm install
+npm run dev                         # Dev
+npm run build                       # Prod
+npm run lint                        # Lint
+```
+
+---
+
+## 📐 Conventions Backend (Python)
 
 ### Stack
-- Python 3.12+, Pydantic, Pandas, Plotly, Streamlit, SQLite
-- Gestion dépendances : **uv** (jamais pip directement)
+- Python 3.12+, FastAPI, Pydantic, SQLite, Pandas — **uv** pour dépendances
 
 ### Règles fondamentales
-
-1. **Clés en français** : `categorie`, `montant`, `date`, `type` — pas de mapping FR↔EN
-2. **Type hints obligatoires** sur toutes les fonctions publiques
-3. **Ne jamais accéder au repository depuis les pages Streamlit** — passer par les services
+1. **Clés en français** : `categorie`, `montant`, `date`, `type`
+2. **Type hints** obligatoires sur toutes les fonctions publiques
+3. **Jamais d'accès direct au repository depuis les endpoints API** — passer par les services
 4. **Logger** : `logger = logging.getLogger(__name__)` — jamais de `print()`
-5. **Chemins** : utiliser `pathlib.Path` — jamais `os.path`
-6. **Imports** : absolus uniquement — pas de `.` relatifs
-
-### Taille des fichiers
-- **Alerte : 200 lignes**, **Max : 300 lignes** — au-delà, subdiviser (SRP)
+5. **Imports** absolus uniquement — pas de `.` relatifs
 
 ### Imports (ordre obligatoire)
-
 ```python
 # 1. Bibliothèques standard
 import logging
@@ -62,19 +67,18 @@ from typing import Optional, List
 
 # 2. Bibliothèques tierces
 import pandas as pd
-import streamlit as st
+from fastapi import APIRouter
 from pydantic import BaseModel, Field, validator
 
 # 3. Imports locaux
-from shared.database import get_db_connection
-from domains.transactions.database.model import Transaction
+from backend.shared.database import get_db_connection
+from backend.domains.transactions.database.model import Transaction
 
 # 4. Logger
 logger = logging.getLogger(__name__)
 ```
 
 ### Pydantic Models
-
 ```python
 from pydantic import BaseModel, Field, validator
 from datetime import date as Date
@@ -91,61 +95,58 @@ class Transaction(BaseModel):
 ```
 
 ### Gestion d'erreurs
-
 ```python
-from shared.exceptions import DatabaseError, ValidationError
-from shared.ui.toast_components import toast_error, toast_success
+from backend.shared.exceptions import DatabaseError, ValidationError
 
 try:
     result = service.add(data)
 except ValidationError as e:
-    toast_error(f"Données invalides: {e}")
+    raise HTTPException(status_code=400, detail=f"Données invalides: {e}")
 except DatabaseError as e:
-    toast_error("Erreur base de données")
     logger.error(f"DB error: {e}", exc_info=True)
+    raise HTTPException(status_code=500, detail="Erreur base de données")
 ```
 
-### UI Streamlit — Notifications
+### Taille des fichiers
+- **Alerte : 200 lignes**, **Max : 300 lignes**
 
-**Toujours** utiliser les helpers, jamais `st.success()` directement :
+---
 
-```python
-from shared.ui.toast_components import toast_success, toast_error, toast_warning
-toast_success("Opération réussie")
-toast_error("Une erreur est survenue")
+## 📐 Conventions Frontend (TypeScript/React)
+
+### Stack
+- Next.js 14+ (App Router), React 18, TypeScript, Tailwind CSS — **npm**
+
+### Règles fondamentales
+1. **Server Components** par défaut
+2. **TypeScript strict** — pas de `any`
+3. **Naming** : Composants `PascalCase`, Hooks `useXxx.ts`, Utils `camelCase`
+4. **Styling** : Tailwind uniquement — pas de CSS inline
+
+### Appels API
+```tsx
+import { api } from '@/lib/api';
+
+const transactions = await api.transactions.list();
+await api.transactions.create(data);
 ```
 
 ---
 
-## 🧪 Structure des tests
-
-```
-tests/
-├── conftest.py                    # Fixtures partagées
-├── test_transactions/
-│   ├── test_repository.py         # Tests CRUD
-│   └── test_service.py            # Tests logique métier
-├── test_ocr/
-│   └── test_parser.py
-└── test_shared/
-    └── test_utils.py
-```
-
-### Tests obligatoires
+## 🧪 Tests obligatoires
 
 | Fichier créé | Test requis |
 |--------------|-------------|
-| `services/*.py` | ✅ `tests/test_services/test_*.py` |
-| `shared/utils/*.py` | ✅ `tests/test_shared/test_*.py` |
-| `database/repository*.py` | ✅ `tests/test_transactions/test_repository*.py` |
-| `pages/*.py` (UI pure) | ❌ Non |
+| `backend/services/*.py` | ✅ `tests/test_services/test_*.py` |
+| `backend/shared/utils/*.py` | ✅ `tests/test_shared/test_*.py` |
+| `backend/database/repository*.py` | ✅ `tests/test_transactions/test_repository*.py` |
+| `frontend/components/*.tsx` | ❌ Non |
 
 ---
 
 ## 🎨 Style Git
 
 ### Commits
-
 ```
 feat: ajouter l'export CSV des transactions
 fix: corriger le filtre par catégorie
@@ -154,7 +155,6 @@ test: ajouter 5 tests pour le module recurrence
 ```
 
 ### Branches
-
 | Préfixe | Usage |
 |---------|-------|
 | `main` | Production stable |
@@ -165,8 +165,8 @@ test: ajouter 5 tests pour le module recurrence
 
 ## ⚠️ Règles Importantes
 
-1. **Pas de secrets hardcodés** — utiliser `os.getenv()` ou `.env`
+1. **Pas de secrets hardcodés** — utiliser `.env` et `os.getenv()`
 2. **Pas de code mort commenté** — supprimer (YAGNI)
-3. **Pas de boucles `iterrows()`** — utiliser la vectorisation pandas
+3. **Pas de boucles `iterrows()`** — vectorisation pandas
 4. **Migrations** : via `schema.py` uniquement
-5. **Déploiement CI/CD** : `.github/workflows/build.yml` pour Windows
+5. **CI/CD** : `.github/workflows/build.yml` pour Windows
