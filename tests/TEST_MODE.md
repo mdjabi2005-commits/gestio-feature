@@ -7,13 +7,13 @@
 **PowerShell** :
 ```powershell
 $env:TEST_MODE="true"
-streamlit run main.py
+uv run uvicorn backend.main:app --reload
 ```
 
 **CMD** :
 ```cmd
 set TEST_MODE=true
-streamlit run main.py
+uv run uvicorn backend.main:app --reload
 ```
 
 ### Option 2 : Modifier directement config/__init__.py

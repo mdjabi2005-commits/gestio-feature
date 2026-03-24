@@ -15,20 +15,29 @@ Avant toute modification de code, effectuer **obligatoirement** dans cet ordre :
 
 ## Contexte du projet
 
-Application de **gestion financière personnelle** en Python avec Streamlit.
-- **Stack** : Python 3.12, Streamlit, Pandas, Plotly, SQLite, uv, PyInstaller
-- **Architecture** : Domain-Driven Design (DDD) — chaque domaine dans `domains/`
-- **OS cible** : Windows (build via PyInstaller + Inno Setup), multi-plateforme à l'exécution
+Application de **gestion financière personnelle** en Python avec FastAPI et React.
+- **Stack** : Python 3.12, FastAPI, SQLite, React 19, TypeScript, Tailwind, Vite
+- **Architecture** : Domain-Driven Design (DDD) — chaque domaine dans `backend/domains/`
+- **API** : RESTful sur http://localhost:8001
+- **Frontend** : http://localhost:5173
 
 ## Structure des domaines
 
 ```
-domains/
-  home/          ← Page d'accueil / tableau de bord
-  transactions/  ← CRUD transactions, récurrences, OCR, pièces jointes
-shared/          ← Utilitaires transversaux (DB, UI, services)
-config/          ← Configuration globale (chemins, logging)
-resources/       ← Assets statiques (icônes, CSS)
+backend/
+  ├── main.py              # Point d'entrée FastAPI
+  ├── api/                 # Endpoints REST
+  ├── domains/
+  │   home/                # Dashboard
+  │   transactions/       # CRUD, récurrences, pièces jointes
+  shared/                 # Utilitaires transversaux (DB, services)
+  config/                 # Configuration globale
+  resources/              # Assets statiques
+
+frontend/
+  ├── src/app/            # Pages (dashboard, transactions, etc.)
+  ├── src/components/     # Composants React
+  └── src/api.ts          # Client API
 ```
 
 ## Règles de développement
@@ -37,19 +46,19 @@ resources/       ← Assets statiques (icônes, CSS)
 - **Python 3.12+** uniquement
 - **Type hints** obligatoires sur toutes les fonctions publiques
 - **Pydantic** pour la validation des modèles de données
-- Pas de logique métier dans les pages Streamlit — déléguer aux services
+- Jamais d'accès direct au repository depuis les endpoints API — passer par les services
 - Toujours utiliser `pathlib.Path` au lieu de `os.path`
 - Imports absolus uniquement (pas de `.` relatifs)
 
 ### Base de données
-- SQLite via `shared/database/connection.py`
-- Toujours utiliser les repositories (`repository.py`) — jamais de SQL direct dans les pages
+- SQLite via `backend/shared/database/connection.py`
+- Toujours utiliser les repositories — jamais de SQL direct dans les endpoints
 - Les migrations se font via `schema.py`
 
-### UI Streamlit
-- Utiliser les helpers de `shared/ui/helpers.py` et `shared/ui/styles.py`
-- Les toasts/notifications via `shared/ui/toast_components.py`
-- Les erreurs user-friendly via `shared/ui/friendly_error.py`
+### Frontend (React)
+- TypeScript strict — pas de `any`
+- Styling : Tailwind CSS uniquement
+- API calls via `src/api.ts` (client centralisé)
 
 ### Sécurité
 - **Ne jamais** commiter de fichiers `.db`, `.sqlite`, `.env`, `.key`, `.pem`

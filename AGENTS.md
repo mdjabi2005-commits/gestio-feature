@@ -1,10 +1,10 @@
 # AGENTS.md — Gestio V4
 
-> Application de gestion financière personnelle. Architecture **FastAPI + Next.js**.
+> Application de gestion financière personnelle. Architecture **FastAPI + React**.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 gestion-financiere/
@@ -15,17 +15,17 @@ gestion-financiere/
 │   ├── domains/      # DDD - home/, transactions/
 │   ├── shared/       # DB, services partagés
 │   └── resources/    # Assets
-├── frontend/          # UI Next.js (React + TS + Tailwind)
-│   ├── src/app/      # Pages (App Router)
+├── frontend/          # UI (React + TS + Tailwind + Vite)
+│   ├── src/app/      # Pages
 │   ├── src/components/
-│   └── src/lib/     # API client, utils
+│   └── src/api.ts    # Client API
 ├── tests/            # Tests pytest
 └── .github/          # CI/CD
 ```
 
 ---
 
-## ⚡ Commandes
+## Commandes
 
 ### Backend
 ```bash
@@ -45,7 +45,7 @@ npm run lint                        # Lint
 
 ---
 
-## 📐 Conventions Backend (Python)
+## Conventions Backend (Python)
 
 ### Stack
 - Python 3.12+, FastAPI, Pydantic, SQLite, Pandas — **uv** pour dépendances
@@ -107,33 +107,37 @@ except DatabaseError as e:
     raise HTTPException(status_code=500, detail="Erreur base de données")
 ```
 
-### Taille des fichiers
-- **Alerte : 200 lignes**, **Max : 300 lignes**
-
 ---
 
-## 📐 Conventions Frontend (TypeScript/React)
+## Conventions Frontend (TypeScript/React)
 
 ### Stack
-- Next.js 14+ (App Router), React 18, TypeScript, Tailwind CSS — **npm**
+- React 19, TypeScript, Tailwind CSS, Vite — **npm**
 
 ### Règles fondamentales
-1. **Server Components** par défaut
-2. **TypeScript strict** — pas de `any`
-3. **Naming** : Composants `PascalCase`, Hooks `useXxx.ts`, Utils `camelCase`
-4. **Styling** : Tailwind uniquement — pas de CSS inline
+1. **TypeScript strict** — pas de `any`
+2. **Naming** : Composants `PascalCase`, Hooks `useXxx.ts`, Utils `camelCase`
+3. **Styling** : Tailwind uniquement — pas de CSS inline
 
 ### Appels API
 ```tsx
-import { api } from '@/lib/api';
+import { api } from '@/api';
 
-const transactions = await api.transactions.list();
-await api.transactions.create(data);
+const transactions = await api.getTransactions();
+await api.addTransaction(data);
 ```
 
 ---
 
-## 🧪 Tests obligatoires
+## Règle de taille des fichiers (STRICTE)
+
+**INTERDIT ABSOLUMENT :** Tout fichier dépassant **200 lignes** est INTERDIT.
+
+Tout fichier doit être subdivisé en plusieurs fichiers plus petits (Single Responsibility Principle).
+
+---
+
+## Tests obligatoires
 
 | Fichier créé | Test requis |
 |--------------|-------------|
@@ -144,7 +148,7 @@ await api.transactions.create(data);
 
 ---
 
-## 🎨 Style Git
+## Style Git
 
 ### Commits
 ```
@@ -163,7 +167,7 @@ test: ajouter 5 tests pour le module recurrence
 
 ---
 
-## ⚠️ Règles Importantes
+## Règles Importantes
 
 1. **Pas de secrets hardcodés** — utiliser `.env` et `os.getenv()`
 2. **Pas de code mort commenté** — supprimer (YAGNI)
