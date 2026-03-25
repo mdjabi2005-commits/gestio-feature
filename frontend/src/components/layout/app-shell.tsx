@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import AddTransactionModal from '@/components/AddTransactionModal';
 import { ScannerModal } from '@/components/dashboard/ScannerModal';
@@ -81,13 +80,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden w-full text-foreground">
-      {/* Sidebar */}
-      <Sidebar />
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        {/* Header */}
+    <div className="flex h-screen bg-background overflow-hidden w-full text-foreground flex-col">
+      {/* Header */}
         <Header
           title={title}
           onAddTransaction={() => {
@@ -100,10 +94,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         />
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto px-8 py-6 custom-scrollbar">
           {children}
         </main>
-      </div>
 
       {/* Scanner Modal */}
       <ScannerModal 

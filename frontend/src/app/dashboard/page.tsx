@@ -20,19 +20,21 @@ export default function DashboardPage() {
   if (!summary) return null;
 
   return (
-    <div className="space-y-12 max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+    <div className="space-y-10 max-w-[1600px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
       <KpiCards 
         balance={summary.solde} 
         income={summary.total_revenus} 
         expenses={summary.total_depenses} 
       />
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-        <div className="glass-card rounded-2xl p-6 h-[500px] animate-in slide-in-from-bottom-4 duration-700">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
+        {/* Sunburst — 3 columns */}
+        <div className="lg:col-span-3 glass-card rounded-2xl p-4 h-[500px] animate-in slide-in-from-bottom-4 duration-700 hover:border-indigo-500/30 transition-all duration-300">
           <SunburstChart data={summary.repartition_categories} title="Répartition des dépenses" />
         </div>
 
-        <div className="glass-card rounded-2xl p-6 flex flex-col justify-between animate-in slide-in-from-bottom-4 duration-700 delay-100">
+        {/* Overview panel — 2 columns */}
+        <div className="lg:col-span-2 glass-card rounded-2xl p-6 flex flex-col justify-between animate-in slide-in-from-bottom-4 duration-700 delay-100">
           <div className="space-y-8">
             <h3 className="text-lg font-semibold text-foreground">Aperçu Mensuel</h3>
             <div className="space-y-6">

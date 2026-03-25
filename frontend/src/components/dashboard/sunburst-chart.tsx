@@ -133,7 +133,7 @@ export function SunburstChart({ data, title = "Répartition des dépenses" }: Su
   const activeData = segments.find(s => s.nom === hoveredSegment)
 
   return (
-    <div className="glass-card rounded-2xl p-6 transition-all duration-300 hover:border-indigo-500/30 h-full flex flex-col min-h-0 overflow-hidden relative">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden relative">
       <div className="flex items-center justify-between mb-2 shrink-0">
         <h3 className="text-lg font-semibold text-foreground">{title}</h3>
         {drillDownCategory && (
