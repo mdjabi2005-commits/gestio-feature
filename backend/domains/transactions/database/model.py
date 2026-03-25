@@ -103,6 +103,12 @@ class Transaction(BaseModel):
             return None
         return str(v).strip()
 
+    @field_validator("has_attachments", mode="before")
+    @classmethod
+    def normalize_has_attachments(cls, v: Any) -> bool:
+        """Force la conversion en booléen (gère SQL 0/1/NULL)."""
+        return bool(v)
+
     @field_validator("source", mode="before")
     @classmethod
     def normalize_source(cls, v: Any) -> str:

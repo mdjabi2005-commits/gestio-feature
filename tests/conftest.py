@@ -11,8 +11,11 @@ import pytest
 from datetime import date
 from pathlib import Path
 
-from domains.transactions.database.schema import init_transaction_table, init_attachments_table
-from domains.transactions.database.schema_table_recurrence import init_recurrence_table
+from domains.transactions.database.schema import (
+    init_transaction_table,
+    init_attachments_table,
+)
+from domains.transactions.database.schema_table_echeance import init_echeance_table
 from domains.transactions.database.model import Transaction
 from domains.transactions.database.repository import TransactionRepository
 
@@ -20,6 +23,7 @@ from domains.transactions.database.repository import TransactionRepository
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixture : connexion SQLite en mémoire (scope=function → réinitialisée à chaque test)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def db_path(tmp_path: Path) -> str:
@@ -34,7 +38,7 @@ def db_path(tmp_path: Path) -> str:
     # Initialise les tables (même schéma que la prod)
     init_transaction_table(db_path=path)
     init_attachments_table(db_path=path)
-    init_recurrence_table(db_path=path)
+    init_echeance_table(db_path=path)
 
     return path
 
@@ -48,6 +52,7 @@ def repo(db_path: str) -> TransactionRepository:
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures : données d'exemple
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def transaction_depense() -> Transaction:
@@ -92,11 +97,18 @@ def transactions_batch() -> list[Transaction]:
     """Lot de 5 transactions pour tester les opérations en masse."""
     return [
         Transaction(
-            type="Dépense", categorie="Transport", montant=25.0,
-            date=date(2026, 1, i + 1), source="Manuel",
-            sous_categorie=None, description=f"Ticket métro {i+1}",
-            recurrence=None, date_fin=None, compte_iban=None, external_id=None, id=None,
+            type="Dépense",
+            categorie="Transport",
+            montant=25.0,
+            date=date(2026, 1, i + 1),
+            source="Manuel",
+            sous_categorie=None,
+            description=f"Ticket métro {i + 1}",
+            recurrence=None,
+            date_fin=None,
+            compte_iban=None,
+            external_id=None,
+            id=None,
         )
         for i in range(5)
     ]
-

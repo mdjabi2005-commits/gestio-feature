@@ -32,7 +32,7 @@ class TransactionRepository:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT t.*, 
-                (SELECT 1 FROM transaction_attachments WHERE transaction_id = t.id LIMIT 1) as has_attachments
+                COALESCE((SELECT 1 FROM transaction_attachments WHERE transaction_id = t.id LIMIT 1), 0) as has_attachments
                 FROM transactions t 
                 ORDER BY t.date DESC
             """)
@@ -203,7 +203,7 @@ class TransactionRepository:
             cursor.execute(
                 """
                 SELECT t.*, 
-                (SELECT 1 FROM transaction_attachments WHERE transaction_id = t.id LIMIT 1) as has_attachments
+                COALESCE((SELECT 1 FROM transaction_attachments WHERE transaction_id = t.id LIMIT 1), 0) as has_attachments
                 FROM transactions t 
                 WHERE t.id = ?
             """,
@@ -231,7 +231,7 @@ class TransactionRepository:
         try:
             conn = get_db_connection(db_path=self.db_path)
 
-            query = "SELECT t.*, (SELECT 1 FROM transaction_attachments WHERE transaction_id = t.id LIMIT 1) as has_attachments FROM transactions t WHERE 1=1"
+            query = "SELECT t.*, COALESCE((SELECT 1 FROM transaction_attachments WHERE transaction_id = t.id LIMIT 1), 0) as has_attachments FROM transactions t WHERE 1=1"
             params = []
 
             if start_date:
