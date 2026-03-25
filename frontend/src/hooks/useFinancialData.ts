@@ -27,6 +27,26 @@ export function useFinancialData() {
     }
   }, []);
 
+  const deleteTransaction = async (id: number) => {
+    try {
+      await api.deleteTransaction(id);
+      await fetchData();
+    } catch (error) {
+      console.error('Failed to delete transaction:', error);
+      throw error;
+    }
+  };
+
+  const updateTransaction = async (id: number, data: Transaction) => {
+    try {
+      await api.updateTransaction(id, data);
+      await fetchData();
+    } catch (error) {
+      console.error('Failed to update transaction:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -36,6 +56,8 @@ export function useFinancialData() {
     transactions,
     loading,
     apiStatus,
-    refreshData: fetchData
+    refreshData: fetchData,
+    deleteTransaction,
+    updateTransaction
   };
 }

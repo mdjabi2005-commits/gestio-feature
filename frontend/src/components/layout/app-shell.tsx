@@ -5,7 +5,12 @@ import { usePathname } from 'next/navigation';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import AddTransactionModal from '@/components/AddTransactionModal';
+import { ScannerModal } from '@/components/dashboard/ScannerModal';
+import { BatchReview } from '@/components/dashboard/BatchReview';
 import { useFinancial } from '@/context/FinancialDataContext';
+import type { OCRScanResponse, ScannedTicket } from '@/api';
+import { api } from '@/api';
+import { toast } from 'sonner';
 
 const viewTitles: Record<string, string> = {
   "/dashboard": "Tableau de bord",
@@ -16,14 +21,63 @@ const viewTitles: Record<string, string> = {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { apiStatus, refreshData } = useFinancial();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { 
+    apiStatus, 
+    refreshData, 
+    isAddModalOpen, 
+    setIsAddModalOpen, 
+    editingTransaction, 
+    setEditingTransaction,
+    isViewMode,
+    setIsViewMode,
+  } = useFinancial();
+  
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [scanResultsQueue, setScanResultsQueue] = useState<ScannedTicket[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+  const currentScanResult = editingIndex !== null ? scanResultsQueue[editingIndex].result : null;
+  const currentScanFile = editingIndex !== null ? scanResultsQueue[editingIndex].file : null;
 
   const title = viewTitles[pathname] || "Gestio V4";
 
   const handleTransactionSuccess = () => {
-    setIsModalOpen(false);
+    if (editingIndex !== null) {
+      setScanResultsQueue(prev => prev.filter((_, i) => i !== editingIndex));
+      setEditingIndex(null);
+    }
+    setEditingTransaction(null);
+    setIsAddModalOpen(false);
+    setIsViewMode(false);
     refreshData();
+  };
+
+  const handleScanResults = (results: ScannedTicket[]) => {
+    setScanResultsQueue(prev => [...prev, ...results]);
+    setIsScannerOpen(false);
+  };
+
+  const handleValidate = async (index: number) => {
+    const { result, file } = scanResultsQueue[index];
+    try {
+      const transactionId = await api.addTransaction(result.transaction);
+      
+      // Automatic attachment upload
+      if (transactionId && file) {
+        try {
+          await api.uploadAttachment(transactionId, file);
+        } catch (attachError) {
+          console.error("Failed to upload auto-attachment:", attachError);
+          toast.error("Transaction validée, mais échec de la pièce jointe");
+        }
+      }
+
+      setScanResultsQueue(prev => prev.filter((_, i) => i !== index));
+      refreshData();
+      toast.success("Transaction validée avec pièce jointe ! 📎");
+    } catch (e) {
+      toast.error("Échec de la validation");
+    }
   };
 
   return (
@@ -36,7 +90,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Header */}
         <Header
           title={title}
-          onAddTransaction={() => setIsModalOpen(true)}
+          onAddTransaction={() => {
+            setScanResultsQueue([]);
+            setEditingTransaction(null);
+            setIsAddModalOpen(true);
+          }}
+          onScanClick={() => setIsScannerOpen(true)}
           apiStatus={apiStatus}
         />
 
@@ -46,11 +105,46 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
+      {/* Scanner Modal */}
+      <ScannerModal 
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanResults={handleScanResults}
+      />
+
       {/* Add Transaction Modal */}
-      {isModalOpen && (
+      {/* Batch Results Review */}
+      <BatchReview 
+        results={scanResultsQueue}
+        onValidate={handleValidate}
+        onEdit={(index) => {
+          setEditingIndex(index);
+          setIsAddModalOpen(true);
+        }}
+        onRemove={(index) => setScanResultsQueue(prev => prev.filter((_, i) => i !== index))}
+      />
+
+      {/* Add Transaction Modal */}
+      {/* Add Transaction Modal */}
+      {isAddModalOpen && (
         <AddTransactionModal 
-          onClose={() => setIsModalOpen(false)} 
-          onSuccess={handleTransactionSuccess} 
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setEditingIndex(null);
+            setEditingTransaction(null);
+            setIsViewMode(false);
+          }} 
+          onSuccess={handleTransactionSuccess}
+          onRescan={editingIndex !== null ? () => {
+            setIsAddModalOpen(false);
+            setEditingIndex(null);
+            setIsScannerOpen(true);
+          } : undefined}
+          initialData={editingTransaction || currentScanResult?.transaction}
+          warnings={currentScanResult?.warnings}
+          rawOcrText={currentScanResult?.raw_ocr_text}
+          scannedFile={currentScanFile} // We might want the modal to handle the file too
+          readOnly={isViewMode}
         />
       )}
     </div>

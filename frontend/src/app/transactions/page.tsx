@@ -8,9 +8,19 @@ import { BalanceChart } from '@/components/dashboard/balance-chart';
 import { FinancialCalendar } from '@/components/dashboard/financial-calendar';
 import { SunburstChart } from '@/components/dashboard/sunburst-chart';
 import { TransactionList } from '@/components/dashboard/transaction-list';
+import { api } from '@/api';
+import { toast } from 'sonner';
 
 export default function TransactionsPage() {
-  const { summary, transactions, loading } = useFinancial();
+  const { 
+    summary, 
+    transactions, 
+    loading, 
+    deleteTransaction,
+    setEditingTransaction,
+    setIsAddModalOpen,
+    setIsViewMode,
+  } = useFinancial();
 
   const balanceData = useMemo(() => {
     if (!summary?.historique) return [];
@@ -61,6 +71,34 @@ export default function TransactionsPage() {
             transactions={transactions} 
             categories={summary.repartition_categories}
             title="Toutes les transactions"
+            onView={(t: any) => {
+              setEditingTransaction(t);
+              setIsViewMode(true);
+              setIsAddModalOpen(true);
+            }}
+            onEdit={(t: any) => {
+              setIsViewMode(false);
+              setEditingTransaction(t);
+              setIsAddModalOpen(true);
+            }}
+            onDelete={async (id) => {
+              if (confirm("Supprimer cette transaction ?")) {
+                try {
+                  await deleteTransaction(id);
+                  toast.success("Transaction supprimée !");
+                } catch (e) {
+                  toast.error("Échec de la suppression");
+                }
+              }
+            }}
+            onAttach={(id) => {
+              // Déclenche l'input file caché
+              const input = document.getElementById('transaction-file-input') as HTMLInputElement;
+              if (input) {
+                input.dataset.transactionId = id.toString();
+                input.click();
+              }
+            }}
           />
         </div>
       </div>
@@ -90,6 +128,29 @@ export default function TransactionsPage() {
           </div>
         ))}
       </div>
+
+      {/* Hidden File Input for Attachments */}
+      <input 
+        type="file" 
+        id="transaction-file-input" 
+        className="hidden" 
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          const transactionId = e.target.dataset.transactionId;
+          if (file && transactionId) {
+            try {
+              toast.loading("Envoi du fichier...");
+              await api.uploadAttachment(parseInt(transactionId), file);
+              toast.dismiss();
+              toast.success("Fichier joint avec succès !");
+            } catch (err) {
+              toast.dismiss();
+              toast.error("Échec de l'envoi");
+            }
+          }
+          e.target.value = ''; // Reset for next use
+        }}
+      />
     </div>
   );
 }

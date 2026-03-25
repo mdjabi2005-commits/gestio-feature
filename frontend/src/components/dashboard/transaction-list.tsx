@@ -1,5 +1,12 @@
 import { cn } from "@/lib/utils"
-import { Search, Filter, MoreHorizontal } from "lucide-react"
+import { Search, Filter, MoreHorizontal, Pencil, Trash2, Paperclip } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { getCategoryIcon } from "@/lib/icons"
 import { getCategoryMetadata } from "@/lib/categories"
 
@@ -13,6 +20,7 @@ export interface TransactionItem {
   date: string
   status?: "completed" | "pending" | "failed"
   merchant?: string
+  has_attachments?: boolean
 }
 
 interface TransactionListProps {
@@ -21,6 +29,10 @@ interface TransactionListProps {
   title?: string
   onSearch?: (query: string) => void
   onFilter?: () => void
+  onEdit?: (transaction: TransactionItem) => void
+  onView?: (transaction: TransactionItem) => void
+  onDelete?: (id: number) => void
+  onAttach?: (id: number) => void
 }
 
 export function TransactionList({
@@ -29,6 +41,10 @@ export function TransactionList({
   title = "Transactions",
   onSearch,
   onFilter,
+  onEdit,
+  onView,
+  onDelete,
+  onAttach,
 }: TransactionListProps) {
   const formatCurrency = (amount: number, type: "Dépense" | "Revenu") => {
     const formatted = new Intl.NumberFormat("fr-FR", {
@@ -119,9 +135,12 @@ export function TransactionList({
           return (
             <div
               key={transaction.id || index}
+              onClick={() => onView?.(transaction)}
+              onDoubleClick={() => onEdit?.(transaction)}
+              title="Clic pour voir · Double-clic pour modifier"
               className={cn(
                 "group flex items-center gap-4 px-6 py-4 transition-all duration-200",
-                "hover:bg-secondary/30 cursor-pointer",
+                "hover:bg-secondary/30 cursor-pointer active:scale-[0.99] origin-center",
                 index !== transactions.length - 1 && "border-b border-border/30"
               )}
             >
@@ -162,9 +181,12 @@ export function TransactionList({
                     {transaction.sous_categorie || transaction.categorie}
                   </span>
                   {transaction.merchant && (
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-[10px] text-muted-foreground truncate max-w-[150px] sm:max-w-[200px]">
                       {transaction.merchant}
                     </span>
+                  )}
+                  {transaction.has_attachments && (
+                    <Paperclip className="w-3 h-3 text-indigo-400" />
                   )}
                 </div>
               </div>
@@ -187,9 +209,36 @@ export function TransactionList({
               </div>
 
               {/* Actions */}
-              <button className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button 
+                    onClick={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => e.stopPropagation()}
+                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 opacity-0 group-hover:opacity-100 transition-all duration-200 focus-visible:opacity-100 outline-none"
+                    title="Actions"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit?.(transaction); }}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    <span>Modifier</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAttach?.(transaction.id!); }}>
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    <span>Joindre un fichier</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={(e) => { e.stopPropagation(); onDelete?.(transaction.id!); }}
+                    className="text-rose-400 focus:text-rose-400 focus:bg-rose-400/10"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    <span>Supprimer</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )
         })}
