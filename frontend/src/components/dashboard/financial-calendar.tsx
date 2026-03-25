@@ -12,8 +12,8 @@ interface TransactionDay {
 
 interface FinancialCalendarProps {
   transactions: TransactionDay[]
-  onDateSelect?: (date: string) => void
-  selectedDate?: string | null
+  onRangeSelect?: (range: { start: string | null, end: string | null }) => void
+  selectedRange?: { start: string | null, end: string | null }
 }
 
 const DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
@@ -24,10 +24,17 @@ const MONTHS = [
 
 export function FinancialCalendar({
   transactions,
-  onDateSelect,
-  selectedDate,
+  onRangeSelect,
+  selectedRange = { start: null, end: null },
 }: FinancialCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
+
+  const formatLocalDate = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
 
   const transactionMap = useMemo(() => {
     const map = new Map<string, TransactionDay>()
@@ -42,7 +49,6 @@ export function FinancialCalendar({
     const firstDay = new Date(year, month, 1)
     const lastDay = new Date(year, month + 1, 0)
     
-    // Adjust for Monday start (0 = Monday in our display)
     let startPadding = firstDay.getDay() - 1
     if (startPadding < 0) startPadding = 6
     
@@ -52,16 +58,14 @@ export function FinancialCalendar({
       transaction?: TransactionDay
     }> = []
 
-    // Previous month padding
     for (let i = startPadding - 1; i >= 0; i--) {
       const date = new Date(year, month, -i)
       days.push({ date, isCurrentMonth: false })
     }
 
-    // Current month days
     for (let i = 1; i <= lastDay.getDate(); i++) {
       const date = new Date(year, month, i)
-      const dateStr = date.toISOString().split("T")[0]
+      const dateStr = formatLocalDate(date)
       days.push({
         date,
         isCurrentMonth: true,
@@ -69,7 +73,6 @@ export function FinancialCalendar({
       })
     }
 
-    // Next month padding
     const remaining = 42 - days.length
     for (let i = 1; i <= remaining; i++) {
       const date = new Date(year, month + 1, i)
@@ -79,17 +82,36 @@ export function FinancialCalendar({
     return days
   }, [currentMonth, transactionMap])
 
-  const goToPrevMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))
-  }
+  const handleDateClick = (dateStr: string) => {
+    if (!onRangeSelect) return;
 
-  const goToNextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))
-  }
+    if (!selectedRange.start || (selectedRange.start && selectedRange.end && selectedRange.start !== selectedRange.end)) {
+      // Start new selection
+      onRangeSelect({ start: dateStr, end: dateStr });
+    } else {
+      // Complete selection
+      const start = selectedRange.start;
+      const end = dateStr;
+      
+      if (new Date(end) < new Date(start)) {
+        onRangeSelect({ start: end, end: start });
+      } else {
+        onRangeSelect({ start, end });
+      }
+    }
+  };
 
-  const goToToday = () => {
-    setCurrentMonth(new Date())
-  }
+  const isInRange = (dateStr: string) => {
+    if (!selectedRange.start || !selectedRange.end) return false;
+    const d = new Date(dateStr).getTime();
+    const s = new Date(selectedRange.start).getTime();
+    const e = new Date(selectedRange.end).getTime();
+    return d >= s && d <= e;
+  };
+
+  const goToPrevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+  const goToNextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+  const goToToday = () => setCurrentMonth(new Date());
 
   const isToday = (date: Date) => {
     const today = new Date()
@@ -101,18 +123,28 @@ export function FinancialCalendar({
   }
 
   return (
-    <div className="glass-card rounded-2xl p-6 transition-all duration-300 hover:border-indigo-500/30 h-full flex flex-col">
+    <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 shrink-0">
         <h3 className="text-lg font-semibold text-foreground">
           Calendrier Financier
         </h3>
-        <button
-          onClick={goToToday}
-          className="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
-        >
-          {"Aujourd'hui"}
-        </button>
+        <div className="flex gap-4">
+          {(selectedRange.start || selectedRange.end) && (
+            <button
+              onClick={() => onRangeSelect?.({ start: null, end: null })}
+              className="text-xs font-medium text-rose-400 hover:text-rose-300 transition-colors"
+            >
+              Effacer
+            </button>
+          )}
+          <button
+            onClick={goToToday}
+            className="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            {"Aujourd'hui"}
+          </button>
+        </div>
       </div>
 
       {/* Month Navigation */}
@@ -146,32 +178,34 @@ export function FinancialCalendar({
         ))}
       </div>
 
-      {/* Calendar Grid - FLEX TO FILL */}
-      <div className="grid grid-cols-7 gap-1 flex-1 min-h-0">
+      {/* Calendar Grid */}
+      <div className="grid grid-cols-7 gap-1">
         {calendarDays.map((day, index) => {
-          const dateStr = day.date.toISOString().split("T")[0]
+          const dateStr = formatLocalDate(day.date)
           const hasIncome = day.transaction && day.transaction.revenus > 0
           const hasExpense = day.transaction && day.transaction.depenses > 0
-          const isSelected = selectedDate === dateStr
+          const isStart = selectedRange.start === dateStr
+          const isEnd = selectedRange.end === dateStr
+          const isSelected = isStart || isEnd
+          const inRange = isInRange(dateStr)
 
           return (
             <button
               key={index}
-              onClick={() =>
-                day.isCurrentMonth && onDateSelect && onDateSelect(dateStr)
-              }
+              onClick={() => day.isCurrentMonth && handleDateClick(dateStr)}
               disabled={!day.isCurrentMonth}
               className={cn(
-                "relative flex flex-col items-center justify-center rounded-lg text-xs font-medium transition-all duration-200 h-full min-h-[40px]",
+                "relative flex flex-col items-center justify-center rounded-lg text-xs font-medium transition-all duration-200 aspect-square",
                 day.isCurrentMonth
                   ? "text-foreground hover:bg-secondary/50"
                   : "text-muted-foreground/40 cursor-default",
                 isToday(day.date) && "ring-1 ring-indigo-500/50 bg-indigo-500/10",
-                isSelected && "bg-indigo-500/20 ring-1 ring-indigo-500"
+                isStart && "bg-rose-500/60 text-white shadow-lg shadow-rose-500/20 z-10",
+                isEnd && !isStart && "bg-emerald-500/60 text-white shadow-lg shadow-emerald-500/20 z-10",
+                !isSelected && inRange && "bg-indigo-500/10"
               )}
             >
               <span>{day.date.getDate()}</span>
-              {/* Transaction indicators */}
               {day.isCurrentMonth && (hasIncome || hasExpense) && (
                 <div className="flex gap-0.5 mt-0.5">
                   {hasIncome && (

@@ -1,8 +1,9 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { ArrowUpRight, ArrowDownRight, Search, X } from "lucide-react"
 import { getCategoryMetadata } from "@/lib/categories"
+import { useFinancial } from "@/context/FinancialDataContext"
 
 export interface Transaction {
   id?: number
@@ -20,6 +21,16 @@ interface TransactionTableProps {
 }
 
 export function TransactionTable({ transactions, categories = [] }: TransactionTableProps) {
+  const { searchQuery, setSearchQuery, filterCategory, setFilterCategory, filterDateRange, setFilterDateRange } = useFinancial();
+  
+  const hasActiveFilters = !!(searchQuery || filterCategory || filterDateRange.start || filterDateRange.end);
+
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setFilterCategory(null);
+    setFilterDateRange({ start: null, end: null });
+  };
+
   const formatCurrency = (amount: number, type: "Dépense" | "Revenu") => {
     const formatted = new Intl.NumberFormat("fr-FR", {
       style: "currency",
@@ -39,15 +50,43 @@ export function TransactionTable({ transactions, categories = [] }: TransactionT
   }
 
   return (
-    <div className="glass-card rounded-2xl overflow-hidden transition-all duration-300 hover:border-indigo-500/30 h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
-        <h3 className="text-lg font-semibold text-foreground">
-          Transactions Récentes
-        </h3>
-        <button className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold transition-colors">
-          Voir tout
-        </button>
+    <div className="h-full flex flex-col min-h-0">
+      {/* Header with Search */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-4 border-b border-border/50 gap-4">
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg font-semibold text-foreground">
+            Transactions
+          </h3>
+          {hasActiveFilters && (
+            <button 
+              onClick={clearAllFilters}
+              className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-bold hover:bg-rose-500/20 transition-colors"
+            >
+              Effacer les filtres
+            </button>
+          )}
+        </div>
+
+        <div className="relative group max-w-xs w-full">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <Search className="w-4 h-4 text-muted-foreground group-focus-within:text-indigo-400 transition-colors" />
+          </div>
+          <input
+            type="text"
+            placeholder="Rechercher..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-secondary/30 border border-border/50 rounded-xl pl-10 pr-10 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Table */}

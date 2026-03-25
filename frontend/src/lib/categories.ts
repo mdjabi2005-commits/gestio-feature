@@ -21,6 +21,8 @@ const CATEGORY_STYLES: Record<string, { couleur: string; icone: string }> = {
   "Bourse": { couleur: "#10b981", icone: "trending-up" },
   "Investissement": { couleur: "#10b981", icone: "trending-up" },
   "Salaire": { couleur: "#6366f1", icone: "briefcase" },
+  "Revenu": { couleur: "#10b981", icone: "plus-circle" },
+  "Dépense": { couleur: "#f43f5e", icone: "minus-circle" },
   "Autre": { couleur: "#6b7280", icone: "shopping-cart" },
   "Divers": { couleur: "#6b7280", icone: "help-circle" }
 }
@@ -35,11 +37,19 @@ export const getCategoryMetadata = (categories: any[], categoryName: string): Ca
     }
   }
 
-  // 2. Recherche par correspondance partielle ou alias manuel si nécessaire
-  // (On peut ajouter ici des normalisations si besoin)
+  // 2. Recherche récursive dans les données API
+  const findNodeRecursive = (nodes: any[]): any | null => {
+    for (const node of nodes) {
+      if (node.nom === categoryName) return node
+      if (node.enfants && node.enfants.length > 0) {
+        const found = findNodeRecursive(node.enfants)
+        if (found) return found
+      }
+    }
+    return null
+  }
 
-  // 3. Fallback sur les données API si le backend fournit des couleurs
-  const cat = categories.find(c => c.nom === categoryName)
+  const cat = findNodeRecursive(categories)
   if (cat && cat.couleur) {
     return {
       nom: cat.nom,
@@ -48,7 +58,7 @@ export const getCategoryMetadata = (categories: any[], categoryName: string): Ca
     }
   }
   
-  // 4. Fallback absolu (Gris ardoise)
+  // 3. Fallback absolu (Bleu Ardoise discret)
   return {
     nom: categoryName,
     couleur: "#94a3b8",

@@ -8,12 +8,12 @@ export function useFinancialData() {
   const [loading, setLoading] = useState(true);
   const [apiStatus, setApiStatus] = useState<"connected" | "disconnected" | "loading">("loading");
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (params?: { start_date?: string | null, end_date?: string | null, category?: string | null }) => {
     setLoading(true);
     setApiStatus("loading");
     try {
       const [summaryData, transactionsData] = await Promise.all([
-        api.getSummary(),
+        api.getSummary(params),
         api.getTransactions()
       ]);
       setSummary(summaryData);

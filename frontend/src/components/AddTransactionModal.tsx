@@ -23,8 +23,16 @@ const AddTransactionModal: React.FC<Props> = ({
   onClose, onSuccess, onRescan, initialData,
   warnings = [], rawOcrText, scannedFile, readOnly = false,
 }) => {
+  const getLocalDate = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [type, setType] = useState<'Dépense' | 'Revenu'>(initialData?.type || 'Dépense');
-  const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(initialData?.date || getLocalDate());
   const [amount, setAmount] = useState(initialData?.montant?.toString() || '');
   const [category, setCategory] = useState(initialData?.categorie || 'Alimentation');
   const [subcategory, setSubcategory] = useState(initialData?.sous_categorie || '');

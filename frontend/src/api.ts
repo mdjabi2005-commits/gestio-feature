@@ -33,8 +33,14 @@ export interface ScannedTicket {
 }
 
 export const api = {
-  getSummary: async () => {
-    const res = await fetch(`${API_BASE_URL}/api/dashboard/`);
+  getSummary: async (params?: { start_date?: string | null, end_date?: string | null, category?: string | null }) => {
+    const url = new URL(`${API_BASE_URL}/api/dashboard/`);
+    if (params) {
+      if (params.start_date) url.searchParams.append('start_date', params.start_date);
+      if (params.end_date) url.searchParams.append('end_date', params.end_date);
+      if (params.category) url.searchParams.append('category', params.category);
+    }
+    const res = await fetch(url.toString());
     if (!res.ok) throw new Error('Failed to fetch summary');
     return res.json();
   },
