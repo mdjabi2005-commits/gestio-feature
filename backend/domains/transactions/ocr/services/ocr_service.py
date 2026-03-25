@@ -4,18 +4,24 @@ Service unifié pour extraire données depuis Images (tickets) ou PDF (relevés)
 """
 
 import logging
+import multiprocessing
 import os
 import threading
 import time
+from concurrent.futures import ProcessPoolExecutor
 from datetime import date
 from pathlib import Path
 
-from config.logging_config import log_error
+if __name__ == "__main__":
+    multiprocessing.freeze_support()
+
+from backend.config.logging_config import log_error
 from .pattern_manager import PatternManager
 from ..core.rapidocr_engine import RapidOCREngine
 from ..core.groq_parser import GroqParser
+from ..core.hardware_utils import get_optimal_workers
 from ..core import pdf_engine as _pdf_module
-from domains.transactions.database.model import Transaction
+from backend.domains.transactions.database.model import Transaction
 from ..core.parser import parse_amount, parse_date, parse_pdf_revenue
 
 logger = logging.getLogger(__name__)
@@ -39,6 +45,26 @@ def get_ocr_service() -> "OCRService":
     return _instance
 
 
+def _process_ticket_worker(
+    args: tuple[int, str],
+) -> tuple[int, str, "Transaction | None", str | None, float]:
+    """Worker function pour ProcessPoolExecutor."""
+    idx, path = args
+    fname = Path(path).name
+    t0_ticket = time.time()
+
+    ocr_service = get_ocr_service()
+
+    try:
+        transaction = ocr_service.process_ticket(path)
+        img_elapsed = time.time() - t0_ticket
+        return (idx, fname, transaction, None, img_elapsed)
+    except Exception as e:
+        logger.error(f"Erreur OCR sur {fname}: {e}")
+        img_elapsed = time.time() - t0_ticket
+        return (idx, fname, None, str(e), img_elapsed)
+
+
 class OCRService:
     """
     Service unifié orchestrant l'extraction de données depuis:
@@ -50,6 +76,10 @@ class OCRService:
 
     def __init__(self):
         """Initialise l'OCR Service avec ses dépendances."""
+        from dotenv import load_dotenv
+
+        load_dotenv()
+
         self.ocr_engine = RapidOCREngine()
         self.pattern_manager = PatternManager()
 
@@ -66,7 +96,9 @@ class OCRService:
         else:
             self.llm_parser = GroqParser()
             self.groq_available = False
-            logger.warning("OCRService initialisé — GROQ_API_KEY absente, catégorisation IA désactivée ⚠️")
+            logger.warning(
+                "OCRService initialisé — GROQ_API_KEY absente, catégorisation IA désactivée ⚠️"
+            )
 
         # Warm-up ONNX Runtime au démarrage
         self._warmup_onnx()
@@ -100,33 +132,33 @@ class OCRService:
     def _detect_file_type(file_path: str) -> str:
         """
         Détecte le type de fichier à traiter.
-        
+
         Args:
             file_path: Chemin vers le fichier
-        
+
         Returns:
             'pdf' ou 'image'
         """
         ext = Path(file_path).suffix.lower()
-        if ext == '.pdf':
-            return 'pdf'
-        elif ext in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp']:
-            return 'image'
+        if ext == ".pdf":
+            return "pdf"
+        elif ext in [".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"]:
+            return "image"
         else:
             logger.warning(f"Type de fichier inconnu: {ext}, traitement comme image")
-            return 'image'
+            return "image"
 
     def process_document(self, file_path: str) -> Transaction:
         """
         Traite un document (image ou PDF) et retourne une Transaction.
         Point d'entrée unifié pour tous types de documents.
-        
+
         Args:
             file_path: Chemin absolu vers le document
-            
+
         Returns:
             Transaction avec données extraites
-            
+
         Raises:
             ValueError: Si extraction échoue
             FileNotFoundError: Si fichier n'existe pas
@@ -144,7 +176,7 @@ class OCRService:
 
             logger.info(f"Traitement document démarré: {path.name} (type: {file_type})")
 
-            if file_type == 'pdf':
+            if file_type == "pdf":
                 return self._process_pdf(file_path)
             else:
                 return self.process_ticket(file_path)
@@ -155,13 +187,13 @@ class OCRService:
     def _process_pdf(self, pdf_path: str) -> Transaction:
         """
         Traite un PDF de relevé de revenus.
-        
+
         Args:
             pdf_path: Chemin vers le PDF
-        
+
         Returns:
             Transaction de type Revenu
-        
+
         Raises:
             ImportError: Si pdfminer.six n'est pas installé
             ValueError: Si extraction échoue
@@ -194,7 +226,7 @@ class OCRService:
         semantic_data = self.llm_parser.parse(text)
         category = semantic_data.get("category", "Revenu")
         subcategory = semantic_data.get("subcategory", None)
-        description = semantic_data.get("description") or parsed_data['description']
+        description = semantic_data.get("description") or parsed_data["description"]
         if len(description) > 50:
             description = description[:50]
 
@@ -202,8 +234,8 @@ class OCRService:
             transaction = Transaction(
                 type="Revenu",
                 categorie=category,
-                montant=parsed_data['montant'],
-                date=parsed_data['date'],
+                montant=parsed_data["montant"],
+                date=parsed_data["date"],
                 description=description,
                 source="pdf",
                 sous_categorie=subcategory,
@@ -213,7 +245,9 @@ class OCRService:
                 external_id=None,
                 id=None,
             )
-            logger.info(f"✅ Transaction PDF créée: {transaction.montant}€ — {category} / {subcategory}")
+            logger.info(
+                f"✅ Transaction PDF créée: {transaction.montant}€ — {category} / {subcategory}"
+            )
             return transaction
         except Exception as e:
             log_error(e, "Erreur création objet Transaction depuis PDF")
@@ -228,28 +262,42 @@ class OCRService:
 
         try:
             # 1. Extraction texte via OCR
-            logger.info(f"[OCR] Étape 1/4 — extraction texte OCR... ({time.time()-t0:.2f}s)")
+            logger.info(
+                f"[OCR] Étape 1/4 — extraction texte OCR... ({time.time() - t0:.2f}s)"
+            )
             raw_text = self.ocr_engine.extract_text(image_path)
-            logger.info(f"[OCR] Étape 1/4 — texte extrait : {len(raw_text)} caractères ({time.time()-t0:.2f}s)")
+            logger.info(
+                f"[OCR] Étape 1/4 — texte extrait : {len(raw_text)} caractères ({time.time() - t0:.2f}s)"
+            )
 
             # 2. Parsing montant/date via patterns cached
-            logger.info(f"[OCR] Étape 2/4 — parsing montant/date... ({time.time()-t0:.2f}s)")
+            logger.info(
+                f"[OCR] Étape 2/4 — parsing montant/date... ({time.time() - t0:.2f}s)"
+            )
             amount = parse_amount(raw_text, self._amount_patterns)
             transaction_date = parse_date(raw_text, self._date_patterns)
-            logger.info(f"[OCR] Étape 2/4 — montant={amount}, date={transaction_date} ({time.time()-t0:.2f}s)")
+            logger.info(
+                f"[OCR] Étape 2/4 — montant={amount}, date={transaction_date} ({time.time() - t0:.2f}s)"
+            )
 
             # 3. Catégorisation Groq
-            logger.info(f"[OCR] Étape 3/4 — catégorisation {'Groq IA' if self.groq_available else 'fallback (pas de clé Groq)'}... ({time.time()-t0:.2f}s)")
+            logger.info(
+                f"[OCR] Étape 3/4 — catégorisation {'Groq IA' if self.groq_available else 'fallback (pas de clé Groq)'}... ({time.time() - t0:.2f}s)"
+            )
             semantic_data = self.llm_parser.parse(raw_text)
             category = semantic_data.get("category", "Autre")
             subcategory = semantic_data.get("subcategory", None)
             description = semantic_data.get("description", "")
             if len(description) > 50:
                 description = description[:50]
-            logger.info(f"[OCR] Étape 3/4 — catégorie={category}, desc={description} ({time.time()-t0:.2f}s)")
+            logger.info(
+                f"[OCR] Étape 3/4 — catégorie={category}, desc={description} ({time.time() - t0:.2f}s)"
+            )
 
             # 4. Construction Transaction
-            logger.info(f"[OCR] Étape 4/4 — construction Transaction... ({time.time()-t0:.2f}s)")
+            logger.info(
+                f"[OCR] Étape 4/4 — construction Transaction... ({time.time() - t0:.2f}s)"
+            )
             if amount is None:
                 logger.warning(f"[OCR] Montant non trouvé, défaut à 0.0")
                 amount = 0.0
@@ -269,48 +317,50 @@ class OCRService:
                 id=None,
             )
 
-            logger.info(f"[OCR] ✅ Transaction créée : {amount}€ — {category} — total={time.time()-t0:.2f}s")
+            logger.info(
+                f"[OCR] ✅ Transaction créée : {amount}€ — {category} — total={time.time() - t0:.2f}s"
+            )
             return transaction
 
         except Exception as e:
             log_error(e, f"Erreur traitement image ticket {Path(image_path).name}")
             raise
 
-    def process_batch_tickets(self, image_paths: list[str], max_workers: int = 1, progress_callback=None) -> list[tuple[str, Transaction | None, str | None, float]]:
+    def process_batch_tickets(
+        self, image_paths: list[str], max_workers: int = None
+    ) -> list[tuple[str, Transaction | None, str | None, float]]:
         """
-        Traite un lot de tickets en séquentiel pur.
-        Le multiprocessing ONNX Runtime est instable sous Windows + Streamlit —
-        boucle séquentielle stricte pour fiabilité maximale.
+        Traite un lot de tickets en parallèle avec ProcessPoolExecutor.
+        Chaque processus a sa propre instance OCRService.
         """
-        results = []
         total = len(image_paths)
-        processed_count = 0
-        start_time = time.time()
-        
-        logger.info(f"Démarrage process_batch_tickets: {total} fichiers (Séquentiel pur)")
+        if total == 0:
+            return []
 
-        for path in image_paths:
-            fname = Path(path).name
-            t0_ticket = time.time()
-            
-            try:
-                transaction = self.process_ticket(path)
-                img_elapsed = time.time() - t0_ticket
-                results.append((fname, transaction, None, img_elapsed))
-            except Exception as e:
-                logger.error(f"Erreur OCR sur {fname}: {e}")
-                img_elapsed = time.time() - t0_ticket
-                results.append((fname, None, str(e), img_elapsed))
-            
-            processed_count += 1
-            
-            if progress_callback:
-                progress_callback(fname, processed_count, total, time.time() - start_time)
-                
+        start_time = time.time()
+        results: list[tuple[str, Transaction | None, str | None, float]] = [
+            None
+        ] * total
+
+        if max_workers is None:
+            max_workers = get_optimal_workers(total)
+
+        logger.info(
+            f"Démarrage process_batch_tickets: {total} fichiers avec {max_workers} processus"
+        )
+
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = executor.map(_process_ticket_worker, enumerate(image_paths))
+
+            for idx, fname, transaction, error, elapsed in futures:
+                results[idx] = (fname, transaction, error, elapsed)
+
+        logger.info(
+            f"process_batch_tickets terminé: {total} fichiers en {time.time() - start_time:.2f}s"
+        )
         return results
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fin du service OCR unifié
 # ─────────────────────────────────────────────────────────────────────────────
-

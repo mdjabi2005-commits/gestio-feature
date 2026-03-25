@@ -12,7 +12,7 @@ from typing import Dict, Any
 from groq import Groq
 
 # Chargement dynamique depuis categories.yaml
-from shared.utils.categories_loader import get_categories, get_all_subcategories
+from backend.shared.utils.categories_loader import get_categories, get_all_subcategories
 
 logger = logging.getLogger(__name__)
 

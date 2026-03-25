@@ -11,8 +11,8 @@ from typing import List, Dict
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 
-from config.logging_config import get_logger
-from shared.database.connection import get_db_connection
+from backend.config.logging_config import get_logger
+from backend.shared.database.connection import get_db_connection
 
 logger = get_logger(__name__)
 

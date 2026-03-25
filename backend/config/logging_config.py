@@ -14,7 +14,7 @@ import sys
 import uuid
 from pathlib import Path
 
-from config.paths import APP_LOG_PATH
+from backend.config.paths import APP_LOG_PATH
 
 
 class TraceIdFilter(logging.Filter):

@@ -114,7 +114,7 @@ Créer `backend/api/mon_nouveau_domaine/LOGIC_FLOW.md`
 ## Commandes
 
 ```bash
-uv sync                           # Installer
+uv pip install -r requirements.txt                           # Installer
 uv run uvicorn backend.main:app --reload   # Dev (port 8001)
 pytest                            # Tests
 ```

@@ -5,7 +5,7 @@ Database schema initialization for Recurrences table.
 import logging
 import sqlite3
 
-from shared.database.connection import get_db_connection, close_connection
+from backend.shared.database.connection import get_db_connection, close_connection
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ def init_recurrence_table(db_path: str = None) -> None:
         logger.info("Recurrence table initialized successfully")
 
     except sqlite3.Error as e:
-        from config.logging_config import log_error
+        from backend.config.logging_config import log_error
         log_error(e, "Recurrence table initialization failed")
         if conn:
             conn.rollback()

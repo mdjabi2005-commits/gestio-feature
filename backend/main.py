@@ -1,19 +1,34 @@
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.api.transactions import router as transactions_router
 from backend.api.dashboard import router as dashboard_router
 from backend.api.attachments import router as attachments_router
+from backend.api.ocr import router as ocr_router
+from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Gestio API", version="4.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Démarrage : Initialise le singleton OCR dans chaque worker
+    # Cela garantit que le premier scan est instantané car le moteur est déjà chaud
+    try:
+        get_ocr_service()
+        logger.info("OCR Service pré-initialisé au démarrage du worker ✅")
+    except Exception as e:
+        logger.error(f"Erreur initialisation OCR au démarrage : {e}")
+    yield
+
+app = FastAPI(title="Gestio API", version="4.0.0", lifespan=lifespan)
 
 app.include_router(transactions_router)
 app.include_router(dashboard_router)
 app.include_router(attachments_router)
+app.include_router(ocr_router)
 
 # Set up CORS for local development
 app.add_middleware(
@@ -21,20 +36,26 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to Gestio API (v4)"}
+
 
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8001, reload=True)

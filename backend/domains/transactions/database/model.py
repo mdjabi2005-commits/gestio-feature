@@ -49,6 +49,7 @@ class Transaction(BaseModel):
     compte_iban: Optional[str] = Field(None, description="IBAN du compte")
     external_id: Optional[str] = Field(None, description="ID externe")
     id: Optional[int] = Field(None, description="ID (DB)")
+    has_attachments: bool = Field(False, description="Indicateur de pièces jointes")
 
     # ----------------------------------------------------------
     # VALIDATORS — normalisent les données à l'instanciation

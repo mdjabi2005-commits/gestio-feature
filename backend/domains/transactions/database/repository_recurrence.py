@@ -7,7 +7,7 @@ import logging
 import sqlite3
 from typing import List
 
-from shared.database.connection import get_db_connection, close_connection
+from backend.shared.database.connection import get_db_connection, close_connection
 from .model_recurrence import Recurrence
 
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ class RecurrenceRepository:
             logger.info(f"✅ Récurrence ajoutée avec succès")
             return True
         except sqlite3.Error as e:
-            from config.logging_config import log_error
+            from backend.config.logging_config import log_error
             log_error(e, "Erreur lors de l'ajout de la récurrence")
             return False
         finally:
@@ -117,7 +117,7 @@ class RecurrenceRepository:
             logger.info(f"✅ Récurrence ID {recurrence.id} mise à jour avec succès")
             return True
         except sqlite3.Error as e:
-            from config.logging_config import log_error
+            from backend.config.logging_config import log_error
             log_error(e, f"Erreur lors de la mise à jour de la récurrence (ID: {recurrence.id})")
             return False
         finally:
@@ -136,7 +136,7 @@ class RecurrenceRepository:
             logger.info(f"✅ Récurrence ID {recurrence_id} supprimée avec succès")
             return True
         except sqlite3.Error as e:
-            from config.logging_config import log_error
+            from backend.config.logging_config import log_error
             log_error(e, f"Erreur lors de la suppression de la récurrence (ID: {recurrence_id})")
             return False
         finally:
@@ -206,7 +206,7 @@ class RecurrenceRepository:
             return stats
 
         except sqlite3.Error as e:
-            from config.logging_config import log_error
+            from backend.config.logging_config import log_error
             log_error(e, "Erreur globale migration")
             return stats
         finally:

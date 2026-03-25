@@ -23,8 +23,6 @@ class TransactionRepository:
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path
 
-
-
     def get_all(self) -> List[Transaction]:
         """Récupère toutes les transactions."""
         conn = None
@@ -32,31 +30,18 @@ class TransactionRepository:
             conn = get_db_connection(db_path=self.db_path)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM transactions ORDER BY date DESC")
+            cursor.execute("""
+                SELECT t.*, 
+                (SELECT 1 FROM transaction_attachments WHERE transaction_id = t.id LIMIT 1) as has_attachments
+                FROM transactions t 
+                ORDER BY t.date DESC
+            """)
             rows = cursor.fetchall()
             return [Transaction(**dict(row)) for row in rows]
 
         except sqlite3.Error as e:
             logger.error(f"Erreur SQL: {e}")
             return []
-        finally:
-            close_connection(conn)
-
-    def get_by_id(self, transaction_id: int) -> Optional[Transaction]:
-        """Récupère une transaction par son ID."""
-        conn = None
-        try:
-            conn = get_db_connection(db_path=self.db_path)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM transactions WHERE id = ?", (transaction_id,))
-            row = cursor.fetchone()
-            if row:
-                return Transaction(**dict(row))
-            return None
-        except sqlite3.Error as e:
-            logger.error(f"Erreur get_by_id: {e}")
-            return None
         finally:
             close_connection(conn)
 
@@ -100,7 +85,7 @@ class TransactionRepository:
                 cursor = conn.cursor()
                 cursor.execute(
                     "SELECT id FROM transactions WHERE external_id = ?",
-                    (data["external_id"],)
+                    (data["external_id"],),
                 )
                 if cursor.fetchone():
                     logger.info(f"Doublon ignoré: {data['external_id']}")
@@ -110,17 +95,27 @@ class TransactionRepository:
             if conn is None:
                 conn = get_db_connection(db_path=self.db_path)
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO transactions
                     (type, categorie, sous_categorie, description, montant, date,
                      source, recurrence, date_fin, compte_iban, external_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                data["type"], data["categorie"], data["sous_categorie"],
-                data["description"], data["montant"], data["date"],
-                data["source"], data["recurrence"], data["date_fin"],
-                data["compte_iban"], data["external_id"],
-            ))
+            """,
+                (
+                    data["type"],
+                    data["categorie"],
+                    data["sous_categorie"],
+                    data["description"],
+                    data["montant"],
+                    data["date"],
+                    data["source"],
+                    data["recurrence"],
+                    data["date_fin"],
+                    data["compte_iban"],
+                    data["external_id"],
+                ),
+            )
             new_id = cursor.lastrowid
             conn.commit()
             logger.info(f"Transaction ajoutée: ID {new_id}")
@@ -154,7 +149,8 @@ class TransactionRepository:
 
             conn = get_db_connection(db_path=self.db_path)
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE transactions
                 SET type           = ?,
                     categorie      = ?,
@@ -168,12 +164,22 @@ class TransactionRepository:
                     compte_iban    = ?,
                     external_id    = ?
                 WHERE id = ?
-            """, (
-                data["type"], data["categorie"], data["sous_categorie"],
-                data["description"], data["montant"], data["date"],
-                data["source"], data["recurrence"], data["date_fin"],
-                data["compte_iban"], data["external_id"], tx_id,
-            ))
+            """,
+                (
+                    data["type"],
+                    data["categorie"],
+                    data["sous_categorie"],
+                    data["description"],
+                    data["montant"],
+                    data["date"],
+                    data["source"],
+                    data["recurrence"],
+                    data["date_fin"],
+                    data["compte_iban"],
+                    data["external_id"],
+                    tx_id,
+                ),
+            )
             conn.commit()
             return cursor.rowcount > 0
 
@@ -194,7 +200,15 @@ class TransactionRepository:
         try:
             conn = get_db_connection(db_path=self.db_path)
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM transactions WHERE id = ?", (tx_id,))
+            cursor.execute(
+                """
+                SELECT t.*, 
+                (SELECT 1 FROM transaction_attachments WHERE transaction_id = t.id LIMIT 1) as has_attachments
+                FROM transactions t 
+                WHERE t.id = ?
+            """,
+                (tx_id,),
+            )
             row = cursor.fetchone()
 
             if row:
@@ -206,29 +220,33 @@ class TransactionRepository:
         finally:
             close_connection(conn)
 
-    def get_filtered(self, start_date: Optional[date] = None, end_date: Optional[date] = None,
-                     category: Optional[str] = None) -> List[Transaction]:
+    def get_filtered(
+        self,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        category: Optional[str] = None,
+    ) -> List[Transaction]:
         """Récupère les transactions filtrées."""
         conn = None
         try:
             conn = get_db_connection(db_path=self.db_path)
 
-            query = "SELECT * FROM transactions WHERE 1=1"
+            query = "SELECT t.*, (SELECT 1 FROM transaction_attachments WHERE transaction_id = t.id LIMIT 1) as has_attachments FROM transactions t WHERE 1=1"
             params = []
 
             if start_date:
-                query += " AND date >= ?"
+                query += " AND t.date >= ?"
                 params.append(start_date.isoformat())
 
             if end_date:
-                query += " AND date <= ?"
+                query += " AND t.date <= ?"
                 params.append(end_date.isoformat())
 
             if category:
-                query += " AND categorie = ?"
+                query += " AND t.categorie = ?"
                 params.append(category)
 
-            query += " ORDER BY date DESC"
+            query += " ORDER BY t.date DESC"
 
             cursor = conn.cursor()
             cursor.execute(query, params)
@@ -266,7 +284,7 @@ class TransactionRepository:
             cursor = conn.cursor()
 
             # Utiliser IN clause (fonctionne pour 1 ou N IDs)
-            placeholders = ','.join('?' * len(ids))
+            placeholders = ",".join("?" * len(ids))
             query = f"DELETE FROM transactions WHERE id IN ({placeholders})"
             cursor.execute(query, ids)
 
