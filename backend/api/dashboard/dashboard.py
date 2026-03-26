@@ -203,6 +203,10 @@ async def get_summary(
                     "categorie": echeance_dict["categorie"],
                     "type": echeance_dict["type"],
                     "statut": echeance_dict["statut"],
+                    "frequence": echeance_dict.get("frequence", "mensuel"),
+                    "date_debut": echeance_dict.get("date_debut", ""),
+                    "date_fin": echeance_dict.get("date_fin"),
+                    "description": echeance_dict.get("description", ""),
                 }
             )
 

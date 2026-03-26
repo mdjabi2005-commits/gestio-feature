@@ -120,6 +120,16 @@ def init_transaction_table(db_path: str = None) -> None:
         except sqlite3.OperationalError:
             pass
 
+        # Add 'echeance_id' column for linking backfill transactions
+        try:
+            cursor.execute("ALTER TABLE transactions ADD COLUMN echeance_id INTEGER")
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_transactions_echeance_id ON transactions(echeance_id)"
+            )
+            logger.info("Added 'echeance_id' column to transactions table")
+        except sqlite3.OperationalError:
+            pass
+
         conn.commit()
         logger.info("Transaction table initialized successfully")
 

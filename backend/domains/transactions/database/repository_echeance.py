@@ -172,16 +172,26 @@ class EcheanceRepository:
             close_connection(conn)
 
     def delete(self, echeance_id: int) -> bool:
-        """Supprime une échéance."""
+        """Supprime une échéance et ses transactions générées (cascade)."""
         conn = None
         try:
             logger.info(f"Suppression de l'échéance ID {echeance_id}")
             conn = get_db_connection(db_path=self.db_path)
             cursor = conn.cursor()
 
+            # Delete associated transactions first
+            cursor.execute(
+                "DELETE FROM transactions WHERE echeance_id = ?", (echeance_id,)
+            )
+            transactions_deleted = cursor.rowcount
+
+            # Delete the echeance itself
             cursor.execute("DELETE FROM echeances WHERE id = ?", (echeance_id,))
+
             conn.commit()
-            logger.info(f"✅ Échéance ID {echeance_id} supprimée avec succès")
+            logger.info(
+                f"✅ Échéance ID {echeance_id} supprimée ({transactions_deleted} transactions)"
+            )
             return True
         except sqlite3.Error as e:
             from backend.config.logging_config import log_error

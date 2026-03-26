@@ -130,17 +130,15 @@ def backfill_echeances(months_back: int = 3) -> int:
                 if echeance.date_fin and current > echeance.date_fin:
                     break
 
+                # Deduplication: use echeance_id and date instead of categorie
                 cursor.execute(
                     """
                     SELECT id FROM transactions
-                    WHERE categorie = ?
-                      AND sous_categorie = ?
+                    WHERE echeance_id = ?
                       AND date = ?
-                      AND source = 'echeance'
                     """,
                     (
-                        echeance.categorie,
-                        echeance.sous_categorie or "",
+                        echeance.id,
                         current.isoformat(),
                     ),
                 )
@@ -149,8 +147,8 @@ def backfill_echeances(months_back: int = 3) -> int:
                     cursor.execute(
                         """
                         INSERT INTO transactions
-                        (type, categorie, sous_categorie, montant, date, source, description)
-                        VALUES (?, ?, ?, ?, ?, 'echeance', ?)
+                        (type, categorie, sous_categorie, montant, date, source, description, echeance_id)
+                        VALUES (?, ?, ?, ?, ?, 'echeance', ?, ?)
                         """,
                         (
                             echeance.type,
@@ -159,6 +157,7 @@ def backfill_echeances(months_back: int = 3) -> int:
                             echeance.montant,
                             current.isoformat(),
                             echeance.description or echeance.nom,
+                            echeance.id,
                         ),
                     )
                     created_count += 1

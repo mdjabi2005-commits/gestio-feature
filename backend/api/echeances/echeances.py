@@ -36,6 +36,11 @@ class EcheanceResponse:
 
         self.amount = echeance.montant
         self.type = "income" if echeance.type == "Revenu" else "expense"
+        self.frequence = echeance.frequence
+        self.date_debut = echeance.date_debut.isoformat() if echeance.date_debut else ""
+        self.date_fin = echeance.date_fin.isoformat() if echeance.date_fin else None
+        self.description = echeance.description or ""
+        self.date_prevue = echeance.date_prevue.isoformat() if echeance.date_prevue else ""
 
         # Map status
         if echeance.statut == "active":
