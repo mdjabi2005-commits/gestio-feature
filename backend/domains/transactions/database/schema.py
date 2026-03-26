@@ -13,7 +13,7 @@ def init_transaction_table(db_path: str = None) -> None:
     Initialize or update the SQLite database with the 'transactions' table.
 
     Creates the table if it doesn't exist and adds missing columns to existing tables.
-    
+
     Args:
         db_path: Optional custom database path (for testing). If None, uses production DATABASE_PATH.
     """
@@ -70,20 +70,26 @@ def init_transaction_table(db_path: str = None) -> None:
         # Update the table if it exists with old schema
         # Add 'source' column if missing
         try:
-            cursor.execute("ALTER TABLE transactions ADD COLUMN source TEXT DEFAULT 'Manuel'")
+            cursor.execute(
+                "ALTER TABLE transactions ADD COLUMN source TEXT DEFAULT 'Manuel'"
+            )
             logger.info("Added 'source' column to transactions table")
         except sqlite3.OperationalError:
             pass  # Column already exists
 
         # Add 'recurrence' column if missing
         try:
-            cursor.execute("ALTER TABLE transactions ADD COLUMN recurrence TEXT DEFAULT 'Aucune'")
+            cursor.execute(
+                "ALTER TABLE transactions ADD COLUMN recurrence TEXT DEFAULT 'Aucune'"
+            )
             logger.info("Added 'recurrence' column to transactions table")
         except sqlite3.OperationalError:
             pass  # Column already exists
 
         try:
-            cursor.execute("ALTER TABLE transactions ADD COLUMN date_fin TEXT DEFAULT ''")
+            cursor.execute(
+                "ALTER TABLE transactions ADD COLUMN date_fin TEXT DEFAULT ''"
+            )
             logger.info("Added 'date_fin' column to transactions table")
         except sqlite3.OperationalError:
             pass  # Column already exists
@@ -98,7 +104,8 @@ def init_transaction_table(db_path: str = None) -> None:
         try:
             cursor.execute("ALTER TABLE transactions ADD COLUMN external_id TEXT")
             cursor.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_external_id ON transactions(external_id)")
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_external_id ON transactions(external_id)"
+            )
             logger.info("Added 'external_id' column to transactions table")
         except sqlite3.OperationalError:
             pass  # Column already exists
@@ -106,7 +113,9 @@ def init_transaction_table(db_path: str = None) -> None:
         # Add 'compte_iban' column if missing
         try:
             cursor.execute("ALTER TABLE transactions ADD COLUMN compte_iban TEXT")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_transactions_iban ON transactions(compte_iban)")
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_transactions_iban ON transactions(compte_iban)"
+            )
             logger.info("Added 'compte_iban' column to transactions table")
         except sqlite3.OperationalError:
             pass
@@ -116,6 +125,7 @@ def init_transaction_table(db_path: str = None) -> None:
 
     except sqlite3.Error as e:
         from config.logging_config import log_error
+
         log_error(e, "Transaction table initialization failed")
         if conn:
             conn.rollback()
@@ -175,19 +185,36 @@ def init_attachments_table(db_path: str = None) -> None:
 
         # Update the table if it exists with old schema
         try:
-            cursor.execute("ALTER TABLE transaction_attachments ADD COLUMN file_path TEXT DEFAULT ''")
+            cursor.execute(
+                "ALTER TABLE transaction_attachments ADD COLUMN file_path TEXT DEFAULT ''"
+            )
             logger.info("Added 'file_path' column to transaction_attachments table")
         except sqlite3.OperationalError:
             pass  # Column already exists
-            
+
         try:
-            cursor.execute("ALTER TABLE transaction_attachments ADD COLUMN size INTEGER")
+            cursor.execute(
+                "ALTER TABLE transaction_attachments ADD COLUMN size INTEGER"
+            )
             logger.info("Added 'size' column to transaction_attachments table")
         except sqlite3.OperationalError:
             pass  # Column already exists
 
+        try:
+            cursor.execute(
+                "ALTER TABLE transaction_attachments ADD COLUMN echeance_id INTEGER"
+            )
+            logger.info("Added 'echeance_id' column to transaction_attachments table")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # Index pour recherche rapide par transaction
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_attachments_tx_id ON transaction_attachments(transaction_id)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_attachments_tx_id ON transaction_attachments(transaction_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_attachments_echeance_id ON transaction_attachments(echeance_id)"
+        )
 
         conn.commit()
         logger.info("Attachments table initialized successfully")
@@ -292,6 +319,7 @@ def migrate_transaction_table() -> None:
 
     except Exception as e:
         from config.logging_config import log_error
+
         log_error(e, "Migration error")
         if conn:
             conn.rollback()
@@ -330,6 +358,7 @@ def create_indexes() -> None:
 
     except sqlite3.Error as e:
         from config.logging_config import log_error
+
         log_error(e, "Index creation failed")
         if conn:
             conn.rollback()

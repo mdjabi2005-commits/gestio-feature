@@ -1,16 +1,73 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Response
 from typing import List
 from backend.domains.transactions.database.repository import TransactionRepository
+from backend.domains.transactions.database.repository_echeance import EcheanceRepository
 from backend.domains.transactions.services.attachment_service import attachment_service
 from backend.domains.transactions.database.model_attachment import TransactionAttachment
 
 router = APIRouter(prefix="/api/attachments", tags=["attachments"])
 transaction_repo = TransactionRepository()
+echeance_repo = EcheanceRepository()
+
 
 @router.get("/transaction/{transaction_id}", response_model=List[TransactionAttachment])
 async def list_attachments(transaction_id: int):
     """Liste les pièces jointes d'une transaction."""
     return attachment_service.get_attachments(transaction_id)
+
+
+@router.get("/echeance/{echeance_id}", response_model=List[TransactionAttachment])
+async def list_echeance_attachments(echeance_id: int):
+    """Liste les pièces jointes d'une échéance."""
+    from backend.domains.transactions.database.repository_attachment import (
+        AttachmentRepository,
+    )
+
+    repo = AttachmentRepository()
+    return repo.get_attachments_by_echeance(echeance_id)
+
+
+@router.post("/echeance/{echeance_id}")
+async def upload_echeance_attachment(echeance_id: int, file: UploadFile = File(...)):
+    """Upload une pièce jointe pour une échéance."""
+    from backend.domains.transactions.database.repository_attachment import (
+        AttachmentRepository,
+    )
+    from datetime import datetime
+
+    echeance = echeance_repo.get_by_id(echeance_id)
+    if not echeance:
+        raise HTTPException(status_code=404, detail="Échéance non trouvée")
+
+    content = await file.read()
+    filename = file.filename
+
+    from pathlib import Path
+
+    ext = Path(filename).suffix.lower()
+
+    repo = AttachmentRepository()
+    attachment = TransactionAttachment(
+        echeance_id=echeance_id,
+        file_name=filename,
+        file_path="",
+        file_type=ext,
+        upload_date=datetime.now(),
+    )
+
+    success = attachment_service.add_attachment_to_echeance(
+        echeance_id=echeance_id,
+        file_content=content,
+        filename=filename,
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=500, detail="Erreur lors de la sauvegarde du fichier"
+        )
+
+    return {"message": "Fichier téléchargé avec succès"}
+
 
 @router.post("/transaction/{transaction_id}")
 async def upload_attachment(transaction_id: int, file: UploadFile = File(...)):
@@ -18,7 +75,7 @@ async def upload_attachment(transaction_id: int, file: UploadFile = File(...)):
     transaction = transaction_repo.get_by_id(transaction_id)
     if not transaction:
         raise HTTPException(status_code=404, detail="Transaction non trouvée")
-    
+
     content = await file.read()
     success = attachment_service.add_attachment(
         transaction_id=transaction_id,
@@ -26,13 +83,16 @@ async def upload_attachment(transaction_id: int, file: UploadFile = File(...)):
         filename=file.filename,
         category=transaction.categorie,
         subcategory=transaction.sous_categorie or "",
-        transaction_type=transaction.type
+        transaction_type=transaction.type,
     )
-    
+
     if not success:
-        raise HTTPException(status_code=500, detail="Erreur lors de la sauvegarde du fichier")
-    
+        raise HTTPException(
+            status_code=500, detail="Erreur lors de la sauvegarde du fichier"
+        )
+
     return {"message": "Fichier téléchargé avec succès"}
+
 
 @router.get("/{attachment_id}")
 async def view_attachment(attachment_id: int):
@@ -40,13 +100,14 @@ async def view_attachment(attachment_id: int):
     result = attachment_service.get_file_content(attachment_id)
     if not result:
         raise HTTPException(status_code=404, detail="Pièce jointe non trouvée")
-    
+
     content, filename, mime_type = result
     return Response(
         content=content,
         media_type=mime_type,
-        headers={"Content-Disposition": f"inline; filename={filename}"}
+        headers={"Content-Disposition": f"inline; filename={filename}"},
     )
+
 
 @router.delete("/{attachment_id}")
 async def delete_attachment(attachment_id: int):
