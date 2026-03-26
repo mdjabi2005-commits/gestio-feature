@@ -76,6 +76,22 @@ graph TD
 |---------|------|--------|---------|
 | `GET` | `/api/dashboard/` | - | `DashboardSummary` |
 
+## Fonctionnalités spéciales
+
+### Refresh des échéances
+
+Au démarrage, le dashboard appelle `refresh_echeances()` qui :
+1. `cleanup_past_echeances()` - Supprime les échéances passées
+2. `sync_recurrences_to_echeances()` - Génère les occurrences futures depuis les recurrences
+
+### Prochaines échéances
+
+Le dashboard retourne maintenant `prochaines_echeances` - les 123 échéances actives triées par date.
+
+## Scan OCR
+
+Le dashboard intègre aussi l'endpoint `/api/ocr/scan` pour le scan de tickets.
+
 ## Sortie (DashboardSummary)
 
 ```python
@@ -106,6 +122,17 @@ graph TD
             "solde": float,
             "revenus": float,
             "depenses": float
+        }
+    ],
+    "prochaines_echeances": [  # NOUVEAU
+        {
+            "id": int,
+            "nom": str,
+            "montant": float,
+            "date_prevue": str,
+            "categorie": str,
+            "type": str,
+            "statut": str
         }
     ]
 }

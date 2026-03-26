@@ -2,11 +2,11 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.api.transactions import router as transactions_router
-from backend.api.dashboard import router as dashboard_router
-from backend.api.attachments import router as attachments_router
-from backend.api.ocr import router as ocr_router
-from backend.api.echeances import router as echeances_router
+from backend.api.transactions.transactions import router as transactions_router
+from backend.api.dashboard.dashboard import router as dashboard_router
+from backend.api.attachments.attachments import router as attachments_router
+from backend.api.ocr.ocr import router as ocr_router
+from backend.api.echeances.echeances import router as echeances_router
 from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
 
 # Configure logging

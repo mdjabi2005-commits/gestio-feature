@@ -77,6 +77,7 @@ graph TD
 |---------|------|--------|---------|
 | `GET` | `/api/transactions/` | - | `Transaction[]` |
 | `POST` | `/api/transactions/` | `Transaction` | `{ id: int }` |
+| `PUT` | `/api/transactions/{id}` | `Transaction` | `Transaction` |
 | `DELETE` | `/api/transactions/{id}` | - | `{ status: "success" }` |
 
 ## Modèle Transaction
