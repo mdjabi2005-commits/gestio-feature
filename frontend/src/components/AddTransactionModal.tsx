@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { TransactionSummaryView } from './transactions/TransactionSummaryView';
 import { TransactionFormFields } from './transactions/TransactionFormFields';
 import { AttachmentSection } from './transactions/AttachmentSection';
+import { toast } from 'sonner';
 
 interface Props {
   onClose: () => void;
@@ -69,13 +70,26 @@ const AddTransactionModal: React.FC<Props> = ({
         categorie: category, sous_categorie: subcategory || undefined,
         description: description || undefined, source: initialData?.source || 'manual'
       };
-      if (initialData?.id) await api.updateTransaction(initialData.id, transaction);
-      else {
+      if (initialData?.id) {
+        await api.updateTransaction(initialData.id, transaction);
+        toast.success("Transaction mise à jour !");
+      } else {
         const id = await api.addTransaction(transaction);
-        if (scannedFile) try { await api.uploadAttachment(id, scannedFile); } catch (e) {}
+        if (scannedFile) {
+          try {
+            await api.uploadAttachment(id, scannedFile);
+            toast.success("Transaction créée avec pièce jointe !");
+          } catch (e) {
+            toast.success("Transaction créée (pièce jointe non jointe)");
+          }
+        } else {
+          toast.success("Transaction créée !");
+        }
       }
       onSuccess?.(); onClose();
-    } catch (err) { alert('Erreur lors de l\'enregistrement'); }
+    } catch (err) { 
+      toast.error("Erreur lors de l'enregistrement");
+    }
   };
 
   return (

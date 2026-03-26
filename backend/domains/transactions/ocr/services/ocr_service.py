@@ -239,9 +239,6 @@ class OCRService:
                 description=description,
                 source="pdf",
                 sous_categorie=subcategory,
-                recurrence=None,
-                date_fin=None,
-                compte_iban=None,
                 external_id=None,
                 id=None,
             )
@@ -310,9 +307,6 @@ class OCRService:
                 description=description,
                 source="ocr",
                 sous_categorie=subcategory,
-                recurrence=None,
-                date_fin=None,
-                compte_iban=None,
                 external_id=None,
                 id=None,
             )

@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 const viewTitles: Record<string, string> = {
   "/dashboard": "Tableau de bord",
   "/transactions": "Transactions",
-  "/recurrences": "Récurrences",
+  "/echeances": "Échéances",
   "/settings": "Paramètres",
 };
 
@@ -68,13 +68,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           await api.uploadAttachment(transactionId, file);
         } catch (attachError) {
           console.error("Failed to upload auto-attachment:", attachError);
-          toast.error("Transaction validée, mais échec de la pièce jointe");
+          toast.error("Transaction créée, mais échec de la pièce jointe");
         }
       }
 
       setScanResultsQueue(prev => prev.filter((_, i) => i !== index));
       refreshData();
-      toast.success("Transaction validée avec pièce jointe ! 📎");
+      if (file) {
+        toast.success("Ticket scanné et validé avec succès !");
+      } else {
+        toast.success("Transaction créée avec succès !");
+      }
     } catch (e) {
       toast.error("Échec de la validation");
     }

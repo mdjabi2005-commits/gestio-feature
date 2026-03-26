@@ -32,13 +32,11 @@ def init_echeance_table(db_path: str = None) -> None:
                 sous_categorie TEXT,
                 montant REAL NOT NULL,
                 frequence TEXT,
-                date_prevue TEXT,
                 date_debut TEXT,
                 date_fin TEXT,
                 description TEXT,
                 statut TEXT DEFAULT 'active',
                 type_echeance TEXT DEFAULT 'recurrente',
-                recurrence_id TEXT,
                 date_creation TEXT,
                 date_modification TEXT
             )

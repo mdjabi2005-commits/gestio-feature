@@ -47,8 +47,8 @@ class TransactionService:
         Récupère les transactions filtrées (colonnes FR).
 
         Colonnes retournées : id, type, categorie, sous_categorie, description,
-                              montant, date, source, recurrence, date_fin,
-                              compte_iban, external_id
+                              montant, date, source, date_fin,
+                              external_id, echeance_id, compte_id
         """
         return self.repository.get_filtered(
             start_date=start_date,

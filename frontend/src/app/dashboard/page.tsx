@@ -24,15 +24,23 @@ export default function DashboardPage() {
     setFilterDateRange
   } = useFinancial();
 
-  // Mock data for upcoming echéances (until backend update)
-  const mockEcheances: Echeance[] = [
-    { id: 1, nom: "Loyer Janvier", montant: 850, date_prevue: "2026-01-01", categorie: "Logement", type: "Dépense", status: "pending" },
-    { id: 2, nom: "Salaire", montant: 2450, date_prevue: "2026-01-05", categorie: "Salaire", type: "Revenu", status: "pending" },
-    { id: 3, nom: "Assurance Auto", montant: 45, date_prevue: "2026-01-10", categorie: "Transport", type: "Dépense", status: "pending" },
-    { id: 4, nom: "Abonnement Free", montant: 29.99, date_prevue: "2026-01-15", categorie: "Abonnement", type: "Dépense", status: "pending" },
-  ];
+  // Real data for upcoming echéances from backend
+  const realEcheances: Echeance[] = (summary?.prochaines_echeances || []).map((e: any) => ({
+    id: e.id,
+    nom: e.nom || e.description || "Échéance",
+    montant: e.montant,
+    date_prevue: e.date_prevue,
+    categorie: e.categorie,
+    type: e.type,
+    status: e.statut || "pending"
+  }));
 
-  if (loading) {
+  // Calculate savings rate dynamically
+  const savingsRate = summary?.total_revenus > 0 
+    ? Math.round(((summary.total_revenus - summary.total_depenses) / summary.total_revenus) * 100) 
+    : 0;
+
+  if (loading || !summary) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
@@ -40,17 +48,15 @@ export default function DashboardPage() {
     );
   }
 
-  if (!summary) return null;
-
   // Map history data to component formats
-  const chartData = summary.historique?.map((h: any) => ({
+  const chartData = summary?.historique?.map((h: any) => ({
     date: h.date,
     balance: h.solde,
     revenu: h.revenus,
     depense: h.depenses
   })) || [];
 
-  const calendarData = summary.historique?.map((h: any) => ({
+  const calendarData = summary?.historique?.map((h: any) => ({
     date: h.date,
     revenus: h.revenus,
     depenses: h.depenses
@@ -61,16 +67,16 @@ export default function DashboardPage() {
       
       {/* Row 1: Big KPIs */}
       <KpiCards 
-        balance={summary.solde} 
-        income={summary.total_revenus} 
-        expenses={summary.total_depenses} 
+        balance={summary?.solde || 0} 
+        income={summary?.total_revenus || 0} 
+        expenses={summary?.total_depenses || 0} 
       />
       
       {/* Row 2: Visual Summary & Progress */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-stretch">
         <div className="lg:col-span-3 glass-card rounded-3xl p-8 h-[550px] animate-in slide-in-from-bottom-4 duration-700">
           <SunburstChart 
-            data={summary.repartition_categories} 
+            data={summary?.repartition_categories || []} 
             title="Distribution des flux" 
           />
         </div>
@@ -82,19 +88,19 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
                   <span className="text-muted-foreground">Taux d'épargne</span>
-                  <span className="text-emerald-400">32%</span>
+                  <span className="text-emerald-400">{savingsRate}%</span>
                 </div>
                 <div className="h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                  <div className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full w-[32%] shadow-[0_0_15px_rgba(16,185,129,0.3)]" />
+                  <div className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full" style={{ width: `${savingsRate}%` }} />
                 </div>
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
                   <span className="text-muted-foreground">Consommation du budget</span>
-                  <span className="text-indigo-400">68%</span>
+                  <span className="text-indigo-400">{100 - savingsRate}%</span>
                 </div>
                 <div className="h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                  <div className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-full w-[68%] shadow-[0_0_15px_rgba(79,70,229,0.3)]" />
+                  <div className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-full" style={{ width: `${100 - savingsRate}%` }} />
                 </div>
               </div>
               <div className="space-y-3">
@@ -145,7 +151,7 @@ export default function DashboardPage() {
             </div>
             <div className="glass-card rounded-3xl p-6 border-white/5 bg-white/[0.01] min-h-[400px]">
                 <EcheanceTable 
-                    echeances={mockEcheances} 
+                    echeances={realEcheances} 
                     loading={loading}
                 />
             </div>

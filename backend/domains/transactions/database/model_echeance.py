@@ -15,11 +15,21 @@ class Echeance(BaseModel):
     Correspond à la table 'echeances'.
     """
 
-    id: Optional[int] = Field(None, description="ID unique de l'échéance")
+    # ── Champs ──────────────────────────────────────────────
+    id: Optional[int] = Field(None, description="ID unique")
+    nom: str = Field(..., description="Nom (ex: Loyer, Netflix)")
+    type: Literal["Revenu", "Dépense"] = Field(..., description="Type")
+    categorie: str = Field(..., description="Catégorie principale")
+    sous_categorie: Optional[str] = Field(None, description="Sous-catégorie")
+    montant: float = Field(..., gt=0, description="Montant")
+    frequence: str = Field(..., description="Fréquence (mensuel, annuel, etc.)")
+    date_debut: date = Field(..., description="Date de début")
+    date_fin: Optional[date] = Field(None, description="Date de fin")
+    description: Optional[str] = Field(None, description="Description ou notes")
+    statut: str = Field("active", description="Statut (active, inactive)")
+    type_echeance: str = Field("recurrente", description="Type (recurrente, ponctuelle)")
 
-    nom: str = Field(..., description="Nom de l'échéance (ex: Loyer, Netflix)")
-
-    type: Literal["Revenu", "Dépense"] = Field(..., description="Type de transaction")
+    # ── Validators ──────────────────────────────────────────
 
     @field_validator("type", mode="before")
     @classmethod
@@ -33,76 +43,38 @@ class Echeance(BaseModel):
             return "Dépense"
         return v
 
-    @classmethod
-    def capitalize_type(cls, v: str) -> str:
-        if isinstance(v, str):
-            return v.capitalize()
-        return v
-
-    categorie: str = Field(..., description="Catégorie principale")
-    sous_categorie: Optional[str] = Field(
-        None, description="Sous-catégorie optionnelle"
-    )
-
-    montant: float = Field(..., gt=0, description="Montant de l'échéance")
-
-    frequence: str = Field(..., description="Fréquence (mensuel, annuel, etc.)")
-
-    date_prevue: date = Field(..., description="Prochaine date d'échéance")
-    date_debut: date = Field(..., description="Date de début")
-    date_fin: Optional[date] = Field(None, description="Date de fin (si arrêtée)")
-
-    description: Optional[str] = Field(None, description="Description ou notes")
-
-    statut: str = Field("active", description="Statut (active, inactive, expirée)")
-
-    type_echeance: str = Field(
-        "recurrente", description="Type (recurrente, ponctuelle)"
-    )
-
-    recurrence_id: Optional[str] = Field(None, description="ID source pour migration")
-
-    date_creation: Optional[str] = Field(None, description="Date de création")
-    date_modification: Optional[str] = Field(None, description="Date de modification")
+    # ── Propriétés calculées ────────────────────────────────
 
     @property
     def cout_annuel(self) -> float:
-        """Calcule le coût annuel basé sur le montant et la fréquence."""
         multipliers = {
-            "quotidien": 365,
-            "quotidienne": 365,
+            "quotidien": 365, "quotidienne": 365,
             "hebdomadaire": 52,
-            "mensuel": 12,
-            "mensuelle": 12,
-            "trimestriel": 4,
-            "trimestrielle": 4,
-            "semestriel": 2,
-            "semestrielle": 2,
-            "annuel": 1,
-            "annuelle": 1,
+            "mensuel": 12, "mensuelle": 12,
+            "trimestriel": 4, "trimestrielle": 4,
+            "semestriel": 2, "semestrielle": 2,
+            "annuel": 1, "annuelle": 1,
         }
-        multiplier = multipliers.get(self.frequence.lower(), 0)
-        return self.montant * multiplier
+        return self.montant * multipliers.get(self.frequence.lower(), 0)
 
     @property
     def cout_mensuel(self) -> float:
-        """Calcule le coût mensuel ramené."""
         return self.cout_annuel / 12
+
+    # ── Config ──────────────────────────────────────────────
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "nom": "Netflix",
                 "type": "Dépense",
-                "categorie": "Loisir",
+                "categorie": "Loisirs",
                 "sous_categorie": "Streaming",
                 "montant": 13.49,
                 "frequence": "mensuel",
-                "date_prevue": "2024-02-01",
                 "date_debut": "2024-01-01",
                 "description": "Netflix Premium",
                 "statut": "active",
-                "type_echeance": "recurrente",
             }
         }
     )

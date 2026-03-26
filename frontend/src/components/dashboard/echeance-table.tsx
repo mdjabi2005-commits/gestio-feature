@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Calendar, Clock, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 export interface Echeance {
@@ -94,10 +95,10 @@ export function EcheanceTable({ echeances, loading }: EcheanceTableProps) {
         </div>
       ))}
 
-      <button className="w-full py-3 rounded-xl border border-dashed border-white/10 text-[10px] font-bold text-muted-foreground uppercase tracking-widest hover:border-white/20 hover:text-foreground transition-all flex items-center justify-center gap-2 mt-2">
+      <Link href="/echeances" className="w-full py-3 rounded-xl border border-dashed border-white/10 text-[10px] font-bold text-muted-foreground uppercase tracking-widest hover:border-white/20 hover:text-foreground transition-all flex items-center justify-center gap-2 mt-2">
         Gérer toutes les échéances
         <ArrowRight className="w-3 h-3" />
-      </button>
+      </Link>
     </div>
   );
 }

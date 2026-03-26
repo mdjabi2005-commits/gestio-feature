@@ -31,12 +31,9 @@ def _dict_to_echeance(data: dict) -> Echeance:
         sous_categorie=data.get("sous_categorie"),
         montant=float(data.get("montant", 0)),
         frequence=data.get("frequence", "mensuel"),
-        date_prevue=date.fromisoformat(data["date_prevue"])
-        if data.get("date_prevue")
-        else date.today(),
         date_debut=date.fromisoformat(data["date_debut"])
         if data.get("date_debut")
-        else None,
+        else date.today(),
         date_fin=date.fromisoformat(data["date_fin"]) if data.get("date_fin") else None,
         description=data.get("description"),
         statut=data.get("statut", "active"),
@@ -185,15 +182,39 @@ async def get_summary(
         cursor.execute("""
             SELECT * FROM echeances 
             WHERE statut = 'active' 
-            ORDER BY date_prevue ASC
+            ORDER BY date_debut ASC
         """)
         rows = cursor.fetchall()
+
+        # Smart paid detection: check transactions with echeance_id for current month
+        today = date.today()
+        month_start = today.replace(day=1).isoformat()
+        if today.month == 12:
+            month_end = today.replace(year=today.year + 1, month=1, day=1).isoformat()
+        else:
+            month_end = today.replace(month=today.month + 1, day=1).isoformat()
+
+        cursor.execute("""
+            SELECT echeance_id FROM transactions
+            WHERE date >= ? AND date < ? AND echeance_id IS NOT NULL
+        """, (month_start, month_end))
+        paid_echeance_ids = {row["echeance_id"] for row in cursor.fetchall()}
 
         prochaines = []
         for row in rows:
             echeance_dict = dict(row)
             echeance = _dict_to_echeance(echeance_dict)
             next_date = calculate_next_occurrence(echeance)
+
+            # Compute status from echeance_id presence in transactions
+            echeance_id = echeance_dict["id"]
+            if echeance_id in paid_echeance_ids:
+                computed_status = "paid"
+            elif next_date < today:
+                computed_status = "overdue"
+            else:
+                computed_status = "active"
+
             prochaines.append(
                 {
                     "id": echeance_dict["id"],
@@ -201,8 +222,9 @@ async def get_summary(
                     "montant": echeance_dict["montant"],
                     "date_prevue": next_date.isoformat(),
                     "categorie": echeance_dict["categorie"],
+                    "sous_categorie": echeance_dict.get("sous_categorie", ""),
                     "type": echeance_dict["type"],
-                    "statut": echeance_dict["statut"],
+                    "statut": computed_status,
                     "frequence": echeance_dict.get("frequence", "mensuel"),
                     "date_debut": echeance_dict.get("date_debut", ""),
                     "date_fin": echeance_dict.get("date_fin"),
@@ -212,6 +234,8 @@ async def get_summary(
 
         prochaines = sorted(prochaines, key=lambda x: x["date_prevue"])[:10]
         close_connection(conn)
+
+
 
         return {
             "total_revenus": total_revenus,

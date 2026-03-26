@@ -27,14 +27,36 @@ export function useFinancialData() {
     }
   }, []);
 
+  const addTransaction = async (transaction: Transaction) => {
+    await api.addTransaction(transaction);
+    const newTransactions = await api.getTransactions();
+    setTransactions(newTransactions);
+    const newSummary = await api.getSummary();
+    setSummary(newSummary);
+  };
+
+  const addEcheance = async (echeance: any) => {
+    await api.addEcheance(echeance);
+    const newSummary = await api.getSummary();
+    setSummary(newSummary);
+    const newTransactions = await api.getTransactions();
+    setTransactions(newTransactions);
+  };
+
+  const deleteEcheance = async (id: number | string) => {
+    await api.deleteEcheance(String(id));
+    const newSummary = await api.getSummary();
+    setSummary(newSummary);
+    const newTransactions = await api.getTransactions();
+    setTransactions(newTransactions);
+  };
+
   const deleteTransaction = async (id: number) => {
-    try {
-      await api.deleteTransaction(id);
-      await fetchData();
-    } catch (error) {
-      console.error('Failed to delete transaction:', error);
-      throw error;
-    }
+    await api.deleteTransaction(id);
+    const newTransactions = await api.getTransactions();
+    setTransactions(newTransactions);
+    const newSummary = await api.getSummary();
+    setSummary(newSummary);
   };
 
   const updateTransaction = async (id: number, data: Transaction) => {
@@ -57,6 +79,9 @@ export function useFinancialData() {
     loading,
     apiStatus,
     refreshData: fetchData,
+    addTransaction,
+    addEcheance,
+    deleteEcheance,
     deleteTransaction,
     updateTransaction
   };

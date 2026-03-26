@@ -20,7 +20,7 @@ interface SidebarProps {
 const navItems = [
   { id: "dashboard", href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { id: "transactions", href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
-  { id: "recurrences", href: "/recurrences", label: "Récurrences", icon: RefreshCw },
+  { id: "echeances", href: "/echeances", label: "Échéances", icon: RefreshCw },
   { id: "settings", href: "/settings", label: "Paramètres", icon: Settings },
 ]
 

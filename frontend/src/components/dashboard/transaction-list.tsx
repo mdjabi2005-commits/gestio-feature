@@ -144,103 +144,106 @@ export function TransactionList({
             return (
               <div
                 key={transaction.id || index}
-                onClick={() => onView?.(transaction)}
-                onDoubleClick={() => onEdit?.(transaction)}
-                title="Clic pour voir · Double-clic pour modifier"
                 className={cn(
-                  "group flex items-center gap-4 px-6 py-4 transition-all duration-200",
-                  "hover:bg-secondary/30 cursor-pointer active:scale-[0.99] origin-center",
+                  "group flex items-center transition-all duration-200 hover:bg-secondary/20",
                   index !== displayedTransactions.length - 1 && "border-b border-border/30"
                 )}
               >
-                {/* Category Avatar */}
-                <div
-                  className="relative shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-200 group-hover:scale-105"
-                  style={{ backgroundColor: `${meta.couleur}15` }}
+                {/* Clickable content area */}
+                <div 
+                  onClick={() => onView?.(transaction)}
+                  onDoubleClick={() => onEdit?.(transaction)}
+                  title="Clic pour voir · Double-clic pour modifier"
+                  className="flex flex-1 items-center gap-4 px-6 py-4 cursor-pointer active:scale-[0.99] origin-center"
                 >
-                  <div style={{ color: meta.couleur }}>
-                    <IconComponent className="w-5 h-5" />
-                  </div>
-                  {/* Type indicator */}
+                  {/* Category Avatar */}
                   <div
-                    className={cn(
-                      "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center text-[8px] font-bold shadow-sm",
-                      itemType === "income"
-                        ? "bg-emerald-500 text-white"
-                        : "bg-rose-500 text-white"
-                    )}
+                    className="relative shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-200 group-hover:scale-105"
+                    style={{ backgroundColor: `${meta.couleur}15` }}
                   >
-                    {itemType === "income" ? "+" : "-"}
-                  </div>
-                </div>
-
-                {/* Details */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-semibold text-foreground truncate">
-                      {transaction.description || "Sans description"}
-                    </h4>
-                    {getStatusBadge(transaction.status)}
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span
-                      className="text-[10px] px-2 py-0.5 rounded-md font-medium"
-                      style={{ backgroundColor: `${meta.couleur}15`, color: meta.couleur }}
+                    <div style={{ color: meta.couleur }}>
+                      <IconComponent className="w-5 h-5" />
+                    </div>
+                    {/* Type indicator */}
+                    <div
+                      className={cn(
+                        "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center text-[8px] font-bold shadow-sm",
+                        itemType === "income"
+                          ? "bg-emerald-500 text-white"
+                          : "bg-rose-500 text-white"
+                      )}
                     >
-                      {transaction.sous_categorie || transaction.categorie}
-                    </span>
-                    {transaction.merchant && (
-                      <span className="text-[10px] text-muted-foreground truncate max-w-[150px] sm:max-w-[200px]">
-                        {transaction.merchant}
+                      {itemType === "income" ? "+" : "-"}
+                    </div>
+                  </div>
+
+                  {/* Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-semibold text-foreground truncate">
+                        {transaction.description || "Sans description"}
+                      </h4>
+                      {getStatusBadge(transaction.status)}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span
+                        className="text-[10px] px-2 py-0.5 rounded-md font-medium"
+                        style={{ backgroundColor: `${meta.couleur}15`, color: meta.couleur }}
+                      >
+                        {transaction.sous_categorie || transaction.categorie}
                       </span>
-                    )}
-                    {transaction.has_attachments && (
-                      <Paperclip className="w-3 h-3 text-indigo-400" />
-                    )}
+                      {transaction.merchant && (
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[150px] sm:max-w-[200px]">
+                          {transaction.merchant}
+                        </span>
+                      )}
+                      {transaction.has_attachments && (
+                        <Paperclip className="w-3 h-3 text-indigo-400" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Amount & Date */}
+                  <div className="text-right shrink-0">
+                    <p
+                      className={cn(
+                        "text-sm font-bold",
+                        itemType === "income"
+                          ? "text-emerald-400"
+                          : "text-rose-400"
+                      )}
+                    >
+                      {formatCurrency(transaction.montant, transaction.type)}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {formatDate(transaction.date)} · {formatTime(transaction.date)}
+                    </p>
                   </div>
                 </div>
 
-                {/* Amount & Date */}
-                <div className="text-right shrink-0">
-                  <p
-                    className={cn(
-                      "text-sm font-bold",
-                      itemType === "income"
-                        ? "text-emerald-400"
-                        : "text-rose-400"
-                    )}
-                  >
-                    {formatCurrency(transaction.montant, transaction.type)}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {formatDate(transaction.date)} · {formatTime(transaction.date)}
-                  </p>
-                </div>
-
-                {/* Actions */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button 
-                      onClick={(e) => e.stopPropagation()}
-                      onDoubleClick={(e) => e.stopPropagation()}
-                      className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 opacity-0 group-hover:opacity-100 transition-all duration-200 focus-visible:opacity-100 outline-none"
-                      title="Actions"
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                  </DropdownMenuTrigger>
+                {/* Actions (Isolated from click) */}
+                <div className="px-6 py-4 shrink-0">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button 
+                        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 opacity-0 group-hover:opacity-100 transition-all duration-200 focus-visible:opacity-100 outline-none"
+                        title="Actions"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+                    </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit?.(transaction); }}>
+                    <DropdownMenuItem onSelect={() => onEdit?.(transaction)}>
                       <Pencil className="mr-2 h-4 w-4" />
                       <span>Modifier</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAttach?.(transaction.id!); }}>
+                    <DropdownMenuItem onSelect={() => onAttach?.(transaction.id!)}>
                       <Paperclip className="mr-2 h-4 w-4" />
                       <span>Joindre un fichier</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
-                      onClick={(e) => { e.stopPropagation(); onDelete?.(transaction.id!); }}
+                      onSelect={() => onDelete?.(transaction.id!)}
                       className="text-rose-400 focus:text-rose-400 focus:bg-rose-400/10"
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
@@ -249,8 +252,9 @@ export function TransactionList({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-            )
-          })
+            </div>
+          )
+        })
         )}
       </div>
 

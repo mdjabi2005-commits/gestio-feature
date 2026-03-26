@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useFinancial } from '@/context/FinancialDataContext';
 import { cn } from "@/lib/utils";
 import { ArrowUpRight, ArrowDownRight, Eye, EyeOff, FilterX } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 // BalanceChart uses Plotly which depends on 'self'/'window', must be imported dynamically for SSR
 const BalanceChart = dynamic(() => import('@/components/dashboard/balance-chart').then(mod => mod.BalanceChart), { ssr: false });
 import { FinancialCalendar } from '@/components/dashboard/financial-calendar';
@@ -16,6 +17,7 @@ import { toast } from 'sonner';
 
 export default function TransactionsPage() {
   const [showMetrics, setShowMetrics] = useState(true);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const { 
     summary, 
     transactions,
@@ -199,14 +201,7 @@ export default function TransactionsPage() {
                 setIsAddModalOpen(true);
               }}
               onDelete={async (id) => {
-                if (confirm("Supprimer cette transaction ?")) {
-                  try {
-                    await deleteTransaction(id);
-                    toast.success("Transaction supprimée !");
-                  } catch (e) {
-                    toast.error("Échec de la suppression");
-                  }
-                }
+                setDeleteId(id);
               }}
               onAttach={(id) => {
                 const input = document.getElementById('transaction-file-input') as HTMLInputElement;
@@ -257,6 +252,26 @@ export default function TransactionsPage() {
             }
           }
           e.target.value = ''; // Reset for next use
+        }}
+      />
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Supprimer cette transaction ?"
+        description="Cette action est irréversible. La transaction sera définitivement supprimée."
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        variant="destructive"
+        onConfirm={async () => {
+          if (deleteId === null) return;
+          try {
+            await deleteTransaction(deleteId);
+            toast.success("Transaction supprimée !");
+          } catch (e) {
+            console.error("Erreur API suppression:", e);
+            toast.error("Échec de la suppression");
+          }
         }}
       />
     </div>

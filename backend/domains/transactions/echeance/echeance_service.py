@@ -32,10 +32,7 @@ FREQ_DELTAS = {
 
 def cleanup_past_echeances() -> int:
     """
-    Supprime les échéances passées (récurrentes et prévues).
-
-    Returns:
-        Nombre d'échéances supprimées/marquées
+    Supprime les échéances passées (ponctuelles expirées).
     """
     today = date.today()
 
@@ -44,22 +41,12 @@ def cleanup_past_echeances() -> int:
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute(
-            """
-            DELETE FROM echeances
-            WHERE date_prevue < ?
-              AND type_echeance = 'recurrente'
-        """,
-            (today.isoformat(),),
-        )
-
-        deleted_recurrentes = cursor.rowcount
-
+        # Mark ponctuelles as expired if their debut date is past
         cursor.execute(
             """
             UPDATE echeances
             SET statut = 'expirée'
-            WHERE date_prevue < ?
+            WHERE date_debut < ?
               AND type_echeance = 'ponctuelle'
               AND statut = 'active'
         """,
@@ -72,15 +59,16 @@ def cleanup_past_echeances() -> int:
         conn.close()
 
         logger.info(
-            f"Cleanup: {deleted_recurrentes} récurrentes supprimées, {expired_prevues} prévues expirées"
+            f"Cleanup: {expired_prevues} prévues expirées"
         )
-        return deleted_recurrentes + expired_prevues
+        return expired_prevues
 
     except Exception as e:
         logger.error(f"Erreur cleanup_past_echeances: {e}")
         if conn:
             conn.close()
         return 0
+
 
 
 def backfill_echeances(months_back: int = 3) -> int:
@@ -204,7 +192,7 @@ def calculate_next_occurrence(echeance: Echeance) -> date:
     delta = FREQ_DELTAS.get(echeance.frequence.lower())
 
     if echeance.frequence.lower() == "unique":
-        return echeance.date_prevue if echeance.date_prevue else today
+        return echeance.date_debut if echeance.date_debut else today
 
     if not delta:
         return today

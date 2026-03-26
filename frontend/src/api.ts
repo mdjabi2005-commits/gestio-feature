@@ -11,11 +11,14 @@ export interface Transaction {
   source?: 'manual' | 'ocr' | 'pdf';
   external_id?: string;
   has_attachments?: boolean;
+  recurrence?: string;
+  date_fin?: string;
 }
 
 export interface Attachment {
   id?: number;
-  transaction_id: number;
+  transaction_id?: number;
+  echeance_id?: string;
   file_name: string;
   file_type?: string;
   upload_date: string;
@@ -76,6 +79,59 @@ export const api = {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete transaction');
+    return res.json();
+  },
+
+  // Echeances methods
+  getEcheances: async (): Promise<any[]> => {
+    const res = await fetch(`${API_BASE_URL}/api/echeances/`);
+    if (!res.ok) throw new Error('Failed to fetch echeances');
+    return res.json();
+  },
+
+  addEcheance: async (data: any) => {
+    const res = await fetch(`${API_BASE_URL}/api/echeances/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to add echeance');
+    return res.json();
+  },
+
+  updateEcheance: async (id: string, data: Partial<any>) => {
+    const res = await fetch(`${API_BASE_URL}/api/echeances/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to update echeance');
+    return res.json();
+  },
+
+  deleteEcheance: async (id: string) => {
+    const res = await fetch(`${API_BASE_URL}/api/echeances/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete echeance');
+    return res.json();
+  },
+
+  // Echeances Attachment methods
+  getEcheanceAttachments: async (echeanceId: string): Promise<Attachment[]> => {
+    const res = await fetch(`${API_BASE_URL}/api/attachments/echeance/${echeanceId}`);
+    if (!res.ok) throw new Error('Failed to fetch echeance attachments');
+    return res.json();
+  },
+
+  uploadEcheanceAttachment: async (echeanceId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE_URL}/api/attachments/echeance/${echeanceId}`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) throw new Error('Failed to upload attachment');
     return res.json();
   },
 

@@ -99,8 +99,8 @@ class TransactionRepository:
                 """
                 INSERT INTO transactions
                     (type, categorie, sous_categorie, description, montant, date,
-                     source, recurrence, date_fin, compte_iban, external_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     source, date_fin, external_id, echeance_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     data["type"],
@@ -110,10 +110,9 @@ class TransactionRepository:
                     data["montant"],
                     data["date"],
                     data["source"],
-                    data["recurrence"],
                     data["date_fin"],
-                    data["compte_iban"],
                     data["external_id"],
+                    data["echeance_id"],
                 ),
             )
             new_id = cursor.lastrowid
@@ -159,10 +158,9 @@ class TransactionRepository:
                     montant        = ?,
                     date           = ?,
                     source         = ?,
-                    recurrence     = ?,
                     date_fin       = ?,
-                    compte_iban    = ?,
-                    external_id    = ?
+                    external_id    = ?,
+                    echeance_id    = ?
                 WHERE id = ?
             """,
                 (
@@ -173,10 +171,9 @@ class TransactionRepository:
                     data["montant"],
                     data["date"],
                     data["source"],
-                    data["recurrence"],
                     data["date_fin"],
-                    data["compte_iban"],
                     data["external_id"],
+                    data["echeance_id"],
                     tx_id,
                 ),
             )

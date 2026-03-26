@@ -1,7 +1,10 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
+import logging
 from backend.domains.transactions.database.model import Transaction
 from backend.domains.transactions.database.repository import TransactionRepository
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/transactions", tags=["transactions"])
 repo = TransactionRepository()
@@ -26,11 +29,22 @@ async def add_transaction(transaction: Transaction):
 
 @router.delete("/{transaction_id}")
 async def delete_transaction(transaction_id: int):
+    print(f"\n[BACKEND] REQUÊTE DELETE REÇUE POUR ID: {transaction_id}")
+    logger.info(f"Requête DELETE reçue pour la transaction {transaction_id}")
     try:
-        repo.delete(transaction_id)
+        success = repo.delete(transaction_id)
+        if not success:
+            print(f"[BACKEND] ÉCHEC : Transaction {transaction_id} non trouvée")
+            raise HTTPException(
+                status_code=404,
+                detail="Transaction non trouvée ou erreur de suppression",
+            )
+        print(f"[BACKEND] SUCCÈS : Transaction {transaction_id} supprimée")
         return {"status": "success"}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/{transaction_id}", response_model=Transaction)

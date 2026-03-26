@@ -44,7 +44,7 @@ class EcheanceRepository:
             cursor = conn.cursor()
 
             cursor.execute(
-                "SELECT * FROM echeances WHERE statut = 'active' ORDER BY date_prevue ASC"
+                "SELECT * FROM echeances WHERE statut = 'active' ORDER BY date_debut ASC"
             )
             rows = cursor.fetchall()
 
@@ -68,7 +68,7 @@ class EcheanceRepository:
             cursor = conn.cursor()
 
             cursor.execute(
-                "SELECT * FROM echeances WHERE statut = 'active' ORDER BY date_prevue ASC"
+                "SELECT * FROM echeances WHERE statut = 'active' ORDER BY date_debut ASC"
             )
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
@@ -89,9 +89,9 @@ class EcheanceRepository:
             cursor.execute(
                 """
                 INSERT INTO echeances (nom, type, categorie, sous_categorie, montant,
-                    frequence, date_prevue, date_debut, date_fin, description,
+                    frequence, date_debut, date_fin, description,
                     statut, type_echeance, date_creation)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, Datetime('now'))
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, Datetime('now'))
             """,
                 (
                     echeance.nom,
@@ -100,7 +100,6 @@ class EcheanceRepository:
                     echeance.sous_categorie,
                     echeance.montant,
                     echeance.frequence,
-                    echeance.date_prevue,
                     echeance.date_debut,
                     echeance.date_fin,
                     echeance.description,
@@ -136,7 +135,7 @@ class EcheanceRepository:
                 """
                 UPDATE echeances
                 SET nom = ?, type = ?, categorie = ?, sous_categorie = ?,
-                    montant = ?, frequence = ?, date_prevue = ?, date_debut = ?,
+                    montant = ?, frequence = ?, date_debut = ?,
                     date_fin = ?, description = ?, statut = ?, type_echeance = ?,
                     date_modification = Datetime('now')
                 WHERE id = ?
@@ -148,7 +147,6 @@ class EcheanceRepository:
                     echeance.sous_categorie,
                     echeance.montant,
                     echeance.frequence,
-                    echeance.date_prevue,
                     echeance.date_debut,
                     echeance.date_fin,
                     echeance.description,
@@ -202,6 +200,8 @@ class EcheanceRepository:
             return False
         finally:
             close_connection(conn)
+
+
 
     def get_occurrences_for_month(self, year: int, month: int) -> List[dict]:
         """

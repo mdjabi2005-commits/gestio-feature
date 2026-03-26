@@ -10,6 +10,9 @@ interface FinancialContextType {
   loading: boolean;
   apiStatus: "connected" | "disconnected" | "loading";
   refreshData: (params?: { start_date?: string | null, end_date?: string | null, category?: string | null }) => Promise<void>;
+  addTransaction: (transaction: Transaction) => Promise<void>;
+  addEcheance: (echeance: any) => Promise<void>;
+  deleteEcheance: (id: number | string) => Promise<void>;
   deleteTransaction: (id: number) => Promise<void>;
   updateTransaction: (id: number, data: Transaction) => Promise<void>;
   
