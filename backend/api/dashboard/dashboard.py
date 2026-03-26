@@ -2,7 +2,11 @@ from fastapi import APIRouter, HTTPException
 from typing import Optional, List
 from backend.domains.transactions.database.repository import TransactionRepository
 from backend.domains.transactions.database.repository_echeance import EcheanceRepository
-from backend.domains.transactions.echeance.echeance_service import refresh_echeances
+from backend.domains.transactions.database.model_echeance import Echeance
+from backend.domains.transactions.echeance.echeance_service import (
+    refresh_echeances,
+    calculate_next_occurrence,
+)
 from backend.shared.utils.categories_loader import (
     get_category_config,
     get_subcategories,
@@ -15,6 +19,29 @@ import sqlite3
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 repo = TransactionRepository()
 echeance_repo = EcheanceRepository()
+
+
+def _dict_to_echeance(data: dict) -> Echeance:
+    """Convertit un dict en Echeance en gérant les types correctement."""
+    return Echeance(
+        id=data.get("id"),
+        nom=data.get("nom", ""),
+        type=data.get("type", "Dépense"),
+        categorie=data.get("categorie", ""),
+        sous_categorie=data.get("sous_categorie"),
+        montant=float(data.get("montant", 0)),
+        frequence=data.get("frequence", "mensuel"),
+        date_prevue=date.fromisoformat(data["date_prevue"])
+        if data.get("date_prevue")
+        else date.today(),
+        date_debut=date.fromisoformat(data["date_debut"])
+        if data.get("date_debut")
+        else None,
+        date_fin=date.fromisoformat(data["date_fin"]) if data.get("date_fin") else None,
+        description=data.get("description"),
+        statut=data.get("statut", "active"),
+        type_echeance=data.get("type_echeance", "recurrente"),
+    )
 
 
 @router.get("/")
@@ -156,12 +183,30 @@ async def get_summary(
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT id, nom, montant, date_prevue, categorie, type, statut 
-            FROM echeances 
+            SELECT * FROM echeances 
             WHERE statut = 'active' 
             ORDER BY date_prevue ASC
         """)
-        prochaines = [dict(row) for row in cursor.fetchall()]
+        rows = cursor.fetchall()
+
+        prochaines = []
+        for row in rows:
+            echeance_dict = dict(row)
+            echeance = _dict_to_echeance(echeance_dict)
+            next_date = calculate_next_occurrence(echeance)
+            prochaines.append(
+                {
+                    "id": echeance_dict["id"],
+                    "nom": echeance_dict.get("nom", ""),
+                    "montant": echeance_dict["montant"],
+                    "date_prevue": next_date.isoformat(),
+                    "categorie": echeance_dict["categorie"],
+                    "type": echeance_dict["type"],
+                    "statut": echeance_dict["statut"],
+                }
+            )
+
+        prochaines = sorted(prochaines, key=lambda x: x["date_prevue"])[:10]
         close_connection(conn)
 
         return {

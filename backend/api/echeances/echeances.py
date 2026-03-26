@@ -68,3 +68,13 @@ async def get_echeances():
         return [EcheanceResponse(e).__dict__ for e in echeances]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/", response_model=int)
+async def add_echeance(echeance: Echeance):
+    """Créer une nouvelle échéance (modèle)."""
+    try:
+        echeance_id = repo.add(echeance)
+        return echeance_id
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
