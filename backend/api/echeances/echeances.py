@@ -78,3 +78,32 @@ async def add_echeance(echeance: Echeance):
         return echeance_id
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/{echeance_id}", response_model=Echeance)
+async def update_echeance(echeance_id: int, echeance: Echeance):
+    """Met à jour une échéance (modèle)."""
+    try:
+        echeance.id = echeance_id
+        success = repo.update(echeance)
+        if not success:
+            raise HTTPException(status_code=404, detail="Échéance non trouvée")
+        return echeance
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/{echeance_id}")
+async def delete_echeance(echeance_id: int):
+    """Supprime une échéance (modèle)."""
+    try:
+        success = repo.delete(echeance_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Échéance non trouvée")
+        return {"status": "success"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
