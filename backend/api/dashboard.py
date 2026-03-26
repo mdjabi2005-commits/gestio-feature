@@ -25,6 +25,7 @@ async def get_summary(
 ):
     try:
         refresh_echeances()
+
         transactions = repo.get_filtered(
             start_date=start_date, end_date=end_date, category=category
         )

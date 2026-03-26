@@ -18,17 +18,17 @@ logger = get_logger(__name__)
 
 # Mapping unifié fréquence → relativedelta (accepte toutes les variantes)
 FREQ_DELTAS = {
-    'quotidien': timedelta(days=1),
-    'quotidienne': timedelta(days=1),
-    'hebdomadaire': timedelta(weeks=1),
-    'mensuel': relativedelta(months=1),
-    'mensuelle': relativedelta(months=1),
-    'trimestriel': relativedelta(months=3),
-    'trimestrielle': relativedelta(months=3),
-    'semestriel': relativedelta(months=6),
-    'semestrielle': relativedelta(months=6),
-    'annuel': relativedelta(years=1),
-    'annuelle': relativedelta(years=1),
+    "quotidien": timedelta(days=1),
+    "quotidienne": timedelta(days=1),
+    "hebdomadaire": timedelta(weeks=1),
+    "mensuel": relativedelta(months=1),
+    "mensuelle": relativedelta(months=1),
+    "trimestriel": relativedelta(months=3),
+    "trimestrielle": relativedelta(months=3),
+    "semestriel": relativedelta(months=6),
+    "semestrielle": relativedelta(months=6),
+    "annuel": relativedelta(years=1),
+    "annuelle": relativedelta(years=1),
 }
 
 
@@ -36,10 +36,9 @@ FREQ_DELTAS = {
 # 🔄 RECURRENCE GENERATION
 # ==============================
 
+
 def generate_occurrences_for_recurrence(
-        recurrence_id: int,
-        start_date: date,
-        end_date: date
+    recurrence_id: int, start_date: date, end_date: date
 ) -> List[Dict]:
     """
     Génère les occurrences d'une récurrence entre deux dates.
@@ -60,7 +59,8 @@ def generate_occurrences_for_recurrence(
 
     # Récupérer la récurrence
     # noinspection SqlNoDataSourceInspection
-    rec = cursor.execute("""
+    rec = cursor.execute(
+        """
                          SELECT type,
                                 categorie,
                                 sous_categorie,
@@ -72,14 +72,25 @@ def generate_occurrences_for_recurrence(
                          FROM recurrences
                          WHERE id = ?
                            AND statut = 'active'
-                         """, (recurrence_id,)).fetchone()
+                         """,
+        (recurrence_id,),
+    ).fetchone()
 
     conn.close()
 
     if not rec:
         return []
 
-    type_rec, categorie, sous_categorie, montant, date_debut_str, date_fin_str, frequence, description = rec
+    (
+        type_rec,
+        categorie,
+        sous_categorie,
+        montant,
+        date_debut_str,
+        date_fin_str,
+        frequence,
+        description,
+    ) = rec
 
     # Convertir dates
     date_debut = parse(date_debut_str).date()
@@ -98,20 +109,24 @@ def generate_occurrences_for_recurrence(
         if date_fin_rec and current_date > date_fin_rec:
             break
 
-        occurrences.append({
-            'type': type_rec,
-            'categorie': categorie,
-            'sous_categorie': sous_categorie or '',
-            'montant': montant,
-            'date': current_date.isoformat(),
-            'source': 'récurrente_auto',
-            'description': description or f'Récurrence auto - {categorie}'
-        })
+        occurrences.append(
+            {
+                "type": type_rec,
+                "categorie": categorie,
+                "sous_categorie": sous_categorie or "",
+                "montant": montant,
+                "date": current_date.isoformat(),
+                "source": "récurrente_auto",
+                "description": description or f"Récurrence auto - {categorie}",
+            }
+        )
 
         # Calculer prochaine occurrence via mapping unifié
         delta = FREQ_DELTAS.get(frequence.lower())
         if not delta:
-            logger.warning(f"Fréquence inconnue '{frequence}' pour récurrence ID {recurrence_id}")
+            logger.warning(
+                f"Fréquence inconnue '{frequence}' pour récurrence ID {recurrence_id}"
+            )
             break
         current_date += delta
 
@@ -149,29 +164,35 @@ def backfill_all_recurrences() -> int:
         for occ in occurrences:
             # Check if transaction already exists
             # noinspection SqlNoDataSourceInspection
-            existing = cursor.execute("""
+            existing = cursor.execute(
+                """
                                       SELECT id
                                       FROM transactions
                                       WHERE categorie = ?
                                         AND sous_categorie = ?
                                         AND date = ?
                                         AND source = 'récurrente_auto'
-                                      """, (occ['categorie'], occ['sous_categorie'], occ['date'])).fetchone()
+                                      """,
+                (occ["categorie"], occ["sous_categorie"], occ["date"]),
+            ).fetchone()
 
             if not existing:
                 # noinspection SqlNoDataSourceInspection
-                cursor.execute("""
+                cursor.execute(
+                    """
                                INSERT INTO transactions
                                    (type, categorie, sous_categorie, montant, date, source, description)
                                VALUES (?, ?, ?, ?, ?, 'récurrente_auto', ?)
-                               """, (
-                                   occ['type'],
-                                   occ['categorie'],
-                                   occ['sous_categorie'],
-                                   occ['montant'],
-                                   occ['date'],
-                                   occ['description']
-                               ))
+                               """,
+                    (
+                        occ["type"],
+                        occ["categorie"],
+                        occ["sous_categorie"],
+                        occ["montant"],
+                        occ["date"],
+                        occ["description"],
+                    ),
+                )
                 total_created += 1
 
     conn.commit()
@@ -197,6 +218,7 @@ def backfill_recurrences_to_today() -> None:
 # ==============================
 # 📅 ECHEANCES MANAGEMENT
 # ==============================
+
 
 def generate_future_occurrences(months_ahead: int = 12) -> int:
     """
@@ -228,30 +250,36 @@ def generate_future_occurrences(months_ahead: int = 12) -> int:
 
         for occ in occurrences:
             # noinspection SqlNoDataSourceInspection
-            existing = cursor.execute("""
+            existing = cursor.execute(
+                """
                                       SELECT id
                                       FROM transactions
                                       WHERE categorie = ?
                                         AND sous_categorie = ?
                                         AND date = ?
                                         AND source = 'récurrente'
-                                      """, (occ['categorie'], occ['sous_categorie'], occ['date'])).fetchone()
+                                      """,
+                (occ["categorie"], occ["sous_categorie"], occ["date"]),
+            ).fetchone()
 
             if not existing:
                 # noinspection SqlNoDataSourceInspection
-                cursor.execute("""
+                cursor.execute(
+                    """
                                INSERT INTO transactions
                                    (type, categorie, sous_categorie, montant, date, source, description)
                                VALUES (?, ?, ?, ?, ?, ?, ?)
-                               """, (
-                                   occ['type'],
-                                   occ['categorie'],
-                                   occ['sous_categorie'],
-                                   occ['montant'],
-                                   occ['date'],
-                                   occ['source'],
-                                   occ['description']
-                               ))
+                               """,
+                    (
+                        occ["type"],
+                        occ["categorie"],
+                        occ["sous_categorie"],
+                        occ["montant"],
+                        occ["date"],
+                        occ["source"],
+                        occ["description"],
+                    ),
+                )
                 total_created += 1
 
     conn.commit()
@@ -269,7 +297,9 @@ def sync_recurrences_to_echeances() -> int:
         Nombre d'échéances créées
     """
     today = date.today()
-    fin_mois_suivant = (today.replace(day=1) + relativedelta(months=2)) - timedelta(days=1)
+    fin_mois_suivant = (today.replace(day=1) + relativedelta(months=2)) - timedelta(
+        days=1
+    )
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -292,7 +322,17 @@ def sync_recurrences_to_echeances() -> int:
     total_created = 0
 
     for rec in recurrences:
-        rec_id, type_rec, categorie, sous_cat, montant, date_debut_str, date_fin_str, frequence, description = rec
+        (
+            rec_id,
+            type_rec,
+            categorie,
+            sous_cat,
+            montant,
+            date_debut_str,
+            date_fin_str,
+            frequence,
+            description,
+        ) = rec
 
         date_debut = parse(date_debut_str).date()
         date_fin_rec = parse(date_fin_str).date() if date_fin_str else None
@@ -304,36 +344,44 @@ def sync_recurrences_to_echeances() -> int:
                     break
 
                 # noinspection SqlNoDataSourceInspection
-                existing = cursor.execute("""
+                existing = cursor.execute(
+                    """
                                           SELECT id
                                           FROM echeances
                                           WHERE categorie = ?
-                                            AND date_echeance = ?
+                                            AND date_prevue = ?
                                             AND type_echeance = 'récurrente'
                                             AND recurrence_id = ?
-                                          """, (categorie, current.isoformat(), rec_id)).fetchone()
+                                          """,
+                    (categorie, current.isoformat(), rec_id),
+                ).fetchone()
 
                 if not existing:
                     # noinspection SqlNoDataSourceInspection
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                                    INSERT INTO echeances
-                                   (type, categorie, sous_categorie, montant, date_echeance,
+                                   (type, categorie, sous_categorie, montant, date_prevue,
                                     type_echeance, description, statut, recurrence_id)
                                    VALUES (?, ?, ?, ?, ?, 'récurrente', ?, 'active', ?)
-                                   """, (
-                                       type_rec,
-                                       categorie,
-                                       sous_cat or '',
-                                       montant,
-                                       current.isoformat(),
-                                       description or f'Récurrence {frequence}',
-                                       rec_id
-                                   ))
+                                   """,
+                        (
+                            type_rec,
+                            categorie,
+                            sous_cat or "",
+                            montant,
+                            current.isoformat(),
+                            description or f"Récurrence {frequence}",
+                            rec_id,
+                        ),
+                    )
                     total_created += 1
 
             delta = FREQ_DELTAS.get(frequence.lower())
             if not delta:
-                logger.warning(f"Fréquence inconnue '{frequence}' pour récurrence ID {rec_id}")
+                logger.warning(
+                    f"Fréquence inconnue '{frequence}' pour récurrence ID {rec_id}"
+                )
                 break
             current += delta
 
@@ -357,30 +405,38 @@ def cleanup_past_echeances() -> int:
     cursor = conn.cursor()
 
     # noinspection SqlNoDataSourceInspection
-    cursor.execute("""
+    cursor.execute(
+        """
                    DELETE
                    FROM echeances
-                   WHERE date_echeance < ?
+                   WHERE date_prevue < ?
                      AND type_echeance = 'récurrente'
-                   """, (today.isoformat(),))
+                   """,
+        (today.isoformat(),),
+    )
 
     deleted_recurrentes = cursor.rowcount
 
     # noinspection SqlNoDataSourceInspection
-    cursor.execute("""
+    cursor.execute(
+        """
                    UPDATE echeances
                    SET statut = 'expirée'
-                   WHERE date_echeance < ?
+                   WHERE date_prevue < ?
                      AND type_echeance = 'prévue'
                      AND statut = 'active'
-                   """, (today.isoformat(),))
+                   """,
+        (today.isoformat(),),
+    )
 
     expired_prevues = cursor.rowcount
 
     conn.commit()
     conn.close()
 
-    logger.info(f"Cleanup: {deleted_recurrentes} récurrentes supprimées, {expired_prevues} prévues expirées")
+    logger.info(
+        f"Cleanup: {deleted_recurrentes} récurrentes supprimées, {expired_prevues} prévues expirées"
+    )
     return deleted_recurrentes + expired_prevues
 
 

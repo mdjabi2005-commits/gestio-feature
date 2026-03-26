@@ -6,11 +6,13 @@ from backend.api.transactions import router as transactions_router
 from backend.api.dashboard import router as dashboard_router
 from backend.api.attachments import router as attachments_router
 from backend.api.ocr import router as ocr_router
+from backend.api.echeances import router as echeances_router
 from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,12 +25,14 @@ async def lifespan(app: FastAPI):
         logger.error(f"Erreur initialisation OCR au démarrage : {e}")
     yield
 
+
 app = FastAPI(title="Gestio API", version="4.0.0", lifespan=lifespan)
 
 app.include_router(transactions_router)
 app.include_router(dashboard_router)
 app.include_router(attachments_router)
 app.include_router(ocr_router)
+app.include_router(echeances_router)
 
 # Set up CORS for local development
 app.add_middleware(
