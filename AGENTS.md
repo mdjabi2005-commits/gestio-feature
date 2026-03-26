@@ -58,6 +58,16 @@ Exemple :
 
 Chercher s'il existe un fichier `LOGIC_FLOW.md` ou une documentation dans le README du dossier.
 
+### 📍 Emplacements des LOGIC_FLOW (API)
+
+| Module | Emplacement |
+|--------|--------------|
+| Dashboard | `backend/api/dashboard/LOGIC_FLOW.md` |
+| Transactions | `backend/api/transactions/LOGIC_FLOW.md` |
+| Attachments | `backend/api/attachments/LOGIC_FLOW.md` |
+| OCR | `backend/api/ocr/LOGIC_FLOW.md` |
+| Echeances | `backend/api/echeances/LOGIC_FLOW.md` |
+
 ### 3. Si le Logic Flow n'existe pas
 
 **Créer un fichier `LOGIC_FLOW.md`** dans le dossier concerné avec :
