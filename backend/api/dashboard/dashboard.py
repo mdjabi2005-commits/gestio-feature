@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from typing import Optional, List
 from backend.domains.transactions.database.repository import TransactionRepository
 from backend.domains.transactions.database.repository_echeance import EcheanceRepository
-from backend.domains.transactions.recurrence.recurrence_service import refresh_echeances
+from backend.domains.transactions.echeance.echeance_service import refresh_echeances
 from backend.shared.utils.categories_loader import (
     get_category_config,
     get_subcategories,
