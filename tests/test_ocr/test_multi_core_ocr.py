@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 from PIL import Image, ImageDraw
 
-from domains.transactions.ocr.core.hardware_utils import get_optimal_workers
+from backend.domains.transactions.ocr.core.hardware_utils import get_optimal_workers
 
 logger = logging.getLogger(__name__)
 

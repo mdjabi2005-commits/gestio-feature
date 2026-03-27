@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 import pytest
 
-from domains.transactions.services.attachment_service import attachment_service
-from domains.transactions.database.repository_attachment import attachment_repository
+from backend.domains.transactions.services.attachment_service import attachment_service
+from backend.domains.transactions.database.repository_attachment import attachment_repository
 
 @pytest.fixture
 def temp_scanned_dirs(tmp_path: Path, monkeypatch):
@@ -22,7 +22,7 @@ def attachment_svc(db_path, temp_scanned_dirs):
     """Service branché sur une base SQLite temporaire vierge."""
     attachment_repository.db_path = db_path
     # Crée la table pour être sûr
-    from domains.transactions.database.schema import init_attachments_table
+    from backend.domains.transactions.database.schema import init_attachments_table
     init_attachments_table(db_path)
     return attachment_service
 
@@ -39,10 +39,10 @@ def test_add_and_delete_physical_file(attachment_svc, temp_scanned_dirs, tmp_pat
     source_file.write_text("Ceci est un faux ticket pour les tests unitaires")
     
     # --- PRÉREQUIS : UNE TRANSACTION EXISTANTE EN BDD ---
-    from domains.transactions.database.repository import transaction_repository
+    from backend.domains.transactions.database.repository import transaction_repository
     transaction_repository.db_path = attachment_repository.db_path
     
-    from domains.transactions.database.schema import init_transaction_table
+    from backend.domains.transactions.database.schema import init_transaction_table
     init_transaction_table(attachment_repository.db_path)
     
     tx_id = transaction_repository.add(transaction_depense)

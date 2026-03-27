@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 # Charge le .env avant toute autre chose dans pytest
 load_dotenv()
 
-from domains.transactions.ocr.core.groq_parser import GroqParser
+from backend.domains.transactions.ocr.core.groq_parser import GroqParser
 import textwrap
 
 @pytest.mark.unit

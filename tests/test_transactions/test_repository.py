@@ -6,8 +6,8 @@ Chaque test utilise une DB isolée en mémoire (fixture `repo` de conftest.py).
 import pytest
 from datetime import date
 
-from domains.transactions.database.model import Transaction
-from domains.transactions.database.repository import TransactionRepository
+from backend.domains.transactions.database.model import Transaction
+from backend.domains.transactions.database.repository import TransactionRepository
 
 
 # ─────────────────────────────────────────────────────────────────────────────

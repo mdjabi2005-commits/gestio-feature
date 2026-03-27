@@ -5,7 +5,7 @@ Couvre : formats FR/EN, symboles €/$, None, vide, chaînes invalides.
 
 import pytest
 import pandas as pd
-from shared.utils.amount_parser import parse_amount
+from backend.shared.utils.amount_parser import parse_amount
 
 
 class TestParseAmount:

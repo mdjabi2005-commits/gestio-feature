@@ -69,17 +69,7 @@ async def get_ocr_config_endpoint():
 
 
 @router.post("/config", response_model=OCRConfigResponse)
-async def save_ocr_config_endpoint(api_key: str = None):
-    """Sauvegarde la clé API Groq."""
-    if api_key and not api_key.startswith("gsk_"):
-        raise HTTPException(400, "Clé API Groq invalide (doit commencer par 'gsk_')")
-
-    config = save_ocr_config(api_key)
-    return OCRConfigResponse(api_key=config.get("api_key", ""))
-
-
-@router.post("/config", response_model=OCRConfigResponse)
-async def save_ocr_config_endpoint(api_key: str = None):
+async def update_ocr_config_endpoint(api_key: str = None):
     """Sauvegarde la clé API Groq."""
     if api_key and not api_key.startswith("gsk_"):
         raise HTTPException(400, "Clé API Groq invalide (doit commencer par 'gsk_')")
@@ -329,7 +319,7 @@ def _archive_file(
     import shutil
 
     if target_base_dir is None:
-        from config.paths import SORTED_DIR, REVENUS_TRAITES
+        from backend.config.paths import SORTED_DIR, REVENUS_TRAITES
 
         target_base_dir = SORTED_DIR if is_ticket else REVENUS_TRAITES
 
@@ -462,3 +452,16 @@ async def scan_income(file: UploadFile = File(...)):
     finally:
         if path and os.path.exists(path):
             os.remove(path)
+
+
+@router.post("/scan-pending", response_model=BatchScanResponse)
+async def scan_pending_folder():
+    """Déclenche manuellement le scan du dossier TO_SCAN_DIR."""
+    from .watcher import trigger_scan
+
+    try:
+        results = trigger_scan()
+        return BatchScanResponse(results=results)
+    except Exception as e:
+        logger.error(f"Error triggering scan: {e}")
+        raise HTTPException(500, str(e))

@@ -6,8 +6,8 @@ Tests purement unitaires : aucune DB, aucun fichier image, aucun modèle chargé
 import pytest
 from datetime import date
 
-from domains.transactions.ocr.core.parser import parse_amount, parse_date
-from domains.transactions.ocr.core.hardware_utils import get_optimal_workers, get_cpu_info
+from backend.domains.transactions.ocr.core.parser import parse_amount, parse_date
+from backend.domains.transactions.ocr.core.hardware_utils import get_optimal_workers, get_cpu_info
 
 
 # ─────────────────────────────────────────────────────────────────────────────

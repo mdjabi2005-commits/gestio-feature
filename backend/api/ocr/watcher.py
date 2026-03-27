@@ -129,18 +129,19 @@ def _process_file(file_path: str) -> bool:
         return False
 
 
-def _scan_directory():
-    """Scan le répertoire TO_SCAN_DIR et traite les fichiers."""
+def _scan_directory() -> list:
+    """Scan le répertoire TO_SCAN_DIR et traite les fichiers. Retourne la liste des résultats."""
     global _processing
 
     if _processing:
-        return
+        return []
 
+    results = []
     _processing = True
     try:
         if not os.path.exists(TO_SCAN_DIR):
             os.makedirs(TO_SCAN_DIR, exist_ok=True)
-            return
+            return []
 
         files = [
             f
@@ -154,22 +155,42 @@ def _scan_directory():
             if _is_valid_file(filename):
                 logger.info(f"Traitement du fichier: {filename}")
 
-                if _process_file(file_path):
-                    try:
-                        os.remove(file_path)
-                        logger.info(f"Fichier source supprimé: {filename}")
-                    except Exception as e:
-                        logger.error(f"Erreur suppression {filename}: {e}")
-                else:
-                    target_dir = os.path.join(TO_SCAN_DIR, "erreur")
-                    os.makedirs(target_dir, exist_ok=True)
-                    shutil.move(file_path, os.path.join(target_dir, filename))
-                    logger.warning(f"Fichier déplacé vers erreur: {filename}")
+                try:
+                    from backend.api.ocr.models import OCRScanResponse
+                    from backend.domains.transactions.database.model import Transaction
+
+                    if file_type := _is_valid_file(filename):
+                        if file_type == "image":
+                            ocr_service = get_ocr_service()
+                            tx = ocr_service.process_ticket(file_path)
+                            transaction_repository.add(tx)
+                            
+                            _archive_file(
+                                file_path,
+                                category=tx.categorie or "Autre",
+                                sub_category=tx.sous_categorie,
+                                target_base_dir=SORTED_DIR,
+                                is_ticket=True,
+                            )
+                            results.append(OCRScanResponse(transaction=tx, warnings=[], raw_ocr_text=""))
+                            
+                            try: os.remove(file_path)
+                            except: pass
+                        elif file_type == "pdf":
+                            # For PDF, we just trigger the existing _process_file
+                            # but it's harder to get results back here.
+                            # For now, let's just use the legacy _process_file for PDFs
+                            if _process_file(file_path):
+                                os.remove(file_path)
+                except Exception as e:
+                    logger.error(f"Error in watcher processing {filename}: {e}")
 
     except Exception as e:
         logger.error(f"Erreur scan directory: {e}")
     finally:
         _processing = False
+    
+    return results
 
 
 def _watcher_loop(interval: int = 60):
@@ -209,6 +230,6 @@ def stop_watcher():
     logger.info("Watcher arrêté")
 
 
-def trigger_scan():
-    """Déclenche un scan manuel."""
-    _scan_directory()
+def trigger_scan() -> list:
+    """Déclenche un scan manuel et retourne les résultats."""
+    return _scan_directory()
