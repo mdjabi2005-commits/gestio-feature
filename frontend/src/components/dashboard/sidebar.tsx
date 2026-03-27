@@ -11,6 +11,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  Wallet,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -21,6 +22,7 @@ const navItems = [
   { id: "dashboard", href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { id: "transactions", href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
   { id: "echeances", href: "/echeances", label: "Échéances", icon: RefreshCw },
+  { id: "budgets", href: "/budgets", label: "Budgets", icon: Wallet },
   { id: "settings", href: "/settings", label: "Paramètres", icon: Settings },
 ]
 

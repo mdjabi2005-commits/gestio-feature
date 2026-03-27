@@ -2,6 +2,7 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
+import { cn } from '@/lib/utils';
 import { useFinancial } from '@/context/FinancialDataContext';
 import { KpiCards } from '@/components/dashboard/kpi-cards';
 // SunburstChart uses Plotly which depends on 'self'/'window', must be imported dynamically for SSR
@@ -21,8 +22,34 @@ export default function DashboardPage() {
     filterCategory, 
     setFilterCategory,
     filterDateRange,
-    setFilterDateRange
+    setFilterDateRange,
+    budgets
   } = useFinancial();
+
+  // Calculate budget consumption
+  // We use backend summary.budget_summary if available, otherwise fallback to frontend calculation
+  const budgetSummary = React.useMemo(() => {
+    if (summary?.budget_summary) return summary.budget_summary;
+    
+    // Fallback calculation
+    const now = new Date();
+    const currentMonthSpent = transactions.reduce((acc, t) => {
+        const d = new Date(t.date);
+        if (t.type === 'Dépense' && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+            acc[t.categorie] = (acc[t.categorie] || 0) + t.montant;
+        }
+        return acc;
+    }, {} as Record<string, number>);
+
+    const totalBudget = budgets.reduce((acc, b) => acc + b.montant_max, 0);
+    const totalSpentOnBudgeted = budgets.reduce((acc, b) => acc + (currentMonthSpent[b.categorie] || 0), 0);
+    
+    return {
+        total_budget_prevu: totalBudget,
+        total_consomme: totalSpentOnBudgeted,
+        consommation_pct: totalBudget > 0 ? Math.round((totalSpentOnBudgeted / totalBudget) * 100) : 0
+    };
+  }, [summary?.budget_summary, transactions, budgets]);
 
   // Real data for upcoming echéances from backend
   const realEcheances: Echeance[] = (summary?.prochaines_echeances || []).map((e: any) => ({
@@ -97,11 +124,30 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
                   <span className="text-muted-foreground">Consommation du budget</span>
-                  <span className="text-indigo-400">{100 - savingsRate}%</span>
+                  <span className={cn(
+                    "transition-colors duration-300",
+                    budgetSummary.consommation_pct > 100 ? "text-rose-400" : 
+                    budgetSummary.consommation_pct >= 80 ? "text-amber-400" : "text-indigo-400"
+                  )}>
+                    {budgetSummary.consommation_pct}%
+                  </span>
                 </div>
                 <div className="h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                  <div className="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-full" style={{ width: `${100 - savingsRate}%` }} />
+                  <div 
+                    className={cn(
+                        "h-full rounded-full transition-all duration-1000 ease-out",
+                        budgetSummary.consommation_pct > 100 ? "bg-gradient-to-r from-rose-600 to-rose-400" :
+                        budgetSummary.consommation_pct >= 80 ? "bg-gradient-to-r from-amber-600 to-amber-400" :
+                        "bg-gradient-to-r from-indigo-600 to-indigo-400"
+                    )}
+                    style={{ width: `${Math.min(budgetSummary.consommation_pct, 100)}%` }} 
+                  />
                 </div>
+                {budgetSummary.total_budget_prevu > 0 && (
+                  <p className="text-[10px] text-white/30 text-right">
+                    {budgetSummary.total_consomme.toLocaleString('fr-FR')}€ / {budgetSummary.total_budget_prevu.toLocaleString('fr-FR')}€
+                  </p>
+                )}
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between text-xs font-bold uppercase tracking-wider">

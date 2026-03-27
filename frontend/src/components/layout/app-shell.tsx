@@ -16,6 +16,7 @@ const viewTitles: Record<string, string> = {
   "/dashboard": "Tableau de bord",
   "/transactions": "Transactions",
   "/echeances": "Échéances",
+  "/budgets": "Budgets",
   "/settings": "Paramètres",
 };
 

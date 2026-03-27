@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, ReactNode, useState } from 'react';
 import { useFinancialData } from '@/hooks/useFinancialData';
-import type { Transaction } from '@/api';
+import type { Transaction, Budget } from '@/api';
+import { api } from '@/api';
 
 interface FinancialContextType {
   summary: any;
@@ -15,7 +16,13 @@ interface FinancialContextType {
   deleteEcheance: (id: number | string) => Promise<void>;
   deleteTransaction: (id: number) => Promise<void>;
   updateTransaction: (id: number, data: Transaction) => Promise<void>;
-  
+
+  // Budget State
+  budgets: Budget[];
+  setBudget: (data: Budget) => Promise<void>;
+  deleteBudget: (id: number) => Promise<void>;
+  budgetsLoading: boolean;
+
   // UI State
   isAddModalOpen: boolean;
   setIsAddModalOpen: (open: boolean) => void;
@@ -41,6 +48,28 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
+
+  // Budgets
+  const [budgets, setBudgetsState] = useState<Budget[]>([]);
+  const [budgetsLoading, setBudgetsLoading] = useState(false);
+
+  const fetchBudgets = async () => {
+    setBudgetsLoading(true);
+    try { setBudgetsState(await api.getBudgets()); } catch {}
+    finally { setBudgetsLoading(false); }
+  };
+
+  React.useEffect(() => { fetchBudgets(); }, []);
+
+  const handleSetBudget = async (data: Budget) => {
+    await api.setBudget(data);
+    await fetchBudgets();
+  };
+
+  const handleDeleteBudget = async (id: number) => {
+    await api.deleteBudget(id);
+    await fetchBudgets();
+  };
 
   // Filters
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
@@ -99,6 +128,10 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
     searchQuery,
     setSearchQuery,
     filteredTransactions,
+    budgets,
+    setBudget: handleSetBudget,
+    deleteBudget: handleDeleteBudget,
+    budgetsLoading,
   };
 
   return (

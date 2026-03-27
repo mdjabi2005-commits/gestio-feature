@@ -1,40 +1,11 @@
+// api.ts — Thin aggregator. Keep under 200 lines (AGENTS.md rule).
+// Types are in api/types.ts. Domain methods in api/*.ts
+
+export type { Transaction, Attachment, OCRScanResponse, ScannedTicket, Budget, BudgetSummaryItem, BudgetSummary } from './api/types';
+import { budgetsApi } from './api/budgets';
+import { ocrApi } from './api/ocr';
+
 const API_BASE_URL = 'http://localhost:8002';
-
-export interface Transaction {
-  id?: number;
-  type: 'Dépense' | 'Revenu';
-  date: string;
-  categorie: string;
-  montant: number;
-  sous_categorie?: string;
-  description?: string;
-  source?: 'manual' | 'ocr' | 'pdf';
-  external_id?: string;
-  has_attachments?: boolean;
-  recurrence?: string;
-  date_fin?: string;
-  echeance_id?: string;
-}
-
-export interface Attachment {
-  id?: number;
-  transaction_id?: number;
-  echeance_id?: string;
-  file_name: string;
-  file_type?: string;
-  upload_date: string;
-}
-
-export interface OCRScanResponse {
-  transaction: Transaction;
-  warnings: string[];
-  raw_ocr_text: string;
-}
-
-export interface ScannedTicket {
-  result: OCRScanResponse;
-  file: File;
-}
 
 export const api = {
   getSummary: async (params?: { start_date?: string | null, end_date?: string | null, category?: string | null }) => {
@@ -55,41 +26,34 @@ export const api = {
     return res.json();
   },
 
-  getTransactions: async (): Promise<Transaction[]> => {
+  getTransactions: async () => {
     const res = await fetch(`${API_BASE_URL}/api/transactions/`);
     if (!res.ok) throw new Error('Failed to fetch transactions');
     return res.json();
   },
 
-  addTransaction: async (data: Transaction) => {
+  addTransaction: async (data: any) => {
     const res = await fetch(`${API_BASE_URL}/api/transactions/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error('Failed to add transaction');
     return res.json();
   },
 
-  updateTransaction: async (id: number, data: Transaction) => {
+  updateTransaction: async (id: number, data: any) => {
     const res = await fetch(`${API_BASE_URL}/api/transactions/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error('Failed to update transaction');
     return res.json();
   },
 
   deleteTransaction: async (id: number) => {
-    const res = await fetch(`${API_BASE_URL}/api/transactions/${id}`, {
-      method: 'DELETE',
-    });
+    const res = await fetch(`${API_BASE_URL}/api/transactions/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete transaction');
     return res.json();
   },
 
-  // Echeances methods
   getEcheances: async (): Promise<any[]> => {
     const res = await fetch(`${API_BASE_URL}/api/echeances/`);
     if (!res.ok) throw new Error('Failed to fetch echeances');
@@ -104,116 +68,61 @@ export const api = {
 
   addEcheance: async (data: any) => {
     const res = await fetch(`${API_BASE_URL}/api/echeances/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error('Failed to add echeance');
     return res.json();
   },
 
-  updateEcheance: async (id: string, data: Partial<any>) => {
+  updateEcheance: async (id: string, data: any) => {
     const res = await fetch(`${API_BASE_URL}/api/echeances/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error('Failed to update echeance');
     return res.json();
   },
 
   deleteEcheance: async (id: string) => {
-    const res = await fetch(`${API_BASE_URL}/api/echeances/${id}`, {
-      method: 'DELETE',
-    });
+    const res = await fetch(`${API_BASE_URL}/api/echeances/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete echeance');
     return res.json();
   },
 
-  // Echeances Attachment methods
-  getEcheanceAttachments: async (echeanceId: string): Promise<Attachment[]> => {
+  getAttachments: async (txId: number) => {
+    const res = await fetch(`${API_BASE_URL}/api/attachments/transaction/${txId}`);
+    if (!res.ok) throw new Error('Failed to fetch attachments');
+    return res.json();
+  },
+
+  getEcheanceAttachments: async (echeanceId: string) => {
     const res = await fetch(`${API_BASE_URL}/api/attachments/echeance/${echeanceId}`);
     if (!res.ok) throw new Error('Failed to fetch echeance attachments');
     return res.json();
   },
 
+  uploadAttachment: async (txId: number, file: File) => {
+    const fd = new FormData(); fd.append('file', file);
+    const res = await fetch(`${API_BASE_URL}/api/attachments/transaction/${txId}`, { method: 'POST', body: fd });
+    if (!res.ok) throw new Error('Failed to upload attachment');
+    return res.json();
+  },
+
   uploadEcheanceAttachment: async (echeanceId: string, file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch(`${API_BASE_URL}/api/attachments/echeance/${echeanceId}`, {
-      method: 'POST',
-      body: formData,
-    });
+    const fd = new FormData(); fd.append('file', file);
+    const res = await fetch(`${API_BASE_URL}/api/attachments/echeance/${echeanceId}`, { method: 'POST', body: fd });
     if (!res.ok) throw new Error('Failed to upload attachment');
     return res.json();
   },
 
-  // Attachment methods
-  getAttachments: async (transactionId: number): Promise<Attachment[]> => {
-    const res = await fetch(`${API_BASE_URL}/api/attachments/transaction/${transactionId}`);
-    if (!res.ok) throw new Error('Failed to fetch attachments');
-    return res.json();
-  },
-
-  uploadAttachment: async (transactionId: number, file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch(`${API_BASE_URL}/api/attachments/transaction/${transactionId}`, {
-      method: 'POST',
-      body: formData,
-    });
-    if (!res.ok) throw new Error('Failed to upload attachment');
-    return res.json();
-  },
-
-  deleteAttachment: async (attachmentId: number) => {
-    const res = await fetch(`${API_BASE_URL}/api/attachments/${attachmentId}`, {
-      method: 'DELETE',
-    });
+  deleteAttachment: async (id: number) => {
+    const res = await fetch(`${API_BASE_URL}/api/attachments/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete attachment');
     return res.json();
   },
 
-  getAttachmentUrl: (attachmentId: number) => `${API_BASE_URL}/api/attachments/${attachmentId}`,
+  getAttachmentUrl: (id: number) => `${API_BASE_URL}/api/attachments/${id}`,
 
-  scanTicket: async (file: File): Promise<OCRScanResponse> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch(`${API_BASE_URL}/api/ocr/scan`, {
-      method: 'POST',
-      body: formData,
-    });
-    if (!res.ok) {
-      if (res.status === 400) throw new Error('Format de fichier non supporté');
-      if (res.status === 500) throw new Error('Échec de la lecture du ticket (ticket illisible ?)');
-      throw new Error('Erreur lors du scan du ticket');
-    }
-    return res.json();
-  },
-
-  warmupOCR: async () => {
-    try {
-      await fetch(`${API_BASE_URL}/api/ocr/warmup`);
-    } catch (e) {
-      console.warn("OCR Warmup failed", e);
-    }
-  },
-
-  scanTicketsBatch: async (files: File[]): Promise<{ results: OCRScanResponse[] }> => {
-    const formData = new FormData();
-    files.forEach(file => {
-      formData.append('files', file);
-    });
-
-    const res = await fetch(`${API_BASE_URL}/api/ocr/scan-batch`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.detail || "Échec du scan par lot");
-    }
-    return res.json();
-  },
+  // Domain sub-modules
+  ...budgetsApi,
+  ...ocrApi,
 };
