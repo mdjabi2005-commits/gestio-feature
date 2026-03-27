@@ -14,6 +14,7 @@ export interface TransactionItem {
   status?: "completed" | "pending" | "failed"
   merchant?: string
   has_attachments?: boolean
+  attachment?: string
 }
 
 interface TransactionListProps {

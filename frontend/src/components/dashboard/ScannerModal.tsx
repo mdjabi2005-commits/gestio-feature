@@ -1,11 +1,12 @@
 "use client"
 import React from 'react';
-import { Camera, X, Loader2, Sparkles } from 'lucide-react';
+import { Camera, X, Loader2, Sparkles, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { type ScannedTicket } from '@/api';
+import { api, type ScannedTicket, type OCRScanResponse } from '@/api';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useScanner } from '@/hooks/useScanner';
+import { toast } from 'sonner';
 
 interface ScannerModalProps {
   isOpen: boolean;
@@ -62,13 +63,39 @@ export function ScannerModal({ isOpen, onClose, onScanResults }: ScannerModalPro
             </div>
           )}
 
-          <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={() => { reset(); onClose(); }} className="flex-1 border-white/10 text-gray-400 hover:text-white" disabled={isScanning || isWarmingUp}>Annuler</Button>
-            <Button onClick={handleScan} disabled={files.length === 0 || isScanning || isWarmingUp} className="flex-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500 hover:opacity-90 relative overflow-hidden group">
-              {isScanning ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Analyse...</> : 
-               isWarmingUp ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Initialisation...</> : 
-               <><Sparkles className="w-4 h-4 mr-2" />Analyser ({files.length})</>}
-            </Button>
+          <div className="flex flex-col gap-3 mt-6">
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => { reset(); onClose(); }} className="flex-1 border-white/10 text-gray-400 hover:text-white" disabled={isScanning || isWarmingUp}>Annuler</Button>
+              <Button onClick={handleScan} disabled={files.length === 0 || isScanning || isWarmingUp} className="flex-1 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500 hover:opacity-90 relative overflow-hidden group">
+                {isScanning ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Analyse...</> : 
+                 isWarmingUp ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Initialisation...</> : 
+                 <><Sparkles className="w-4 h-4 mr-2" />Analyser ({files.length})</>}
+              </Button>
+            </div>
+            
+            {previews.length === 0 && (
+              <Button 
+                variant="secondary" 
+                onClick={async () => {
+                   try {
+                     const results = await api.scanPending();
+                     if (results.results.length > 0) {
+                       onScanResults(results.results.map((r: OCRScanResponse) => ({ result: r, file: new File([], "folder-scan") })));
+                       toast.success(`${results.results.length} documents détectés !`);
+                     } else {
+                       toast.info("Aucun document trouvé dans le dossier.");
+                     }
+                   } catch (err: any) {
+                     toast.error(err.message || "Erreur lors du scan du dossier");
+                   }
+                }}
+                className="w-full bg-white/5 border border-white/10 hover:bg-white/10 text-indigo-400 gap-2"
+                disabled={isScanning || isWarmingUp}
+              >
+                <RefreshCw className="w-4 h-4" />
+                Scanner le dossier ("tickets_a_scanner")
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

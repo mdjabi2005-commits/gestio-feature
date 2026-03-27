@@ -66,4 +66,12 @@ export const ocrApi = {
     }
     return res.json();
   },
+  scanPending: async (): Promise<{ results: OCRScanResponse[] }> => {
+    const res = await fetch(`${API_BASE_URL}/api/ocr/scan-pending`, { method: 'POST' });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: 'Échec du scan du dossier' }));
+      throw new Error(error.detail || 'Échec du scan du dossier');
+    }
+    return res.json();
+  },
 };

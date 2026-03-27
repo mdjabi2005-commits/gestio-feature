@@ -109,6 +109,9 @@ async def scan_ticket(file: UploadFile = File(...)):
         ocr = get_ocr_service()
         raw = ocr.ocr_engine.extract_text(path)
         tx = ocr.process_ticket(path)
+
+        _archive_ticket_file(path, tx)
+
         return OCRScanResponse(
             transaction=tx.model_dump(), warnings=_tx_warnings(tx), raw_ocr_text=raw
         )
@@ -303,30 +306,46 @@ async def save_salary_plan(plan_data: dict):
         raise HTTPException(500, str(e))
 
 
-def _archive_payroll_file(
-    temp_path: str, transactions: List[Transaction]
+def _archive_file(
+    source_path: str,
+    category: str,
+    sub_category: str = None,
+    target_base_dir: str = None,
+    is_ticket: bool = True,
 ) -> str | None:
     """
-    Archive le fichier PDF de fiche de paie vers REVENUS_TRAITES/Epargne/<Sous-Catégorie>/<Nom_Fichier>.
-    Retourne le chemin d'archivage ou None en cas d'échec.
+    Archive un fichier (ticket ou revenu) vers le dossier structuré.
+
+    Args:
+        source_path: Chemin du fichier source
+        category: Catégorie de la transaction
+        sub_category: Sous-catégorie (optionnel)
+        target_base_dir: Dossier cible (SORTED_DIR pour tickets, REVENUS_TRAITES pour revenus)
+        is_ticket: True pour tickets (images), False pour revenus (PDF)
+
+    Returns:
+        Chemin d'archivage ou None en cas d'échec
     """
     import shutil
-    from config.paths import REVENUS_TRAITES
+
+    if target_base_dir is None:
+        from config.paths import SORTED_DIR, REVENUS_TRAITES
+
+        target_base_dir = SORTED_DIR if is_ticket else REVENUS_TRAITES
 
     try:
-        if not transactions:
-            return None
+        sub_cat = sub_category or "Divers"
+        cat = category or "Autre"
 
-        dominant_tx = max(transactions, key=lambda t: t.montant)
-        sub_category = dominant_tx.sous_categorie or "Divers"
-        category = dominant_tx.categorie or "Épargne"
-
-        target_dir = os.path.join(REVENUS_TRAITES, category, sub_category)
+        target_dir = os.path.join(target_base_dir, cat, sub_cat)
         os.makedirs(target_dir, exist_ok=True)
 
-        original_name = os.path.basename(temp_path)
-        if original_name.startswith("income_"):
-            original_name = original_name[7:]
+        original_name = os.path.basename(source_path)
+        prefixes = ["ocr_", "income_", "batch_"]
+        for prefix in prefixes:
+            if original_name.startswith(prefix):
+                original_name = original_name[len(prefix) :]
+                break
 
         target_path = os.path.join(target_dir, original_name)
         counter = 1
@@ -335,13 +354,44 @@ def _archive_payroll_file(
             target_path = os.path.join(target_dir, f"{name}_{counter}{ext}")
             counter += 1
 
-        shutil.copy2(temp_path, target_path)
-        logger.info(f"Fiche de paie archivée: {target_path}")
+        shutil.copy2(source_path, target_path)
+        logger.info(f"Fichier archivé: {target_path}")
         return target_path
 
     except Exception as e:
-        logger.error(f"Erreur archivage fiche de paie: {e}")
+        logger.error(f"Erreur archivage fichier: {e}")
         return None
+
+
+def _archive_payroll_file(
+    temp_path: str, transactions: List[Transaction]
+) -> str | None:
+    """Archive le fichier PDF de fiche de paie."""
+    if not transactions:
+        return None
+
+    dominant_tx = max(transactions, key=lambda t: t.montant)
+    return _archive_file(
+        temp_path,
+        category=dominant_tx.categorie or "Épargne",
+        sub_category=dominant_tx.sous_categorie,
+        target_base_dir=None,
+        is_ticket=False,
+    )
+
+
+def _archive_ticket_file(temp_path: str, transaction: Transaction = None) -> str | None:
+    """Archive le fichier de ticket image."""
+    if transaction is None:
+        return None
+
+    return _archive_file(
+        temp_path,
+        category=transaction.categorie or "Autre",
+        sub_category=transaction.sous_categorie,
+        target_base_dir=None,
+        is_ticket=True,
+    )
 
 
 @router.post("/scan-income", response_model=IncomeScanResponse)
@@ -361,10 +411,14 @@ async def scan_income(file: UploadFile = File(...)):
             raise HTTPException(400, "Montant net non trouvé")
         date_str = pay_date.isoformat() if pay_date else date_type.today().isoformat()
 
-        archived_path = _archive_payroll_file(path, txs=[]) # Mock tx list just for target path derivation if needed, but better call it AFTER txs creation
-        
+        archived_path = _archive_payroll_file(
+            path, txs=[]
+        )  # Mock tx list just for target path derivation if needed, but better call it AFTER txs creation
+
         try:
-            txs = apply_salary_split(net_amount=net, payroll_date=date_str, attachment=archived_path)
+            txs = apply_salary_split(
+                net_amount=net, payroll_date=date_str, attachment=archived_path
+            )
         except SalaryPlanError as e:
             logger.error(f"Salary plan error: {e}")
             txs = [
@@ -377,7 +431,7 @@ async def scan_income(file: UploadFile = File(...)):
                     description="Salaire",
                     source="scan_income",
                     attachment=archived_path,
-                    has_attachments=bool(archived_path)
+                    has_attachments=bool(archived_path),
                 )
             ]
 

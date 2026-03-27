@@ -61,7 +61,11 @@ export function TransactionRow({
               {transaction.sous_categorie || transaction.categorie}
             </span>
             {transaction.merchant && <span className="text-[10px] text-muted-foreground/60 truncate max-w-[150px]">@ {transaction.merchant}</span>}
-            {transaction.has_attachments && <Paperclip className="w-3 h-3 text-indigo-400" />}
+            {(transaction.has_attachments || transaction.attachment) && (
+              <span title={transaction.attachment ? `Archivé : ${transaction.attachment}` : "Document joint"}>
+                <Paperclip className={cn("w-3 h-3", transaction.attachment ? "text-blue-400" : "text-indigo-400")} />
+              </span>
+            )}
           </div>
         </div>
 
