@@ -67,10 +67,9 @@ def transaction_depense() -> Transaction:
         montant=42.50,
         date=date(2026, 1, 15),
         source="Manuel",
-        recurrence=None,
-        date_fin=None,
-        compte_iban=None,
         external_id=None,
+        echeance_id=None,
+        compte_id=None,
         id=None,
     )
 
@@ -86,10 +85,9 @@ def transaction_revenu() -> Transaction:
         montant=2500.00,
         date=date(2026, 1, 31),
         source="Manuel",
-        recurrence=None,
-        date_fin=None,
-        compte_iban=None,
         external_id=None,
+        echeance_id=None,
+        compte_id=None,
         id=None,
     )
 
@@ -106,10 +104,9 @@ def transactions_batch() -> list[Transaction]:
             source="Manuel",
             sous_categorie=None,
             description=f"Ticket métro {i + 1}",
-            recurrence=None,
-            date_fin=None,
-            compte_iban=None,
             external_id=None,
+            echeance_id=None,
+            compte_id=None,
             id=None,
         )
         for i in range(5)

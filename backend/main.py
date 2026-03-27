@@ -9,6 +9,7 @@ from backend.api.attachments.attachments import router as attachments_router
 from backend.api.ocr.ocr import router as ocr_router
 from backend.api.echeances.echeances import router as echeances_router
 from backend.api.budgets.budgets import router as budgets_router
+from backend.domains.goals.api.goals import router as goals_router
 from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
 
 # Configure logging
@@ -25,10 +26,18 @@ async def lifespan(app: FastAPI):
             init_attachments_table,
             init_budgets_table,
         )
+        from backend.domains.transactions.database.schema_table_echeance import (
+            init_echeance_table,
+        )
+        from backend.domains.goals.database.schema_goal import (
+            init_goal_table,
+        )
 
         init_transaction_table()
         init_attachments_table()
         init_budgets_table()
+        init_echeance_table()
+        init_goal_table()
         logger.info("Base de données initialisée (schema OK) ✅")
     except Exception as e:
         logger.error(f"Erreur initialisation DB : {e}")
@@ -68,6 +77,7 @@ app.include_router(attachments_router)
 app.include_router(ocr_router)
 app.include_router(echeances_router)
 app.include_router(budgets_router)
+app.include_router(goals_router)
 
 # Set up CORS for local development
 app.add_middleware(

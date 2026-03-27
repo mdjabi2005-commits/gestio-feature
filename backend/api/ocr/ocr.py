@@ -20,6 +20,7 @@ from backend.domains.transactions.services.salary_plan_service import (
     load_salary_plan,
     validate_salary_plan,
 )
+from backend.config.ocr_config import save_ocr_config
 from backend.shared.utils.file_utils import (
     validate_image_format,
     validate_pdf_format,
@@ -66,6 +67,15 @@ class OCRConfigUpdate(BaseModel):
     api_key: str
 
 
+@router.get("/config", response_model=OCRConfigResponse)
+async def get_ocr_config_endpoint():
+    """Récupère la clé API Groq."""
+    from backend.config.ocr_config import get_ocr_config
+
+    config = get_ocr_config()
+    return OCRConfigResponse(api_key=config.get("api_key", ""))
+
+
 @router.post("/config", response_model=OCRConfigResponse)
 async def update_ocr_config_endpoint(config_data: OCRConfigUpdate):
     """Sauvegarde la clé API Groq."""
@@ -73,16 +83,6 @@ async def update_ocr_config_endpoint(config_data: OCRConfigUpdate):
         raise HTTPException(400, "Clé API Groq invalide (doit commencer par 'gsk_')")
 
     config = save_ocr_config(config_data.api_key)
-    return OCRConfigResponse(api_key=config.get("api_key", ""))
-
-
-@router.post("/config", response_model=OCRConfigResponse)
-async def update_ocr_config_endpoint(api_key: str = None):
-    """Sauvegarde la clé API Groq."""
-    if api_key and not api_key.startswith("gsk_"):
-        raise HTTPException(400, "Clé API Groq invalide (doit commencer par 'gsk_')")
-
-    config = save_ocr_config(api_key)
     return OCRConfigResponse(api_key=config.get("api_key", ""))
 
 
@@ -108,10 +108,13 @@ async def scan_ticket(file: UploadFile = File(...)):
         raw = ocr.ocr_engine.extract_text(path)
         tx = ocr.process_ticket(path)
 
-        _archive_ticket_file(path, tx)
+        archived_path = _archive_ticket_file(path, tx)
 
         return OCRScanResponse(
-            transaction=tx.model_dump(), warnings=_tx_warnings(tx), raw_ocr_text=raw
+            transaction=tx.model_dump(),
+            warnings=_tx_warnings(tx),
+            raw_ocr_text=raw,
+            archived_path=archived_path,
         )
     except Exception as e:
         logger.error(f"OCR scan error: {e}", exc_info=True)
@@ -302,6 +305,39 @@ async def save_salary_plan(plan_data: dict):
         raise HTTPException(400, str(e))
     except Exception as e:
         logger.error(f"Error saving salary plan: {e}")
+        raise HTTPException(500, str(e))
+
+
+@router.put("/salary-plans/{plan_id}", response_model=SalaryPlanResponse)
+async def update_salary_plan(plan_id: int, plan_data: dict):
+    """Met à jour un salary plan existant."""
+    plan_data["id"] = plan_id
+    return await save_salary_plan(plan_data)
+
+
+@router.delete("/salary-plans/{plan_id}")
+async def delete_salary_plan(plan_id: int):
+    """Supprime un salary plan (réinitialise à défaut)."""
+    try:
+        import yaml
+        from pathlib import Path
+
+        p = Path(__file__).parent.parent.parent / "config" / "salary_plan_default.yaml"
+        default_plan = {
+            "salary_plan": {
+                "name": "Plan par défaut",
+                "is_active": False,
+                "reference_salary": 0,
+                "default_remainder_category": "Épargne",
+                "allocations": [],
+            }
+        }
+        with open(p, "w", encoding="utf-8") as f:
+            yaml.dump(default_plan, f, allow_unicode=True, default_flow_style=False)
+
+        return {"status": "success", "message": "Salary plan supprimé"}
+    except Exception as e:
+        logger.error(f"Error deleting salary plan: {e}")
         raise HTTPException(500, str(e))
 
 

@@ -14,8 +14,11 @@ from backend.domains.transactions.database.repository import TransactionReposito
 # INSERT
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.integration
-def test_add_retourne_un_id(repo: TransactionRepository, transaction_depense: Transaction):
+def test_add_retourne_un_id(
+    repo: TransactionRepository, transaction_depense: Transaction
+):
     """Ajouter une transaction valide doit retourner un ID entier positif."""
     new_id = repo.add(transaction_depense)
     assert new_id is not None
@@ -24,7 +27,9 @@ def test_add_retourne_un_id(repo: TransactionRepository, transaction_depense: Tr
 
 
 @pytest.mark.integration
-def test_add_transaction_retrouvable(repo: TransactionRepository, transaction_depense: Transaction):
+def test_add_transaction_retrouvable(
+    repo: TransactionRepository, transaction_depense: Transaction
+):
     """La transaction ajoutée doit être retrouvable par son ID."""
     new_id = repo.add(transaction_depense)
     row = repo.get_by_id(new_id)
@@ -39,10 +44,17 @@ def test_add_transaction_retrouvable(repo: TransactionRepository, transaction_de
 def test_add_doublon_external_id_ignore(repo: TransactionRepository):
     """Deux transactions avec le même external_id : la 2e doit être ignorée."""
     t = Transaction(
-        type="Dépense", categorie="Transport", montant=10.0,
-        date=date(2026, 1, 1), external_id="EXT-001",
-        source="Manuel", sous_categorie=None, description=None,
-        recurrence=None, date_fin=None, compte_iban=None, id=None,
+        type="Dépense",
+        categorie="Transport",
+        montant=10.0,
+        date=date(2026, 1, 1),
+        external_id="EXT-001",
+        source="Manuel",
+        sous_categorie=None,
+        description=None,
+        echeance_id=None,
+        compte_id=None,
+        id=None,
     )
     id1 = repo.add(t)
     id2 = repo.add(t)  # doublon
@@ -55,8 +67,11 @@ def test_add_doublon_external_id_ignore(repo: TransactionRepository):
 # UPDATE
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.integration
-def test_update_modifie_le_montant(repo: TransactionRepository, transaction_depense: Transaction):
+def test_update_modifie_le_montant(
+    repo: TransactionRepository, transaction_depense: Transaction
+):
     """Modifier le montant d'une transaction existante doit persister."""
     new_id = repo.add(transaction_depense)
 
@@ -86,8 +101,11 @@ def test_update_sans_id_retourne_false(repo: TransactionRepository):
 # DELETE
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.integration
-def test_delete_supprime_la_transaction(repo: TransactionRepository, transaction_depense: Transaction):
+def test_delete_supprime_la_transaction(
+    repo: TransactionRepository, transaction_depense: Transaction
+):
     """Supprimer une transaction : elle ne doit plus être retrouvable."""
     new_id = repo.add(transaction_depense)
     success = repo.delete(new_id)
@@ -105,13 +123,14 @@ def test_delete_batch(repo: TransactionRepository, transactions_batch: list):
     success = repo.delete(ids)
     assert success is True
 
-    df = repo.get_all()
-    assert df.empty
+    txs = repo.get_all()
+    assert len(txs) == 0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # GET ALL / FILTRES
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.integration
 def test_get_all_retourne_toutes_les_transactions(
@@ -121,24 +140,59 @@ def test_get_all_retourne_toutes_les_transactions(
     for t in transactions_batch:
         repo.add(t)
 
-    df = repo.get_all()
-    assert len(df) == len(transactions_batch)
+    txs = repo.get_all()
+    assert len(txs) == len(transactions_batch)
 
 
 @pytest.mark.integration
-def test_get_filtered_par_categorie(repo: TransactionRepository, transaction_depense: Transaction, transaction_revenu: Transaction):
+def test_get_filtered_par_categorie(
+    repo: TransactionRepository,
+    transaction_depense: Transaction,
+    transaction_revenu: Transaction,
+):
     """Le filtre par catégorie doit n'exposer que les transactions correspondantes."""
-    repo.add(transaction_depense)   # Alimentation
-    repo.add(transaction_revenu)    # Salaire
+    repo.add(transaction_depense)  # Alimentation
+    repo.add(transaction_revenu)  # Salaire
 
-    df = repo.get_filtered(category="Alimentation")
-    assert len(df) == 1
-    assert df.iloc[0]["categorie"] == "Alimentation"
+    txs = repo.get_filtered(category="Alimentation")
+    assert len(txs) == 1
+    assert txs[0].categorie == "Alimentation"
 
 
 @pytest.mark.integration
-def test_get_all_vide_retourne_dataframe_vide(repo: TransactionRepository):
-    """Sur une DB vide, get_all() doit retourner un DataFrame vide (pas une erreur)."""
-    df = repo.get_all()
-    assert df.empty
+def test_get_all_vide_retourne_liste_vide(repo: TransactionRepository):
+    """Sur une DB vide, get_all() doit retourner une liste vide (pas une erreur)."""
+    txs = repo.get_all()
+    assert len(txs) == 0
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GET ALL / FILTRES
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.integration
+def test_get_all_retourne_toutes_les_transactions(
+    repo: TransactionRepository, transactions_batch: list
+):
+    """get_all() doit retourner autant de lignes qu'on en a insérées."""
+    for t in transactions_batch:
+        repo.add(t)
+
+    txs = repo.get_all()
+    assert len(txs) == len(transactions_batch)
+
+
+@pytest.mark.integration
+def test_get_filtered_par_categorie(
+    repo: TransactionRepository,
+    transaction_depense: Transaction,
+    transaction_revenu: Transaction,
+):
+    """Le filtre par catégorie doit n'exposer que les transactions correspondantes."""
+    repo.add(transaction_depense)  # Alimentation
+    repo.add(transaction_revenu)  # Salaire
+
+    txs = repo.get_filtered(category="Alimentation")
+    assert len(txs) == 1
+    assert txs[0].categorie == "Alimentation"
