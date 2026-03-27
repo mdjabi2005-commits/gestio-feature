@@ -51,7 +51,7 @@ export function InstallmentForm({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const set = (k: keyof InstallmentFormData, v: string) => setForm(f => ({ ...f, [k]: v }))
 
-  const isValid = form.nom.trim() && form.montant && Number(form.montant) > 0 && form.categorie && form.sous_categorie
+  const isValid = form.nom.trim() && form.montant && Number(form.montant) > 0 && form.categorie
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
