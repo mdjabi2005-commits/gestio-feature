@@ -13,6 +13,7 @@ export interface Transaction {
   has_attachments?: boolean;
   recurrence?: string;
   date_fin?: string;
+  echeance_id?: string;
 }
 
 export interface Attachment {
@@ -45,6 +46,12 @@ export const api = {
     }
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error('Failed to fetch summary');
+    return res.json();
+  },
+
+  getCategories: async (): Promise<any[]> => {
+    const res = await fetch(`${API_BASE_URL}/api/dashboard/categories`);
+    if (!res.ok) throw new Error('Failed to fetch categories');
     return res.json();
   },
 
@@ -86,6 +93,12 @@ export const api = {
   getEcheances: async (): Promise<any[]> => {
     const res = await fetch(`${API_BASE_URL}/api/echeances/`);
     if (!res.ok) throw new Error('Failed to fetch echeances');
+    return res.json();
+  },
+
+  getCalendarEcheances: async (): Promise<any[]> => {
+    const res = await fetch(`${API_BASE_URL}/api/echeances/calendar`);
+    if (!res.ok) throw new Error('Failed to fetch calendar echeances');
     return res.json();
   },
 

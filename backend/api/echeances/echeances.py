@@ -6,6 +6,7 @@ Expose les échéances au frontend
 from fastapi import APIRouter, HTTPException
 from typing import List
 from datetime import date, timedelta
+from dateutil.relativedelta import relativedelta
 import sqlite3
 
 from backend.domains.transactions.database.model_echeance import Echeance
@@ -75,6 +76,25 @@ class EcheanceResponse:
             self.paymentMethod = "manual"
 
 
+def _get_paid_dates_map() -> dict:
+    """Récupère un dictionnaire {echeance_id: [dates_payées]}."""
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT echeance_id, date FROM transactions WHERE echeance_id IS NOT NULL"
+    )
+    res = {}
+    for row in cursor.fetchall():
+        eid = row["echeance_id"]
+        d = row["date"][:10]
+        if eid not in res:
+            res[eid] = []
+        res[eid].append(d)
+    close_connection(conn)
+    return res
+
+
 def _check_paid_this_month(echeances: list) -> dict:
     """Check which echeances have a matching transaction this month."""
     today = date.today()
@@ -111,6 +131,62 @@ async def get_echeances():
             for e in echeances
         ]
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/calendar")
+async def get_calendar_echeances():
+    """Récupère les occurrences d'échéances sur plusieurs mois pour le calendrier."""
+    try:
+        today = date.today()
+        # On projette de 6 mois en arrière à 24 mois en avant pour être large
+        start_month = today - relativedelta(months=6)
+        end_month = today + relativedelta(months=24)
+
+        paid_map = _get_paid_dates_map()
+        all_occurrences = []
+        
+        current = start_month.replace(day=1)
+        while current <= end_month:
+            occ = repo.get_occurrences_for_month(current.year, current.month)
+            for o in occ:
+                iso_date = o["date"][:10]
+                echeance_id = o["id"]
+                
+                # Payment detection
+                is_paid = echeance_id in paid_map and iso_date in paid_map[echeance_id]
+                
+                status = "pending"
+                if is_paid:
+                    status = "paid"
+                elif iso_date < today.isoformat():
+                    status = "overdue"
+
+                item = {
+                    "id": f"{echeance_id}-{iso_date}",
+                    "echeance_base_id": echeance_id,
+                    "name": o["nom"],
+                    "category": o["categorie"],
+                    "sous_categorie": o.get("sous_categorie", ""),
+                    "categoryType": o.get("sous_categorie", ""),
+                    "date": date.fromisoformat(iso_date).strftime("%d %b."),
+                    "date_prevue": iso_date,
+                    "date_debut": o.get("date_debut", iso_date),
+                    "date_fin": o.get("date_fin"),
+                    "amount": o["montant"],
+                    "type": "income" if o["type"] == "Revenu" else "expense",
+                    "status": status,
+                    "frequence": o["frequence"],
+                    "paymentMethod": "automatic" if o["frequence"] in ["mensuel", "mensuelle", "annuel", "annuelle"] else "manual"
+                }
+                all_occurrences.append(item)
+            
+            current += relativedelta(months=1)
+
+        return all_occurrences
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 

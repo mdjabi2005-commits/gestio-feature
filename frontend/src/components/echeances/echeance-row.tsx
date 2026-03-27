@@ -3,13 +3,14 @@
 import { useState } from "react"
 import { CalendarDays, Check, RefreshCw, Hand, Pencil, Trash2, CheckSquare, Square } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { categoryColors, statusConfig, type Installment } from "./echeance-types"
+import { statusConfig, type Installment } from "./echeance-types"
 
-export function InstallmentRow({ installment, onMarkPaid, onEdit, onDelete, isSelected, onSelect, selectionMode }: {
+export function InstallmentRow({ installment, onMarkPaid, onEdit, onDelete, onViewDetail, isSelected, onSelect, selectionMode }: {
   installment: Installment
   onMarkPaid: (id: string) => void
   onEdit: (installment: Installment) => void
   onDelete: (id: string) => void
+  onViewDetail: (installment: Installment) => void
   isSelected: boolean
   onSelect: (id: string) => void
   selectionMode: boolean
@@ -18,16 +19,26 @@ export function InstallmentRow({ installment, onMarkPaid, onEdit, onDelete, isSe
   const Icon = installment.icon
   const isIncome = installment.type === "income"
   const isPaid = installment.status === "paid"
-  const cat = categoryColors[installment.categoryType]
   const stat = statusConfig[installment.status]
+
+  // Use hex color with 15% opacity (decimal 0.15 * 255 = ~38 = 26 in hex)
+  const bgStyle = { backgroundColor: `${installment.color}26` }
+  const iconStyle = { color: installment.color }
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (selectionMode) {
+      onSelect(installment.id)
+    } else {
+      onViewDetail(installment)
+    }
+  }
 
   return (
     <div
       onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-      onClick={() => selectionMode && onSelect(installment.id)}
+      onClick={handleClick}
       className={cn(
-        "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200",
-        selectionMode && "cursor-pointer",
+        "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer",
         hovered ? "bg-white/[0.04]" : "bg-transparent",
         isSelected && "bg-indigo-500/10 border border-indigo-500/20"
       )}
@@ -39,8 +50,8 @@ export function InstallmentRow({ installment, onMarkPaid, onEdit, onDelete, isSe
       )}
 
       {/* Icon */}
-      <div className={cn("flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0", cat.bg)}>
-        <Icon className={cn("w-5 h-5", cat.icon)} strokeWidth={1.75} />
+      <div className="flex items-center justify-center w-10 h-10 rounded-xl flex-shrink-0" style={bgStyle}>
+        <Icon className="w-5 h-5" style={iconStyle} strokeWidth={1.75} />
       </div>
 
       {/* Name & Category */}

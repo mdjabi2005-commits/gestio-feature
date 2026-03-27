@@ -41,6 +41,14 @@ def _dict_to_echeance(data: dict) -> Echeance:
     )
 
 
+@router.get("/categories")
+async def get_all_categories():
+    """Retourne la liste complète des catégories (avec icônes et couleurs)."""
+    from backend.shared.utils.categories_loader import _load
+    data = _load()
+    return data.get("categories", [])
+
+
 @router.get("/")
 async def get_summary(
     start_date: Optional[date] = None,

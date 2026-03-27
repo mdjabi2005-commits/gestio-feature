@@ -2,7 +2,7 @@ import { useState, useRef } from "react"
 import { X, Save, Calendar, Repeat, Paperclip, Loader2, Tag, List } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AttachmentSection } from "../transactions/AttachmentSection"
-import { CATEGORIES } from "../transactions/constants"
+import { CATEGORIES } from "@/lib/categories"
 import type { Attachment } from "@/api"
 
 interface InstallmentFormData {

@@ -12,7 +12,10 @@ import {
   TrendingUp, 
   MoreHorizontal,
   MapPin,
-  HelpCircle
+  HelpCircle,
+  Truck,
+  PlusCircle,
+  MinusCircle
 } from "lucide-react"
 
 export const getCategoryIcon = (iconName: string) => {
@@ -30,6 +33,9 @@ export const getCategoryIcon = (iconName: string) => {
     case "trending-up": return TrendingUp
     case "more-horizontal": return MoreHorizontal
     case "map-pin": return MapPin
+    case "truck": return Truck
+    case "plus-circle": return PlusCircle
+    case "minus-circle": return MinusCircle
     default: return HelpCircle
   }
 }

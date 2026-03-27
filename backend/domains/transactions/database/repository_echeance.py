@@ -270,6 +270,8 @@ class EcheanceRepository:
                                 "sous_categorie": echeance.sous_categorie,
                                 "montant": echeance.montant,
                                 "date": current.isoformat(),
+                                "date_debut": echeance.date_debut.isoformat() if echeance.date_debut else None,
+                                "date_fin": echeance.date_fin.isoformat() if echeance.date_fin else None,
                                 "description": echeance.description,
                                 "frequence": echeance.frequence,
                                 "type_echeance": echeance.type_echeance,

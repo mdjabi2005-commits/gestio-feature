@@ -199,9 +199,9 @@ def calculate_next_occurrence(echeance: Echeance) -> date:
 
     current = echeance.date_debut if echeance.date_debut else today
 
-    while current <= today:
+    while current < today:
         if echeance.date_fin and current > echeance.date_fin:
             return today
         current += delta
 
-    return current - delta
+    return current

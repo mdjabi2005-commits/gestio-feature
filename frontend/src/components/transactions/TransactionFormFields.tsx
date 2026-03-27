@@ -1,7 +1,7 @@
 import React from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { CATEGORIES } from './constants';
+import { CATEGORIES } from "@/lib/categories";
 
 interface TransactionFormFieldsProps {
   type: 'Dépense' | 'Revenu';

@@ -8,24 +8,59 @@ export interface CategoryMetadata {
 
 // Frontend Source of Truth for Category Styles
 // Basé sur le YAML de référence et les données réelles constatées
-const CATEGORY_STYLES: Record<string, { couleur: string; icone: string }> = {
-  "Alimentation": { couleur: "#f59e0b", icone: "utensils" },
-  "Voiture": { couleur: "#3b82f6", icone: "car" },
-  "Uber": { couleur: "#3b82f6", icone: "map-pin" },
-  "Logement": { couleur: "#ec4899", icone: "home" },
-  "Loisirs": { couleur: "#14b8a6", icone: "gamepad" },
-  "Santé": { couleur: "#ef4444", icone: "heart" },
-  "Shopping": { couleur: "#6366f1", icone: "shopping-bag" },
-  "Services": { couleur: "#8b5cf6", icone: "briefcase" },
-  "Travail Animateur": { couleur: "#8b5cf6", icone: "briefcase" },
-  "Bourse": { couleur: "#10b981", icone: "trending-up" },
-  "Investissement": { couleur: "#10b981", icone: "trending-up" },
-  "Salaire": { couleur: "#6366f1", icone: "briefcase" },
-  "Revenu": { couleur: "#10b981", icone: "plus-circle" },
-  "Dépense": { couleur: "#f43f5e", icone: "minus-circle" },
-  "Autre": { couleur: "#6b7280", icone: "shopping-cart" },
-  "Divers": { couleur: "#6b7280", icone: "help-circle" }
+export const CATEGORY_STYLES: Record<string, { couleur: string; icone: string; subcategories: string[] }> = {
+  "Alimentation": { 
+    couleur: "#f59e0b", 
+    icone: "utensils",
+    subcategories: ['Supermarché', 'Boulangerie', 'Boucherie', 'Marché', 'Fast Food', 'Restaurant', 'Café / Bar', 'Épicerie']
+  },
+  "Voiture": { 
+    couleur: "#3b82f6", 
+    icone: "car",
+    subcategories: ['Essence', 'Péage', 'Parking', 'Entretien', 'Réparation', 'Contrôle technique', 'Assurance auto', 'Lavage']
+  },
+  "Uber": { 
+    couleur: "#3b82f6", 
+    icone: "truck",
+    subcategories: ['Livraison']
+  },
+  "Logement": { 
+    couleur: "#ec4899", 
+    icone: "home",
+    subcategories: ['Loyer', 'Électricité', 'Gaz', 'Eau', 'Internet / Téléphone', 'Assurance habitation', 'Travaux', 'Mobilier', 'Électroménager']
+  },
+  "Loisirs": { 
+    couleur: "#14b8a6", 
+    icone: "gamepad",
+    subcategories: ['Cinéma', 'Sport', 'Jeux vidéo', 'Musique', 'Livres', 'Sorties', 'Voyages', 'Streaming']
+  },
+  "Santé": { 
+    couleur: "#ef4444", 
+    icone: "heart",
+    subcategories: ['Pharmacie', 'Médecin', 'Dentiste', 'Optique', 'Mutuelle', 'Hôpital', 'Parapharmacie']
+  },
+  "Shopping": { 
+    couleur: "#6366f1", 
+    icone: "shopping-bag",
+    subcategories: ['Vêtements', 'Chaussures', 'Électronique', 'Informatique', 'Beauté / Cosmétiques', 'Cadeaux', 'Maison / Déco']
+  },
+  "Services": { 
+    couleur: "#8b5cf6", 
+    icone: "briefcase",
+    subcategories: ['Abonnement', 'Banque / Frais', 'Impôts / Taxes', 'Assurance', 'Courrier / Colis', 'Administratif']
+  },
+  "Bourse": { couleur: "#10b981", icone: "trending-up", subcategories: [] },
+  "Revenu": { couleur: "#10b981", icone: "plus-circle", subcategories: [] },
+  "Dépense": { couleur: "#f43f5e", icone: "minus-circle", subcategories: [] },
+  "Autre": { couleur: "#6b7280", icone: "shopping-cart", subcategories: ['Divers'] },
 }
+
+export const CATEGORIES = Object.entries(CATEGORY_STYLES).map(([name, style]) => ({
+  value: name,
+  label: name,
+  color: style.couleur,
+  subcategories: style.subcategories
+}))
 
 export const getCategoryMetadata = (categories: any[], categoryName: string): CategoryMetadata => {
   // 1. Priorité aux styles statiques du Frontend (Design System)
