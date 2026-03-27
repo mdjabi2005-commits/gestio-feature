@@ -75,7 +75,7 @@ export interface Echeance {
 
 export interface IncomeSplit {
   categorie: string;
-  sous_categorie?: string;
+  sous_categorie: string;
   montant: number;
   description: string;
 }

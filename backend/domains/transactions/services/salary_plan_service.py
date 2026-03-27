@@ -107,10 +107,10 @@ def validate_salary_plan(plan: Dict[str, Any]) -> bool:
 
 
 def apply_salary_split(
-    net_amount: float, 
-    payroll_date: str, 
+    net_amount: float,
+    payroll_date: str,
     plan: Optional[Dict[str, Any]] = None,
-    attachment: Optional[str] = None
+    attachment: Optional[str] = None,
 ) -> List[Transaction]:
     """
     Applique le plan de salaire pour générer une liste de transactions.
@@ -180,7 +180,7 @@ def apply_salary_split(
                             description=f"Salaire - {sub_name}",
                             source="salary_split",
                             attachment=attachment,
-                            has_attachments=bool(attachment)
+                            has_attachments=bool(attachment),
                         )
                     )
 
@@ -213,7 +213,7 @@ def apply_salary_split(
                                 description=f"Salaire - {subcat}",
                                 source="salary_split",
                                 attachment=attachment,
-                                has_attachments=bool(attachment)
+                                has_attachments=bool(attachment),
                             )
                         )
             else:
@@ -221,13 +221,13 @@ def apply_salary_split(
                     Transaction(
                         type="Dépense",
                         categorie=category,
-                        sous_categorie=None,
+                        sous_categorie="Autre",
                         montant=amount,
                         date=payroll_date,
                         description="Salaire",
                         source="salary_split",
                         attachment=attachment,
-                        has_attachments=bool(attachment)
+                        has_attachments=bool(attachment),
                     )
                 )
 
@@ -244,7 +244,7 @@ def apply_salary_split(
                 description="Salaire - Reliquat",
                 source="salary_split",
                 attachment=attachment,
-                has_attachments=bool(attachment)
+                has_attachments=bool(attachment),
             )
         )
 

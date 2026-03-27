@@ -36,11 +36,11 @@ class Transaction(BaseModel):
     type: str = Field(..., description="Type (Dépense/Revenu)")
     date: DateType = Field(..., description="Date de la transaction")
     categorie: str = Field("Non catégorisé", description="Catégorie principale")
+    sous_categorie: str = Field(..., description="Sous-catégorie")
     montant: float = Field(..., description="Montant en euros", ge=0)
 
     # ── Champs optionnels ───────────────────────────────────
     id: Optional[int] = Field(None, description="ID (DB)")
-    sous_categorie: Optional[str] = Field(None, description="Sous-catégorie")
     description: Optional[str] = Field(None, description="Description libre")
     source: str = Field(DEFAULT_SOURCE, description="Source de la transaction")
     date_fin: Optional[DateType] = Field(None, description="Date de fin")
@@ -48,7 +48,9 @@ class Transaction(BaseModel):
     echeance_id: Optional[int] = Field(None, description="ID de l'échéance liée")
     compte_id: Optional[int] = Field(None, description="ID du compte")
     has_attachments: bool = Field(False, description="Indicateur pièces jointes")
-    attachment: Optional[str] = Field(None, description="Chemin de la pièce jointe principale")
+    attachment: Optional[str] = Field(
+        None, description="Chemin de la pièce jointe principale"
+    )
 
     # ── Validators ──────────────────────────────────────────
 
@@ -58,12 +60,17 @@ class Transaction(BaseModel):
         if not isinstance(v, str):
             raise ValueError(f"Type invalide: {v!r}")
         mapping = {
-            "depense": TYPE_DEPENSE, "dépense": TYPE_DEPENSE, "expense": TYPE_DEPENSE,
-            "revenu": TYPE_REVENU, "income": TYPE_REVENU,
+            "depense": TYPE_DEPENSE,
+            "dépense": TYPE_DEPENSE,
+            "expense": TYPE_DEPENSE,
+            "revenu": TYPE_REVENU,
+            "income": TYPE_REVENU,
         }
         normalized = mapping.get(v.strip().lower(), v.strip())
         if normalized not in TRANSACTION_TYPES:
-            raise ValueError(f"Type '{normalized}' invalide. Acceptés : {TRANSACTION_TYPES}")
+            raise ValueError(
+                f"Type '{normalized}' invalide. Acceptés : {TRANSACTION_TYPES}"
+            )
         return normalized
 
     @field_validator("montant", mode="before")
@@ -107,6 +114,7 @@ class Transaction(BaseModel):
     @model_validator(mode="after")
     def validate_date_not_future(self) -> "Transaction":
         from datetime import date as today_date
+
         if self.date and self.date > today_date.today():
             raise ValueError(f"La date {self.date} ne peut pas être dans le futur")
         return self
@@ -116,18 +124,18 @@ class Transaction(BaseModel):
     def to_db_dict(self) -> dict:
         """Dict prêt pour l'insertion/mise à jour en base de données."""
         return {
-            "type":           self.type,
-            "categorie":      self.categorie,
+            "type": self.type,
+            "categorie": self.categorie,
             "sous_categorie": self.sous_categorie,
-            "description":    self.description,
-            "montant":        self.montant,
-            "date":           self.date.isoformat() if self.date else None,
-            "source":         self.source,
-            "date_fin":       self.date_fin.isoformat() if self.date_fin else None,
-            "external_id":    self.external_id,
-            "echeance_id":    self.echeance_id,
-            "compte_id":      self.compte_id,
-            "attachment":     self.attachment,
+            "description": self.description,
+            "montant": self.montant,
+            "date": self.date.isoformat() if self.date else None,
+            "source": self.source,
+            "date_fin": self.date_fin.isoformat() if self.date_fin else None,
+            "external_id": self.external_id,
+            "echeance_id": self.echeance_id,
+            "compte_id": self.compte_id,
+            "attachment": self.attachment,
         }
 
     # ── Config ──────────────────────────────────────────────

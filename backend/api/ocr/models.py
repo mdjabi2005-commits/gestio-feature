@@ -20,7 +20,7 @@ class BatchScanResponse(BaseModel):
 
 class IncomeSplitDTO(BaseModel):
     categorie: str
-    sous_categorie: Optional[str] = None
+    sous_categorie: str
     montant: float
     description: str
 

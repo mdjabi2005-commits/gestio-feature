@@ -225,7 +225,7 @@ class OCRService:
         logger.info("Soumission du texte PDF à Groq pour catégorisation...")
         semantic_data = self.llm_parser.parse(text)
         category = semantic_data.get("category", "Revenu")
-        subcategory = semantic_data.get("subcategory", None)
+        subcategory = semantic_data.get("subcategory") or "Autre"
         description = semantic_data.get("description") or parsed_data["description"]
         if len(description) > 50:
             description = description[:50]
@@ -283,7 +283,7 @@ class OCRService:
             )
             semantic_data = self.llm_parser.parse(raw_text)
             category = semantic_data.get("category", "Autre")
-            subcategory = semantic_data.get("subcategory", None)
+            subcategory = semantic_data.get("subcategory") or "Autre"
             description = semantic_data.get("description", "")
             if len(description) > 50:
                 description = description[:50]

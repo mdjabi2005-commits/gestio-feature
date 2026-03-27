@@ -10,7 +10,7 @@ interface InstallmentFormData {
   nom: string
   type: "Dépense" | "Revenu"
   categorie: string
-  sous_categorie?: string
+  sous_categorie: string
   montant: string
   frequence: string
   date_debut: string
@@ -51,7 +51,7 @@ export function InstallmentForm({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const set = (k: keyof InstallmentFormData, v: string) => setForm(f => ({ ...f, [k]: v }))
 
-  const isValid = form.nom.trim() && form.montant && Number(form.montant) > 0 && form.categorie
+  const isValid = form.nom.trim() && form.montant && Number(form.montant) > 0 && form.categorie && form.sous_categorie
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

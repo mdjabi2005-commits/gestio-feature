@@ -136,6 +136,7 @@ async def scan_batch(files: List[UploadFile] = File(...)):
                         transaction=Transaction(
                             type="Dépense",
                             categorie="Erreur",
+                            sous_categorie="Autre",
                             montant=0,
                             date=date_type.today(),
                             description=f"Erreur sur {fname}",
