@@ -10,7 +10,7 @@ interface InstallmentFormData {
   nom: string
   type: "Dépense" | "Revenu"
   categorie: string
-  sous_categorie: string
+  sous_categorie?: string
   montant: string
   frequence: string
   date_debut: string
