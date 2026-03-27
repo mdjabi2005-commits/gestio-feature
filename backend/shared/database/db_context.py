@@ -40,32 +40,6 @@ def db_transaction(
         close_connection(conn)
 
 
-@contextmanager
-def db_cursor(
-    db_path: Optional[str] = None,
-) -> Generator[sqlite3.Cursor, None, None]:
-    """
-    Context manager pour exécuter des requêtes DB.
-    Retourne un curseur avec row_factory configuré.
-
-    Usage:
-        with db_cursor() as cursor:
-            cursor.execute("SELECT * FROM table")
-            rows = cursor.fetchall()
-    """
-    conn = None
-    try:
-        conn = get_db_connection(db_path=db_path)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        yield cursor
-    except sqlite3.Error as e:
-        logger.error(f"Database error: {e}")
-        raise
-    finally:
-        close_connection(conn)
-
-
 def execute_single(
     query: str,
     params: tuple = (),
@@ -77,7 +51,8 @@ def execute_single(
     Usage:
         row = execute_single("SELECT * FROM table WHERE id = ?", (1,))
     """
-    with db_cursor(db_path) as cursor:
+    with db_transaction(db_path) as conn:
+        cursor = conn.cursor()
         cursor.execute(query, params)
         return cursor.fetchone()
 
@@ -93,7 +68,8 @@ def execute_all(
     Usage:
         rows = execute_all("SELECT * FROM table WHERE type = ?", ("Dépense",))
     """
-    with db_cursor(db_path) as cursor:
+    with db_transaction(db_path) as conn:
+        cursor = conn.cursor()
         cursor.execute(query, params)
         return cursor.fetchall()
 

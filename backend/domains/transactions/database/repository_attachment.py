@@ -77,32 +77,41 @@ class AttachmentRepository:
         finally:
             close_connection(conn)
 
-    def add_attachment(self, attachment: TransactionAttachment) -> Optional[int]:
+    def add_attachment(
+        self, attachment: TransactionAttachment, conn: sqlite3.Connection = None
+    ) -> Optional[int]:
+        if conn:
+            return self._add_attachment_with_conn(attachment, conn)
+
         conn = None
         try:
             conn = get_db_connection(db_path=self.db_path)
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO transaction_attachments (transaction_id, echeance_id, file_name, file_path, file_type, upload_date, size) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (
-                    attachment.transaction_id,
-                    attachment.echeance_id,
-                    attachment.file_name,
-                    attachment.file_path,
-                    attachment.file_type,
-                    attachment.upload_date.isoformat(),
-                    getattr(attachment, "size", None),
-                ),
-            )
-            new_id = cursor.lastrowid
-            conn.commit()
-            return new_id
+            return self._add_attachment_with_conn(attachment, conn)
         except sqlite3.Error as e:
             logger.error(f"Erreur add_attachment: {e}")
             return None
         finally:
             close_connection(conn)
+
+    def _add_attachment_with_conn(
+        self, attachment: TransactionAttachment, conn: sqlite3.Connection
+    ) -> Optional[int]:
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO transaction_attachments (transaction_id, echeance_id, file_path) "
+                "VALUES (?, ?, ?)",
+                (
+                    attachment.transaction_id,
+                    attachment.echeance_id,
+                    attachment.file_path,
+                ),
+            )
+            new_id = cursor.lastrowid
+            return new_id
+        except sqlite3.Error as e:
+            logger.error(f"Erreur add_attachment: {e}")
+            return None
 
     def delete_attachment(self, attachment_id: int) -> bool:
         conn = None

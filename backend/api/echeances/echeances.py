@@ -14,7 +14,7 @@ from backend.domains.transactions.echeance.echeance_service import (
     calculate_next_occurrence,
     backfill_echeances,
 )
-from backend.shared.database import db_cursor
+from backend.shared.database import db_transaction
 
 router = APIRouter(prefix="/api/echeances", tags=["echeances"])
 repo = EcheanceRepository()
@@ -28,7 +28,8 @@ def _get_paid_this_month() -> set:
         (today.replace(day=28) + relativedelta(months=1)).replace(day=1).isoformat()
     )
 
-    with db_cursor() as cursor:
+    with db_transaction() as conn:
+        cursor = conn.cursor()
         cursor.execute(
             "SELECT echeance_id FROM transactions WHERE date >= ? AND date < ? AND echeance_id IS NOT NULL",
             (month_start, month_end),
@@ -38,7 +39,8 @@ def _get_paid_this_month() -> set:
 
 def _get_paid_dates_map() -> dict:
     """Récupère un dictionnaire {echeance_id: [dates_payées]}."""
-    with db_cursor() as cursor:
+    with db_transaction() as conn:
+        cursor = conn.cursor()
         cursor.execute(
             "SELECT echeance_id, date FROM transactions WHERE echeance_id IS NOT NULL"
         )
@@ -101,10 +103,9 @@ async def get_echeances():
     """Récupère toutes les échéances actives."""
     try:
         echeances = repo.get_all()
-        paid_map = _get_paid_this_month()
+        paid_ids = _get_paid_this_month()
         return [
-            EcheanceResponse(e, is_paid=paid_map.get(e.id, False)).__dict__
-            for e in echeances
+            EcheanceResponse(e, is_paid=e.id in paid_ids).__dict__ for e in echeances
         ]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

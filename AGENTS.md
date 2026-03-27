@@ -158,8 +158,8 @@ graph TB
 
 | Service | Port |
 |---------|------|
-| Backend (FastAPI) | 8001 |
-| Frontend (Vite) | 5173 |
+| Backend (FastAPI) | 8002 |
+| Frontend (Next.js) | 3000 |
 
 ---
 

@@ -7,7 +7,7 @@ import sqlite3
 from datetime import date
 from typing import List, Optional, Dict
 
-from backend.shared.database import db_transaction, db_cursor
+from backend.shared.database import db_transaction
 from backend.shared.utils import create_empty_transaction_df, convert_transaction_df
 from .model import Transaction
 
@@ -29,9 +29,16 @@ class TransactionRepository:
 
     def get_all(self) -> List[Transaction]:
         """Récupère toutes les transactions."""
-        with db_cursor(self.db_path) as cursor:
+        with db_transaction(self.db_path) as conn:
+            cursor = conn.cursor()
             cursor.execute(f"{self._get_with_attachments_query()} ORDER BY t.date DESC")
-            return [Transaction(**dict(row)) for row in cursor.fetchall()]
+            transactions = []
+            for row in cursor.fetchall():
+                try:
+                    transactions.append(Transaction.model_validate(dict(row)))
+                except Exception as e:
+                    logger.error(f"Error validating transaction row: {e}")
+            return transactions
 
     @staticmethod
     def _to_validated_db_dict(transaction) -> dict:
@@ -55,7 +62,8 @@ class TransactionRepository:
             data = self._to_validated_db_dict(transaction)
 
             if data.get("external_id"):
-                with db_cursor(self.db_path) as cursor:
+                with db_transaction(self.db_path) as conn:
+                    cursor = conn.cursor()
                     cursor.execute(
                         "SELECT id FROM transactions WHERE external_id = ?",
                         (data["external_id"],),
@@ -67,9 +75,16 @@ class TransactionRepository:
             query = """
                 INSERT INTO transactions
                 (type, categorie, sous_categorie, description, montant, date,
-                 source, date_fin, external_id, echeance_id, attachment)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 source, external_id, echeance_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
+
+            # Handle attachment if provided in the input (as a temporary field)
+            attachment_path = None
+            if isinstance(transaction, dict):
+                attachment_path = transaction.get("attachment")
+            elif hasattr(transaction, "attachment"):
+                attachment_path = getattr(transaction, "attachment")
 
             with db_transaction(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -83,13 +98,23 @@ class TransactionRepository:
                         data["montant"],
                         data["date"],
                         data["source"],
-                        data["date_fin"],
                         data["external_id"],
                         data["echeance_id"],
-                        data["attachment"],
                     ),
                 )
                 new_id = cursor.lastrowid
+
+                # Save attachment if provided
+                if new_id and attachment_path:
+                    from .repository_attachment import attachment_repository
+                    from .model_attachment import TransactionAttachment
+
+                    attachment_repository.add_attachment(
+                        TransactionAttachment(
+                            transaction_id=new_id, file_path=attachment_path
+                        ),
+                        conn=conn,
+                    )
 
             logger.info(f"Transaction ajoutée: ID {new_id}")
             return new_id
@@ -114,7 +139,7 @@ class TransactionRepository:
             query = """
                 UPDATE transactions
                 SET type=?, categorie=?, sous_categorie=?, description=?,
-                    montant=?, date=?, source=?, date_fin=?, external_id=?, echeance_id=?, attachment=?
+                    montant=?, date=?, source=?, external_id=?, echeance_id=?
                 WHERE id=?
             """
 
@@ -130,10 +155,8 @@ class TransactionRepository:
                         data["montant"],
                         data["date"],
                         data["source"],
-                        data["date_fin"],
                         data["external_id"],
                         data["echeance_id"],
-                        data["attachment"],
                         tx_id,
                     ),
                 )
@@ -148,7 +171,8 @@ class TransactionRepository:
 
     def get_by_id(self, tx_id: int) -> Optional[dict]:
         """Récupère une transaction par son ID."""
-        with db_cursor(self.db_path) as cursor:
+        with db_transaction(self.db_path) as conn:
+            cursor = conn.cursor()
             cursor.execute(
                 f"{self._get_with_attachments_query()} WHERE t.id = ?",
                 (tx_id,),
@@ -178,9 +202,16 @@ class TransactionRepository:
 
         query += " ORDER BY t.date DESC"
 
-        with db_cursor(self.db_path) as cursor:
+        with db_transaction(self.db_path) as conn:
+            cursor = conn.cursor()
             cursor.execute(query, params)
-            return [Transaction(**dict(row)) for row in cursor.fetchall()]
+            transactions = []
+            for row in cursor.fetchall():
+                try:
+                    transactions.append(Transaction.model_validate(dict(row)))
+                except Exception as e:
+                    logger.error(f"Error validating filtered transaction row: {e}")
+            return transactions
 
     def delete(self, transaction_id: int | List[int]) -> bool:
         """Supprime une ou plusieurs transactions."""

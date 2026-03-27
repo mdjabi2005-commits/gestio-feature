@@ -64,6 +64,7 @@ class Echeance(BaseModel):
     # ── Config ──────────────────────────────────────────────
 
     model_config = ConfigDict(
+        extra="ignore",
         json_schema_extra={
             "example": {
                 "nom": "Netflix",

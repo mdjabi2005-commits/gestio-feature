@@ -55,14 +55,14 @@ gestion-financiere/
 
 ```bash
 uv sync
-uv run uvicorn backend.main:app --reload   # http://localhost:8001
+uv run uvicorn backend.main:app --reload   # http://localhost:8002
 ```
 
 ### Frontend
 
 ```bash
 cd frontend && npm install
-npm run dev         # http://localhost:5173
+npm run dev         # http://localhost:3000
 ```
 
 ---
@@ -72,7 +72,7 @@ npm run dev         # http://localhost:5173
 | Composant | Technologie |
 |-----------|-------------|
 | **Backend** | Python 3.12, FastAPI, SQLite, Pydantic |
-| **Frontend** | React 19, TypeScript, Tailwind, Vite |
+| **Frontend** | React 19, TypeScript, Tailwind, Next.js |
 | **API** | REST avec CORS |
 | **Dépendances** | uv (Python), npm (JS) |
 

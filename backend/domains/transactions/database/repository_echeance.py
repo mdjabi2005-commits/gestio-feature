@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from typing import List, Optional
 from dateutil.relativedelta import relativedelta
 
-from backend.shared.database import db_transaction, db_cursor
+from backend.shared.database import db_transaction
 from .model_echeance import Echeance
 
 logger = logging.getLogger(__name__)
@@ -35,15 +35,23 @@ class EcheanceRepository:
 
     def get_all(self) -> List[Echeance]:
         """Récupère toutes les échéances actives."""
-        with db_cursor(self.db_path) as cursor:
+        with db_transaction(self.db_path) as conn:
+            cursor = conn.cursor()
             cursor.execute(
                 "SELECT * FROM echeances WHERE statut = 'active' ORDER BY date_debut ASC"
             )
-            return [Echeance(**dict(row)) for row in cursor.fetchall()]
+            echeances = []
+            for row in cursor.fetchall():
+                try:
+                    echeances.append(Echeance.model_validate(dict(row)))
+                except Exception as e:
+                    logger.error(f"Error validating echeance row: {e}")
+            return echeances
 
     def get_all_raw(self) -> List[dict]:
         """Récupère toutes les échéances actives sous forme de dictionnaires."""
-        with db_cursor(self.db_path) as cursor:
+        with db_transaction(self.db_path) as conn:
+            cursor = conn.cursor()
             cursor.execute(
                 "SELECT * FROM echeances WHERE statut = 'active' ORDER BY date_debut ASC"
             )
@@ -162,7 +170,8 @@ class EcheanceRepository:
             month_start = date(year, month, 1)
             month_end = date(year, month, last_day)
 
-            with db_cursor(self.db_path) as cursor:
+            with db_transaction(self.db_path) as conn:
+                cursor = conn.cursor()
                 cursor.execute("SELECT * FROM echeances WHERE statut = 'active'")
                 rows = cursor.fetchall()
 
@@ -170,7 +179,11 @@ class EcheanceRepository:
             limit_date = month_end
 
             for row in rows:
-                echeance = Echeance(**dict(row))
+                try:
+                    echeance = Echeance.model_validate(dict(row))
+                except Exception as e:
+                    logger.error(f"Error validating echeance instance: {e}")
+                    continue
 
                 if echeance.date_fin and echeance.date_fin < month_start:
                     continue

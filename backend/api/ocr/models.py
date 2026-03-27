@@ -12,6 +12,7 @@ class OCRScanResponse(BaseModel):
     transaction: Transaction
     warnings: List[str] = []
     raw_ocr_text: Optional[str] = None
+    archived_path: Optional[str] = None
 
 
 class BatchScanResponse(BaseModel):

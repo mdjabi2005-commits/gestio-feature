@@ -38,17 +38,16 @@ class TransactionService:
         return self.repository.get_all
 
     def get_filtered(
-            self,
-            start_date: Optional[date] = None,
-            end_date: Optional[date] = None,
-            category: Optional[str] = None,
+        self,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        category: Optional[str] = None,
     ) -> pd.DataFrame:
         """
         Récupère les transactions filtrées (colonnes FR).
 
         Colonnes retournées : id, type, categorie, sous_categorie, description,
-                              montant, date, source, date_fin,
-                              external_id, echeance_id, compte_id
+                              montant, date, source, external_id, echeance_id, compte_id
         """
         return self.repository.get_filtered(
             start_date=start_date,
@@ -127,10 +126,10 @@ class TransactionService:
     # ----------------------------------------------------------
 
     def get_filtered_transactions_df(
-            self,
-            start_date: Optional[date] = None,
-            end_date: Optional[date] = None,
-            category: Optional[str] = None,
+        self,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        category: Optional[str] = None,
     ) -> pd.DataFrame:
         """
         .. deprecated::
@@ -140,7 +139,9 @@ class TransactionService:
         logger.warning(
             "get_filtered_transactions_df() est dépréciée. Utiliser get_filtered() (colonnes FR)."
         )
-        return self.get_filtered(start_date=start_date, end_date=end_date, category=category)
+        return self.get_filtered(
+            start_date=start_date, end_date=end_date, category=category
+        )
 
 
 # Instance singleton

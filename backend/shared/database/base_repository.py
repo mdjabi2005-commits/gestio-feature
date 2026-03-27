@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Generic, List, Optional, TypeVar
 
 from .connection import get_db_connection, close_connection
-from .db_context import db_transaction, db_cursor
+from .db_context import db_transaction
 
 logger = logging.getLogger(__name__)
 
@@ -40,33 +40,38 @@ class BaseRepository(ABC, Generic[T]):
 
     def get_all(self) -> List[T]:
         """Récupère tous les enregistrements."""
-        with db_cursor(self.db_path) as cursor:
+        with db_transaction(self.db_path) as conn:
+            cursor = conn.cursor()
             cursor.execute(f"SELECT * FROM {self.table_name}")
             return [self._row_to_model(row) for row in cursor.fetchall()]
 
     def get_by_id(self, id: int) -> Optional[T]:
         """Récupère un enregistrement par son ID."""
-        with db_cursor(self.db_path) as cursor:
+        with db_transaction(self.db_path) as conn:
+            cursor = conn.cursor()
             cursor.execute(f"SELECT * FROM {self.table_name} WHERE id = ?", (id,))
             row = cursor.fetchone()
             return self._row_to_model(row) if row else None
 
     def get_where(self, where: str, params: tuple = ()) -> List[T]:
         """Récupère les enregistrements correspondant à la condition."""
-        with db_cursor(self.db_path) as cursor:
+        with db_transaction(self.db_path) as conn:
+            cursor = conn.cursor()
             cursor.execute(f"SELECT * FROM {self.table_name} WHERE {where}", params)
             return [self._row_to_model(row) for row in cursor.fetchall()]
 
     def get_one_where(self, where: str, params: tuple = ()) -> Optional[T]:
         """Récupère un seul enregistrement correspondant à la condition."""
-        with db_cursor(self.db_path) as cursor:
+        with db_transaction(self.db_path) as conn:
+            cursor = conn.cursor()
             cursor.execute(f"SELECT * FROM {self.table_name} WHERE {where}", params)
             row = cursor.fetchone()
             return self._row_to_model(row) if row else None
 
     def count(self, where: str = "1=1", params: tuple = ()) -> int:
         """Compte les enregistrements."""
-        with db_cursor(self.db_path) as cursor:
+        with db_transaction(self.db_path) as conn:
+            cursor = conn.cursor()
             cursor.execute(
                 f"SELECT COUNT(*) FROM {self.table_name} WHERE {where}", params
             )

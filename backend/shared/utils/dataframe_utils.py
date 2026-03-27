@@ -12,15 +12,27 @@ logger = logging.getLogger(__name__)
 
 # Colonnes standard pour les transactions
 TRANSACTION_COLUMNS = [
-    "id", "type", "categorie", "sous_categorie", "description",
-    "montant", "date", "source", "recurrence", "date_fin",
-    "compte_iban", "external_id"
+    "id",
+    "type",
+    "categorie",
+    "sous_categorie",
+    "description",
+    "montant",
+    "date",
+    "source",
+    "external_id",
+    "echeance_id",
+    "compte_id",
 ]
 
 # Colonnes standard pour les pièces jointes
 ATTACHMENT_COLUMNS = [
-    "id", "transaction_id", "file_name", "file_path",
-    "file_type", "upload_date"
+    "id",
+    "transaction_id",
+    "file_name",
+    "file_path",
+    "file_type",
+    "upload_date",
 ]
 
 

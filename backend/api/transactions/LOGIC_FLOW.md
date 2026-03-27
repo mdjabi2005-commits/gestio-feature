@@ -46,7 +46,7 @@ graph TD
     end
     
     subgraph Database
-        DB[(SQLite<br/>base.db)]
+        DB[(SQLite<br/>%USERPROFILE%\analyse\finances.db)]
     end
     
     Front -->|HTTP| GET

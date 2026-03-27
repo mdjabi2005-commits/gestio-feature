@@ -43,14 +43,10 @@ class Transaction(BaseModel):
     sous_categorie: Optional[str] = Field(None, description="Sous-catégorie")
     description: Optional[str] = Field(None, description="Description libre")
     source: str = Field(DEFAULT_SOURCE, description="Source de la transaction")
-    date_fin: Optional[DateType] = Field(None, description="Date de fin")
     external_id: Optional[str] = Field(None, description="ID externe")
     echeance_id: Optional[int] = Field(None, description="ID de l'échéance liée")
     compte_id: Optional[int] = Field(None, description="ID du compte")
     has_attachments: bool = Field(False, description="Indicateur pièces jointes")
-    attachment: Optional[str] = Field(
-        None, description="Chemin de la pièce jointe principale"
-    )
 
     # ── Validators ──────────────────────────────────────────
 
@@ -89,7 +85,7 @@ class Transaction(BaseModel):
             return "Autre"
         return str(v).strip().capitalize()
 
-    @field_validator("sous_categorie", "description", "date_fin", mode="before")
+    @field_validator("sous_categorie", "description", mode="before")
     @classmethod
     def empty_string_to_none(cls, v: Any) -> Optional[str]:
         if v is None or (isinstance(v, str) and not v.strip()):
@@ -134,16 +130,15 @@ class Transaction(BaseModel):
             "montant": self.montant,
             "date": self.date.isoformat() if self.date else None,
             "source": self.source,
-            "date_fin": self.date_fin.isoformat() if self.date_fin else None,
             "external_id": self.external_id,
             "echeance_id": self.echeance_id,
             "compte_id": self.compte_id,
-            "attachment": self.attachment,
         }
 
     # ── Config ──────────────────────────────────────────────
 
     model_config = {
+        "extra": "ignore",
         "json_schema_extra": {
             "example": {
                 "type": "Dépense",
@@ -154,5 +149,5 @@ class Transaction(BaseModel):
                 "description": "Déjeuner chez Pizza Hut",
                 "source": "manual",
             }
-        }
+        },
     }

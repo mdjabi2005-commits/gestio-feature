@@ -3,7 +3,7 @@
 import logging
 import sqlite3
 
-from backend.shared.database import db_transaction, db_cursor
+from backend.shared.database import db_transaction
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,30 @@ def init_transaction_table(db_path: str = None) -> None:
         with db_transaction(db_path) as conn:
             cursor = conn.cursor()
 
+            # Ensure column renames are applied first
+            cursor.execute("PRAGMA table_info(transactions)")
+            columns = [col[1] for col in cursor.fetchall()]
+            if "Catégorie" in columns:
+                cursor.execute(
+                    'ALTER TABLE transactions RENAME COLUMN "Catégorie" TO "categorie"'
+                )
+            if "Sous-catégorie" in columns:
+                cursor.execute(
+                    'ALTER TABLE transactions RENAME COLUMN "Sous-catégorie" TO "sous_categorie"'
+                )
+            if "Date" in columns:
+                cursor.execute(
+                    'ALTER TABLE transactions RENAME COLUMN "Date" TO "date"'
+                )
+            if "Source" in columns:
+                cursor.execute(
+                    'ALTER TABLE transactions RENAME COLUMN "Source" TO "source"'
+                )
+            if "Récurrence" in columns:
+                cursor.execute(
+                    'ALTER TABLE transactions RENAME COLUMN "Récurrence" TO "recurrence"'
+                )
+
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS transactions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,26 +83,16 @@ def init_transaction_table(db_path: str = None) -> None:
                     montant REAL NOT NULL,
                     date TEXT NOT NULL,
                     source TEXT DEFAULT 'Manuel',
-                    recurrence TEXT,
-                    date_fin TEXT,
-                    compte_iban TEXT,
                     external_id TEXT UNIQUE
                 )
             """)
 
             add_column_if_missing(cursor, "transactions", "source", "'Manuel'")
-            add_column_if_missing(cursor, "transactions", "recurrence", "'Aucune'")
-            add_column_if_missing(cursor, "transactions", "date_fin", "''")
-            add_column_if_missing(cursor, "transactions", "compte_id", "INTEGER")
-            add_column_if_missing(cursor, "transactions", "compte_iban", "TEXT")
-            add_column_if_missing(cursor, "transactions", "echeance_id", "INTEGER")
-            add_column_if_missing(cursor, "transactions", "attachment", "TEXT")
+            add_column_if_missing(cursor, "transactions", "compte_id")
+            add_column_if_missing(cursor, "transactions", "echeance_id")
 
             create_index_if_not_exists(
                 cursor, "idx_transactions_external_id", "transactions", "external_id"
-            )
-            create_index_if_not_exists(
-                cursor, "idx_transactions_iban", "transactions", "compte_iban"
             )
             create_index_if_not_exists(
                 cursor, "idx_transactions_echeance_id", "transactions", "echeance_id"
@@ -101,22 +115,57 @@ def init_attachments_table(db_path: str = None) -> None:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS transaction_attachments (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    transaction_id INTEGER NOT NULL,
-                    file_path TEXT NOT NULL,
-                    file_name TEXT NOT NULL,
-                    file_type TEXT,
-                    upload_date TEXT NOT NULL,
-                    size INTEGER,
+                    transaction_id INTEGER,
                     echeance_id INTEGER,
+                    file_path TEXT NOT NULL,
                     FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
                 )
             """)
 
-            add_column_if_missing(cursor, "transaction_attachments", "file_path", "''")
-            add_column_if_missing(cursor, "transaction_attachments", "size", "INTEGER")
-            add_column_if_missing(
-                cursor, "transaction_attachments", "echeance_id", "INTEGER"
-            )
+            # Migration check: if file_name or upload_date exists, we need to migrate to new structure
+            cursor.execute("PRAGMA table_info(transaction_attachments)")
+            columns = [col[1] for col in cursor.fetchall()]
+            if "file_name" in columns or "upload_date" in columns:
+                logger.info("Migrating transaction_attachments to simplified schema...")
+                cursor.execute(
+                    "ALTER TABLE transaction_attachments RENAME TO transaction_attachments_old"
+                )
+                cursor.execute("""
+                    CREATE TABLE transaction_attachments (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        transaction_id INTEGER,
+                        echeance_id INTEGER,
+                        file_path TEXT NOT NULL,
+                        FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
+                    )
+                """)
+                cursor.execute("""
+                    INSERT INTO transaction_attachments (id, transaction_id, echeance_id, file_path)
+                    SELECT id, transaction_id, echeance_id, file_path FROM transaction_attachments_old
+                """)
+                cursor.execute("DROP TABLE transaction_attachments_old")
+
+            # Migration for transactions.attachment column removal
+            cursor.execute("PRAGMA table_info(transactions)")
+            tx_columns = [col[1] for col in cursor.fetchall()]
+            if "attachment" in tx_columns:
+                logger.info(
+                    "Moving existing attachment paths from transactions to transaction_attachments..."
+                )
+                cursor.execute(
+                    "SELECT id, attachment FROM transactions WHERE attachment IS NOT NULL AND attachment != ''"
+                )
+                existing_tx_attachments = cursor.fetchall()
+                for tx_id, path in existing_tx_attachments:
+                    cursor.execute(
+                        "INSERT INTO transaction_attachments (transaction_id, file_path) VALUES (?, ?)",
+                        (tx_id, path),
+                    )
+                logger.info(
+                    "Finished moving attachments. Column removal will happen on next full migration or manual cleanup."
+                )
+                # We don't drop the column immediately to avoid complex ALTER TABLE for now,
+                # but we stop using it in the repository.
 
             create_index_if_not_exists(
                 cursor,
@@ -139,7 +188,8 @@ def init_attachments_table(db_path: str = None) -> None:
 
 def migrate_transaction_table() -> None:
     """Migrate database schema from old French column names."""
-    with db_cursor() as cursor:
+    with db_transaction() as conn:
+        cursor = conn.cursor()
         cursor.execute("PRAGMA table_info(transactions)")
         columns = [col[1] for col in cursor.fetchall()]
 

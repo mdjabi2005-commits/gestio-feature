@@ -58,9 +58,14 @@ class AttachmentService:
             new_id = attachment_repository.add_attachment(attachment)
             if new_id:
                 # Synchronisation avec le champ attachment de la table transactions
-                from backend.domains.transactions.database.repository import transaction_repository
-                transaction_repository.update_attachment(transaction_id, str(target_path))
-                
+                from backend.domains.transactions.database.repository import (
+                    transaction_repository,
+                )
+
+                transaction_repository.update_attachment(
+                    transaction_id, str(target_path)
+                )
+
                 logger.info(f"Attachment ajouté: {unique_name} (ID: {new_id})")
                 return True
             logger.error("Echec DB, fichier sauvegardé mais orphelin")
@@ -160,9 +165,10 @@ class AttachmentService:
 
         file_path = attachment.file_path
         physical = Path(file_path) if file_path else None
+        file_name = Path(file_path).name if file_path else "unknown"
 
         if not (physical and physical.exists()):
-            physical = self.find_file(attachment.file_name)
+            physical = self.find_file(file_name)
 
         if physical and physical.exists():
             content = physical.read_bytes()
@@ -171,7 +177,7 @@ class AttachmentService:
             mime_type, _ = mimetypes.guess_type(physical)
             return (
                 content,
-                attachment.file_name,
+                file_name,
                 mime_type or "application/octet-stream",
             )
 

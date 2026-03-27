@@ -2,7 +2,6 @@
 from .connection import get_db_connection, close_connection
 from .db_context import (
     db_transaction,
-    db_cursor,
     execute_single,
     execute_all,
     execute_write,
@@ -14,7 +13,6 @@ __all__ = [
     "get_db_connection",
     "close_connection",
     "db_transaction",
-    "db_cursor",
     "execute_single",
     "execute_all",
     "execute_write",

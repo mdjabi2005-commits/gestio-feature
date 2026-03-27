@@ -105,7 +105,7 @@ Créer `backend/api/mon_nouveau_domaine/LOGIC_FLOW.md`
 
 ## Base de données
 
-- **Fichier** : `data/base.db`
+- **Emplacement** : Voir `backend/config/paths.py` (variable `DB_PATH`)
 - **Outil** : SQLite
 - **Migrations** : Via `schema.py`
 
@@ -115,7 +115,7 @@ Créer `backend/api/mon_nouveau_domaine/LOGIC_FLOW.md`
 
 ```bash
 uv pip install -r requirements.txt                           # Installer
-uv run uvicorn backend.main:app --reload   # Dev (port 8001)
+uv run uvicorn backend.main:app --reload   # Dev (port 8002)
 pytest                            # Tests
 ```
 

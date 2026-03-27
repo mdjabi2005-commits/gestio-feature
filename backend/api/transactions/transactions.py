@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from typing import List
+from typing import List, Optional
 import logging
 from backend.domains.transactions.database.model import Transaction
 from backend.domains.transactions.database.repository import TransactionRepository
@@ -19,9 +19,14 @@ async def get_transactions():
 
 
 @router.post("/", response_model=int)
-async def add_transaction(transaction: Transaction):
+async def add_transaction(transaction: Transaction, attachment: Optional[str] = None):
     try:
-        transaction_id = repo.add(transaction)
+        if attachment:
+            transaction_dict = transaction.model_dump()
+            transaction_dict["attachment"] = attachment
+            transaction_id = repo.add(transaction_dict)
+        else:
+            transaction_id = repo.add(transaction)
         return transaction_id
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
