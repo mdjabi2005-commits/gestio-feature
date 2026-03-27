@@ -40,7 +40,7 @@ class TestOCRConfig:
 
         client = TestClient(app)
 
-        response = client.post("/api/ocr/config", params={"api_key": "invalid_key"})
+        response = client.post("/api/ocr/config", json={"api_key": "invalid_key"})
         assert response.status_code == 400
 
     def test_api_key_validation_valid(self):
@@ -50,7 +50,7 @@ class TestOCRConfig:
 
         client = TestClient(app)
 
-        response = client.post("/api/ocr/config", params={"api_key": "gsk_validkey"})
+        response = client.post("/api/ocr/config", json={"api_key": "gsk_validkey"})
         assert response.status_code == 200
 
 

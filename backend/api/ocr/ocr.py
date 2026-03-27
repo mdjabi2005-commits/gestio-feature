@@ -8,6 +8,7 @@ from datetime import date as date_type
 from typing import List
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
+from pydantic import BaseModel
 
 from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
 from backend.domains.transactions.database.model import Transaction
@@ -61,10 +62,17 @@ class OCRConfigResponse(BaseModel):
     api_key: str = ""
 
 
-@router.get("/config", response_model=OCRConfigResponse)
-async def get_ocr_config_endpoint():
-    """Retourne la configuration OCR actuelle."""
-    config = get_ocr_config()
+class OCRConfigUpdate(BaseModel):
+    api_key: str
+
+
+@router.post("/config", response_model=OCRConfigResponse)
+async def update_ocr_config_endpoint(config_data: OCRConfigUpdate):
+    """Sauvegarde la clé API Groq."""
+    if config_data.api_key and not config_data.api_key.startswith("gsk_"):
+        raise HTTPException(400, "Clé API Groq invalide (doit commencer par 'gsk_')")
+
+    config = save_ocr_config(config_data.api_key)
     return OCRConfigResponse(api_key=config.get("api_key", ""))
 
 
