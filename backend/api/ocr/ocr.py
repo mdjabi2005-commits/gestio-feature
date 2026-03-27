@@ -1,40 +1,95 @@
 """
-OCR API - Endpoint de scan de tickets
-
-Expose le service OCR existant via REST pour le frontend React.
+OCR API - Endpoints de scan de tickets et fiches de paie.
 """
 
 import logging
 import os
-import shutil
-from datetime import date
-from typing import List, Optional
+from datetime import date as date_type
+from typing import List
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from pydantic import BaseModel
 
 from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
 from backend.domains.transactions.database.model import Transaction
+from backend.domains.transactions.ocr.core.pdfplumber_engine import pdfplumber_engine
+from backend.domains.transactions.services.salary_plan_service import (
+    SalaryPlanError,
+    apply_salary_split,
+    get_available_plans,
+    load_salary_plan,
+    validate_salary_plan,
+)
+from backend.shared.utils.file_utils import (
+    validate_image_format,
+    validate_pdf_format,
+    save_upload_to_temp,
+    TempFileManager,
+)
+from .models import (
+    OCRScanResponse,
+    BatchScanResponse,
+    IncomeSplitDTO,
+    IncomeScanResponse,
+    SalaryPlanItem,
+    SalaryPlanResponse,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/ocr", tags=["ocr"])
 
-SUPPORTED_FORMATS = [".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"]
+IMAGES = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"}
 
 
-class OCRScanResponse(BaseModel):
-    transaction: Transaction
-    warnings: List[str] = []
-    raw_ocr_text: Optional[str] = None
+def _tx_warnings(t: Transaction) -> List[str]:
+    w = []
+    if t.montant == 0.0:
+        w.append("montant non trouvé dans le ticket")
+    if not t.date:
+        w.append("date non trouvée dans le ticket")
+    if not t.categorie or t.categorie == "Non catégorisé":
+        w.append("catégorie non identifiée")
+    if not t.sous_categorie:
+        w.append("sous-catégorie non identifiée")
+    return w
 
 
-class BatchScanResponse(BaseModel):
-    results: List[OCRScanResponse]
+from backend.config.ocr_config import get_ocr_config, save_ocr_config
+from pydantic import BaseModel
+
+
+class OCRConfigResponse(BaseModel):
+    api_key: str = ""
+
+
+@router.get("/config", response_model=OCRConfigResponse)
+async def get_ocr_config_endpoint():
+    """Retourne la configuration OCR actuelle."""
+    config = get_ocr_config()
+    return OCRConfigResponse(api_key=config.get("api_key", ""))
+
+
+@router.post("/config", response_model=OCRConfigResponse)
+async def save_ocr_config_endpoint(api_key: str = None):
+    """Sauvegarde la clé API Groq."""
+    if api_key and not api_key.startswith("gsk_"):
+        raise HTTPException(400, "Clé API Groq invalide (doit commencer par 'gsk_')")
+
+    config = save_ocr_config(api_key)
+    return OCRConfigResponse(api_key=config.get("api_key", ""))
+
+
+@router.post("/config", response_model=OCRConfigResponse)
+async def save_ocr_config_endpoint(api_key: str = None):
+    """Sauvegarde la clé API Groq."""
+    if api_key and not api_key.startswith("gsk_"):
+        raise HTTPException(400, "Clé API Groq invalide (doit commencer par 'gsk_')")
+
+    config = save_ocr_config(api_key)
+    return OCRConfigResponse(api_key=config.get("api_key", ""))
 
 
 @router.get("/warmup")
 async def warmup_ocr():
-    """Initialise le moteur OCR en arrière-plan pour gagner du temps."""
     try:
         get_ocr_service()
         return {"status": "ready"}
@@ -45,131 +100,311 @@ async def warmup_ocr():
 
 @router.post("/scan", response_model=OCRScanResponse)
 async def scan_ticket(file: UploadFile = File(...)):
-    """
-    Scan un ticket de caisse et retourne une Transaction pré-remplie.
+    if not validate_image_format(file.filename):
+        raise HTTPException(400, f"Format non supporté. Acceptés: {', '.join(IMAGES)}")
 
-    - **file**: Image du ticket (JPEG, PNG, BMP, TIFF, WEBP)
-    - **transaction**: Transaction avec les données extraites
-    - **warnings**: Liste des informations non extraites (montant, date, catégorie...)
-    - **raw_ocr_text**: Texte brut OCR pour debug
-    """
-    ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in SUPPORTED_FORMATS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Format non supporté. Formats acceptés: {', '.join(SUPPORTED_FORMATS)}",
-        )
-
-    temp_path = f"tmp_{file.filename}"
-    raw_text = ""
-
+    path = None
     try:
-        with open(temp_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        ocr_service = get_ocr_service()
-
-        raw_text = ocr_service.ocr_engine.extract_text(temp_path)
-
-        transaction = ocr_service.process_ticket(temp_path)
-
-        warnings = []
-        if transaction.montant == 0.0:
-            warnings.append("montant non trouvé dans le ticket")
-        if not transaction.date:
-            warnings.append("date non trouvée dans le ticket")
-        if not transaction.categorie or transaction.categorie == "Non catégorisé":
-            warnings.append("catégorie non identifiée")
-        if not transaction.sous_categorie:
-            warnings.append("sous-catégorie non identifiée")
-
+        path = await save_upload_to_temp(file, "ocr_")
+        ocr = get_ocr_service()
+        raw = ocr.ocr_engine.extract_text(path)
+        tx = ocr.process_ticket(path)
         return OCRScanResponse(
-            transaction=transaction.model_dump(),
-            warnings=warnings,
-            raw_ocr_text=raw_text,
+            transaction=tx.model_dump(), warnings=_tx_warnings(tx), raw_ocr_text=raw
         )
-
     except Exception as e:
         logger.error(f"OCR scan error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Échec du scan: {str(e)}")
-
+        raise HTTPException(500, f"Échec du scan: {str(e)}")
     finally:
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+        if path and os.path.exists(path):
+            os.remove(path)
 
 
 @router.post("/scan-batch", response_model=BatchScanResponse)
 async def scan_batch(files: List[UploadFile] = File(...)):
-    """
-    Scan plusieurs tickets en parallèle et retourne une liste de Transactions.
-    """
-    temp_files = []
+    mgr = TempFileManager()
     try:
-        # 1. Sauvegarde temporaire
-        for file in files:
-            ext = os.path.splitext(file.filename)[1].lower()
-            if ext not in SUPPORTED_FORMATS:
-                continue
+        paths = [
+            await mgr.save_upload(f, "batch_")
+            for f in files
+            if validate_image_format(f.filename)
+        ]
+        if not paths:
+            raise HTTPException(400, "Aucun fichier valide fourni")
 
-            temp_path = f"batch_{len(temp_files)}_{file.filename}"
-            with open(temp_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-            temp_files.append(temp_path)
+        ocr = get_ocr_service()
+        results = ocr.process_batch_tickets(paths)
 
-        if not temp_files:
-            raise HTTPException(status_code=400, detail="Aucun fichier valide fourni")
-
-        # 2. Appel au service batch (qui utilise le ThreadPoolExecutor)
-        ocr_service = get_ocr_service()
-        batch_results = ocr_service.process_batch_tickets(temp_files)
-
-        # 3. Formatage de la réponse
-        formatted_results = []
-        for fname, transaction, error, elapsed in batch_results:
-            if error:
-                # On crée une transaction vide avec l'erreur en warning
-                formatted_results.append(
+        formatted = []
+        for fname, tx, err, _ in results:
+            if err:
+                formatted.append(
                     OCRScanResponse(
                         transaction=Transaction(
                             type="Dépense",
                             categorie="Erreur",
                             montant=0,
-                            date=date.today(),
+                            date=date_type.today(),
                             description=f"Erreur sur {fname}",
                         ),
-                        warnings=[f"Échec du scan: {error}"],
+                        warnings=[f"Échec: {err}"],
                         raw_ocr_text=None,
                     )
                 )
             else:
-                # Calcul des warnings
-                warnings = []
-                if transaction.montant == 0.0:
-                    warnings.append("montant non trouvé")
-                if (
-                    not transaction.categorie
-                    or transaction.categorie == "Non catégorisé"
-                ):
-                    warnings.append("catégorie non identifiée")
-
-                formatted_results.append(
-                    OCRScanResponse(
-                        transaction=transaction,
-                        warnings=warnings,
-                        raw_ocr_text=None,  # On ne renvoie pas le raw_text pour le batch pour économiser la bande passante
-                    )
+                w = []
+                if tx.montant == 0.0:
+                    w.append("montant non trouvé")
+                if not tx.categorie or tx.categorie == "Non catégorisé":
+                    w.append("catégorie non identifiée")
+                formatted.append(
+                    OCRScanResponse(transaction=tx, warnings=w, raw_ocr_text=None)
                 )
 
-        return BatchScanResponse(results=formatted_results)
-
+        return BatchScanResponse(results=formatted)
     except Exception as e:
         logger.error(f"Batch scan error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail=f"Échec du traitement par lot: {str(e)}"
-        )
-
+        raise HTTPException(500, f"Échec du traitement par lot: {str(e)}")
     finally:
-        # Nettoyage
-        for path in temp_files:
-            if os.path.exists(path):
-                os.remove(path)
+        mgr.cleanup()
+
+
+@router.get("/salary-plans", response_model=List[SalaryPlanResponse])
+async def get_salary_plan():
+    try:
+        plan = load_salary_plan()
+        items = [
+            SalaryPlanItem(
+                categorie=a.get("category", ""),
+                montant=a.get("value", 0),
+                type=a.get("type", "percent"),
+                sub_distribution_mode=a.get("sub_distribution_mode", "equal"),
+                sub_allocations=a.get("sub_allocations"),
+            )
+            for a in plan.get("allocations", [])
+        ]
+        return [
+            SalaryPlanResponse(
+                id=1,
+                nom=plan.get("name", "Plan"),
+                is_active=plan.get("is_active", True),
+                reference_salary=plan.get("reference_salary", 0),
+                default_remainder_category=plan.get(
+                    "default_remainder_category", "Épargne"
+                ),
+                items=items,
+                available_plans=get_available_plans(),
+            )
+        ]
+    except FileNotFoundError:
+        return []
+    except Exception as e:
+        logger.error(f"Error loading salary plan: {e}")
+        raise HTTPException(500, str(e))
+
+
+@router.post("/salary-plans", response_model=SalaryPlanResponse)
+async def save_salary_plan(plan_data: dict):
+    try:
+        ref = plan_data.get("reference_salary", 0.0)
+        storage = {
+            "name": plan_data.get("nom", "Plan"),
+            "is_active": plan_data.get("is_active", True),
+            "reference_salary": ref,
+            "default_remainder_category": plan_data.get(
+                "default_remainder_category", "Épargne"
+            ),
+            "allocations": [
+                {
+                    "category": i.get("categorie"),
+                    "value": i.get("montant"),
+                    "type": i.get("type"),
+                    "sub_distribution_mode": i.get("sub_distribution_mode"),
+                    "sub_allocations": i.get("sub_allocations"),
+                }
+                for i in plan_data.get("items", [])
+            ],
+        }
+        validate_salary_plan(storage)
+
+        if ref > 0:
+            from backend.domains.budgets.repository import budget_repository
+            from backend.domains.budgets.model import Budget
+            from backend.shared.utils.categories_loader import get_subcategories
+
+            for item in plan_data.get("items", []):
+                val = item.get("montant", 0)
+                category = item.get("categorie")
+                alloc_type = item.get("type")
+                sub_allocations = item.get("sub_allocations", [])
+
+                category_amount = val if alloc_type == "fixed" else (ref * (val / 100))
+                if category_amount <= 0:
+                    continue
+
+                if sub_allocations and len(sub_allocations) > 0:
+                    total_sub_pct = sum(s.get("value", 0) for s in sub_allocations)
+                    for sub in sub_allocations:
+                        sub_name = sub.get("name")
+                        sub_pct = sub.get("value", 0)
+                        sub_amount = (
+                            round(category_amount * (sub_pct / 100), 2)
+                            if total_sub_pct > 0
+                            else 0
+                        )
+                        if sub_amount > 0 and sub_name:
+                            budget_repository.upsert(
+                                Budget(categorie=sub_name, montant_max=sub_amount)
+                            )
+                else:
+                    known_subs = get_subcategories(category)
+                    if known_subs:
+                        sub_amount = round(category_amount / len(known_subs), 2)
+                        for sub_name in known_subs:
+                            if sub_amount > 0:
+                                budget_repository.upsert(
+                                    Budget(categorie=sub_name, montant_max=sub_amount)
+                                )
+                    else:
+                        budget_repository.upsert(
+                            Budget(
+                                categorie=category,
+                                montant_max=round(category_amount, 2),
+                            )
+                        )
+
+        import yaml
+        from pathlib import Path
+
+        p = Path(__file__).parent.parent.parent / "config" / "salary_plan_default.yaml"
+        with open(p, "w", encoding="utf-8") as f:
+            yaml.dump(
+                {"salary_plan": storage},
+                f,
+                allow_unicode=True,
+                default_flow_style=False,
+            )
+
+        return SalaryPlanResponse(
+            id=1,
+            nom=plan_data.get("nom", "Plan"),
+            is_active=plan_data.get("is_active", True),
+            reference_salary=ref,
+            default_remainder_category=plan_data.get(
+                "default_remainder_category", "Épargne"
+            ),
+            items=[SalaryPlanItem(**i) for i in plan_data.get("items", [])],
+            available_plans=get_available_plans(),
+        )
+    except SalaryPlanError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        logger.error(f"Error saving salary plan: {e}")
+        raise HTTPException(500, str(e))
+
+
+def _archive_payroll_file(
+    temp_path: str, transactions: List[Transaction]
+) -> str | None:
+    """
+    Archive le fichier PDF de fiche de paie vers REVENUS_TRAITES/Epargne/<Sous-Catégorie>/<Nom_Fichier>.
+    Retourne le chemin d'archivage ou None en cas d'échec.
+    """
+    import shutil
+    from config.paths import REVENUS_TRAITES
+
+    try:
+        if not transactions:
+            return None
+
+        dominant_tx = max(transactions, key=lambda t: t.montant)
+        sub_category = dominant_tx.sous_categorie or "Divers"
+        category = dominant_tx.categorie or "Épargne"
+
+        target_dir = os.path.join(REVENUS_TRAITES, category, sub_category)
+        os.makedirs(target_dir, exist_ok=True)
+
+        original_name = os.path.basename(temp_path)
+        if original_name.startswith("income_"):
+            original_name = original_name[7:]
+
+        target_path = os.path.join(target_dir, original_name)
+        counter = 1
+        while os.path.exists(target_path):
+            name, ext = os.path.splitext(original_name)
+            target_path = os.path.join(target_dir, f"{name}_{counter}{ext}")
+            counter += 1
+
+        shutil.copy2(temp_path, target_path)
+        logger.info(f"Fiche de paie archivée: {target_path}")
+        return target_path
+
+    except Exception as e:
+        logger.error(f"Erreur archivage fiche de paie: {e}")
+        return None
+
+
+@router.post("/scan-income", response_model=IncomeScanResponse)
+async def scan_income(file: UploadFile = File(...)):
+    if not validate_pdf_format(file.filename):
+        raise HTTPException(400, "Format non supporté. Acceptés: pdf")
+    if not pdfplumber_engine or not pdfplumber_engine.PDFPLUMBER_AVAILABLE:
+        raise HTTPException(500, "pdfplumber non installé: uv add pdfplumber")
+
+    path = None
+    try:
+        path = await save_upload_to_temp(file, "income_")
+        data = pdfplumber_engine.extract_payroll_data(path)
+        net, pay_date, raw = data.get("net"), data.get("date"), data.get("raw_text", "")
+
+        if not net or net <= 0:
+            raise HTTPException(400, "Montant net non trouvé")
+        date_str = pay_date.isoformat() if pay_date else date_type.today().isoformat()
+
+        archived_path = _archive_payroll_file(path, txs=[]) # Mock tx list just for target path derivation if needed, but better call it AFTER txs creation
+        
+        try:
+            txs = apply_salary_split(net_amount=net, payroll_date=date_str, attachment=archived_path)
+        except SalaryPlanError as e:
+            logger.error(f"Salary plan error: {e}")
+            txs = [
+                Transaction(
+                    type="Revenu",
+                    categorie="Épargne",
+                    sous_categorie="Divers",
+                    montant=net,
+                    date=date_str,
+                    description="Salaire",
+                    source="scan_income",
+                    attachment=archived_path,
+                    has_attachments=bool(archived_path)
+                )
+            ]
+
+        # Actual archiving with real txs if needed (though dominant category logic might prefer the txs)
+        final_archived_path = _archive_payroll_file(path, txs)
+
+        splits = [
+            IncomeSplitDTO(
+                categorie=t.categorie,
+                sous_categorie=t.sous_categorie,
+                montant=t.montant,
+                description=t.description or "",
+            )
+            for t in txs
+        ]
+        return IncomeScanResponse(
+            total_net=net,
+            date=pay_date or date_type.today(),
+            suggested_splits=splits,
+            archived_path=final_archived_path,
+            raw_text=raw,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Income scan error: {e}", exc_info=True)
+        raise HTTPException(500, f"Échec du scan: {str(e)}")
+    finally:
+        if path and os.path.exists(path):
+            os.remove(path)

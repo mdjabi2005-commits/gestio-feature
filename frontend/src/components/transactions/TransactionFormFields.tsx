@@ -1,7 +1,8 @@
+"use client"
 import React from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { CATEGORIES } from "@/lib/categories";
+import { CategorySubcategorySelect } from "@/components/ui/CategorySubcategorySelect";
 
 interface TransactionFormFieldsProps {
   type: 'Dépense' | 'Revenu';
@@ -26,55 +27,43 @@ export const TransactionFormFields: React.FC<TransactionFormFieldsProps> = ({
   subcategory, setSubcategory,
   description, setDescription,
 }) => {
-  const currentCategory = CATEGORIES.find(c => c.value === category);
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-left">
       {/* Type Toggle */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-gray-300">Type</label>
         <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => setType('Revenu')}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200",
-              type === 'Revenu'
-                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                : "bg-white/5 text-gray-400 border border-transparent hover:bg-white/10"
-            )}
-          >
-            <TrendingUp className="w-4 h-4" />
-            Revenu
-          </button>
-          <button
-            type="button"
-            onClick={() => setType('Dépense')}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200",
-              type === 'Dépense'
-                ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                : "bg-white/5 text-gray-400 border border-transparent hover:bg-white/10"
-            )}
-          >
-            <TrendingDown className="w-4 h-4" />
-            Dépense
-          </button>
+          {(['Revenu', 'Dépense'] as const).map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setType(t)}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200",
+                type === t
+                  ? (t === 'Revenu' ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-rose-500/20 text-rose-400 border border-rose-500/30")
+                  : "bg-white/5 text-gray-400 border border-transparent hover:bg-white/10"
+              )}
+            >
+              {t === 'Revenu' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+              {t}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Date & Amount */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
+        <div className="space-y-2 text-left">
           <label className="text-sm font-medium text-gray-300">Date</label>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-mono text-sm"
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-mono text-sm shadow-inner"
           />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 text-left">
           <label className="text-sm font-medium text-gray-300">Montant (€)</label>
           <input
             type="number"
@@ -85,53 +74,21 @@ export const TransactionFormFields: React.FC<TransactionFormFieldsProps> = ({
             min="0"
             className={cn(
               "w-full px-4 py-3 rounded-xl bg-white/5 border text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all font-mono text-sm",
-              amount === '' || amount === '0' 
-                ? "border-amber-500/50 bg-amber-500/5 ring-1 ring-amber-500/20" 
-                : "border-white/10"
+              amount === '' || amount === '0' ? "border-amber-500/50 bg-amber-500/5 ring-1 ring-amber-500/20" : "border-white/10"
             )}
           />
         </div>
       </div>
 
-      {/* Category & Subcategory */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-300">Catégorie</label>
-          <select
-            value={category}
-            onChange={(e) => {
-              setCategory(e.target.value);
-              setSubcategory('');
-            }}
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none cursor-pointer"
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat.value} value={cat.value} className="bg-slate-900">
-                {cat.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-300">Sous-catégorie</label>
-          <select
-            value={subcategory}
-            onChange={(e) => setSubcategory(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none cursor-pointer"
-          >
-            <option value="">(Aucune)</option>
-            {subcategory && !currentCategory?.subcategories.includes(subcategory) && (
-              <option value={subcategory} className="bg-slate-900">{subcategory} (OCR)</option>
-            )}
-            {currentCategory?.subcategories.map(sub => (
-              <option key={sub} value={sub} className="bg-slate-900">{sub}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+      <CategorySubcategorySelect 
+        category={category} 
+        setCategory={setCategory} 
+        subcategory={subcategory} 
+        setSubcategory={setSubcategory} 
+      />
 
       {/* Description */}
-      <div className="space-y-2">
+      <div className="space-y-2 text-left">
         <label className="text-sm font-medium text-gray-300">Description</label>
         <input
           type="text"

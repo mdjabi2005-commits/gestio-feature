@@ -1,36 +1,76 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Plus, Wallet, TrendingDown, Target, AlertTriangle } from "lucide-react"
+import { Plus, Wallet, TrendingDown, Target, AlertTriangle, CheckCircle2 } from "lucide-react"
 import { useFinancial } from "@/context/FinancialDataContext"
 import { CATEGORY_STYLES } from "@/lib/categories"
 import { BudgetCard } from "@/components/budgets/BudgetCard"
 import { BudgetForm } from "@/components/budgets/BudgetForm"
+import { calculatePlannedExpenses, calculatePlannedIncomes } from "@/lib/budget-utils"
 import type { Budget } from "@/api"
 
 export default function BudgetsPage() {
-  const { budgets, transactions, setBudget, deleteBudget, budgetsLoading, summary } = useFinancial()
+  const { budgets, transactions, setBudget, deleteBudget, budgetsLoading, summary, echeances } = useFinancial()
   const [showForm, setShowForm] = useState(false)
   const [editTarget, setEditTarget] = useState<Budget | null>(null)
 
-  // Dépenses réelles du mois par catégorie
+  // Dépenses et Revenus réels du mois par catégorie
   const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth()
+
   const spentByCategory = useMemo(() => {
     const map: Record<string, number> = {}
     transactions.forEach(t => {
       const d = new Date(t.date)
-      if (t.type === "Dépense" && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+      if (t.type === "Dépense" && d.getMonth() === month && d.getFullYear() === year) {
         map[t.categorie] = (map[t.categorie] ?? 0) + t.montant
       }
     })
     return map
-  }, [transactions, now.getMonth(), now.getFullYear()])
+  }, [transactions, month, year])
+
+  const incomeByCategory = useMemo(() => {
+    const map: Record<string, number> = {}
+    transactions.forEach(t => {
+      const d = new Date(t.date)
+      if (t.type === "Revenu" && d.getMonth() === month && d.getFullYear() === year) {
+        map[t.categorie] = (map[t.categorie] ?? 0) + t.montant
+      }
+    })
+    return map
+  }, [transactions, month, year])
+
+  // Prévisions (échéances à venir) par catégorie
+  const plannedExpensesByCategory = useMemo(() => {
+    return calculatePlannedExpenses(echeances, transactions, year, month)
+  }, [echeances, transactions, year, month])
+
+  const plannedIncomeByCategory = useMemo(() => {
+    return calculatePlannedIncomes(echeances, transactions, year, month)
+  }, [echeances, transactions, year, month])
 
   // Global stats
   const totalBudget = budgets.reduce((s, b) => s + b.montant_max, 0)
   const totalSpent = budgets.reduce((s, b) => s + (spentByCategory[b.categorie] ?? 0), 0)
+  const totalIncome = budgets.reduce((s, b) => s + (incomeByCategory[b.categorie] ?? 0), 0)
+  
+  const totalPlannedExpenses = budgets.reduce((s, b) => s + (plannedExpensesByCategory[b.categorie] ?? 0), 0)
+  const totalPlannedIncome = budgets.reduce((s, b) => s + (plannedIncomeByCategory[b.categorie] ?? 0), 0)
+  
+  const totalForecastedExpenses = totalSpent + totalPlannedExpenses
+  const totalForecastedIncome = totalIncome + totalPlannedIncome
+  const totalForecastedSavings = totalForecastedIncome - totalForecastedExpenses
+  
   const globalPct = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0
+  const forecastPct = totalBudget > 0 ? Math.min((totalForecastedExpenses / totalBudget) * 100, 100) : 0
+  
   const overBudget = budgets.filter(b => (spentByCategory[b.categorie] ?? 0) > b.montant_max)
+  const potentiallyOver = budgets.filter(b => {
+    const spent = spentByCategory[b.categorie] ?? 0
+    const planned = plannedExpensesByCategory[b.categorie] ?? 0
+    return spent <= b.montant_max && (spent + planned) > b.montant_max
+  })
 
   const allCategories = summary?.repartition_categories ?? []
 
@@ -74,23 +114,25 @@ export default function BudgetsPage() {
             </div>
           </div>
           <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-rose-500/15 flex items-center justify-center flex-shrink-0">
-              <TrendingDown className="w-6 h-6 text-rose-400" />
+            <div className="w-12 h-12 rounded-xl bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
+              <Plus className="w-6 h-6 text-indigo-400" />
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-400/60">Consommé ce mois</p>
-              <p className="text-xl font-bold tabular-nums text-rose-400">{totalSpent.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €</p>
-              <p className="text-[10px] text-white/30">{globalPct.toFixed(0)}% du budget total</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-400/60">Épargne Prévisionnelle</p>
+              <p className="text-xl font-bold tabular-nums text-indigo-400">{totalForecastedSavings.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €</p>
+              <p className="text-[10px] text-white/30">Total revenus - Total dépenses</p>
             </div>
           </div>
           <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${overBudget.length > 0 ? "bg-rose-500/15" : "bg-emerald-500/15"}`}>
-              {overBudget.length > 0 ? <AlertTriangle className="w-6 h-6 text-rose-400" /> : <Target className="w-6 h-6 text-emerald-400" />}
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${overBudget.length > 0 || potentiallyOver.length > 0 ? "bg-rose-500/15" : "bg-emerald-500/15"}`}>
+              {overBudget.length > 0 ? <AlertTriangle className="w-6 h-6 text-rose-400" /> : potentiallyOver.length > 0 ? <AlertTriangle className="w-6 h-6 text-orange-400" /> : <CheckCircle2 className="w-6 h-6 text-emerald-400" />}
             </div>
             <div>
-              <p className={`text-[10px] font-semibold uppercase tracking-wider ${overBudget.length > 0 ? "text-rose-400/60" : "text-emerald-400/60"}`}>Dépassements</p>
-              <p className={`text-xl font-bold tabular-nums ${overBudget.length > 0 ? "text-rose-400" : "text-emerald-400"}`}>{overBudget.length}</p>
-              <p className="text-[10px] text-white/30">{overBudget.length > 0 ? "catégorie(s) en dépassement" : "Tout est sous contrôle"}</p>
+              <p className={`text-[10px] font-semibold uppercase tracking-wider ${overBudget.length > 0 ? "text-rose-400/60" : potentiallyOver.length > 0 ? "text-orange-400/60" : "text-emerald-400/60"}`}>Statut Budget</p>
+              <p className={`text-xl font-bold tabular-nums ${overBudget.length > 0 ? "text-rose-400" : potentiallyOver.length > 0 ? "text-orange-400" : "text-emerald-400"}`}>
+                {overBudget.length > 0 ? `${overBudget.length} Dépassé(s)` : potentiallyOver.length > 0 ? `${potentiallyOver.length} Menacé(s)` : "Favorable"}
+              </p>
+              <p className="text-[10px] text-white/30">{forecastPct.toFixed(0)}% du budget auto-réservé</p>
             </div>
           </div>
         </div>
@@ -111,6 +153,9 @@ export default function BudgetsPage() {
               key={b.id}
               budget={b}
               spent={spentByCategory[b.categorie] ?? 0}
+              planned={plannedExpensesByCategory[b.categorie] ?? 0}
+              income={incomeByCategory[b.categorie] ?? 0}
+              plannedIncome={plannedIncomeByCategory[b.categorie] ?? 0}
               allCategories={allCategories}
               onDelete={deleteBudget}
               onEdit={handleEdit}

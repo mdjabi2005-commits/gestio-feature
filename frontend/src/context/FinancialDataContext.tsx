@@ -23,6 +23,11 @@ interface FinancialContextType {
   deleteBudget: (id: number) => Promise<void>;
   budgetsLoading: boolean;
 
+  // Echeances State
+  echeances: any[];
+  echeancesLoading: boolean;
+  refreshEcheances: () => Promise<void>;
+
   // UI State
   isAddModalOpen: boolean;
   setIsAddModalOpen: (open: boolean) => void;
@@ -59,7 +64,20 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
     finally { setBudgetsLoading(false); }
   };
 
-  React.useEffect(() => { fetchBudgets(); }, []);
+  // Echeances
+  const [echeances, setEcheances] = useState<any[]>([]);
+  const [echeancesLoading, setEcheancesLoading] = useState(false);
+
+  const fetchEcheances = async () => {
+    setEcheancesLoading(true);
+    try { setEcheances(await api.getEcheances()); } catch {}
+    finally { setEcheancesLoading(false); }
+  };
+
+  React.useEffect(() => { 
+    fetchBudgets();
+    fetchEcheances();
+  }, []);
 
   const handleSetBudget = async (data: Budget) => {
     await api.setBudget(data);
@@ -132,6 +150,9 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
     setBudget: handleSetBudget,
     deleteBudget: handleDeleteBudget,
     budgetsLoading,
+    echeances,
+    echeancesLoading,
+    refreshEcheances: fetchEcheances,
   };
 
   return (

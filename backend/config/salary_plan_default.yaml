@@ -1,0 +1,21 @@
+salary_plan:
+  name: "Plan Standard (Recommandé)"
+  is_active: true
+  default_remainder_category: "Épargne"
+  allocations:
+    - category: "Logement"
+      value: 40
+      type: "percent"
+      sub_distribution_mode: "equal"
+    - category: "Alimentation"
+      value: 20
+      type: "percent"
+      sub_distribution_mode: "equal"
+    - category: "Loisirs"
+      value: 15
+      type: "percent"
+      sub_distribution_mode: "equal"
+    - category: "Autre"
+      value: 5
+      type: "percent"
+      sub_distribution_mode: "equal"

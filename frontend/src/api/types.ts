@@ -14,6 +14,7 @@ export interface Transaction {
   recurrence?: string;
   date_fin?: string;
   echeance_id?: string;
+  attachment?: string;
 }
 
 export interface Attachment {
@@ -47,10 +48,60 @@ export interface BudgetSummaryItem {
   nom: string;
   budget: number;
   depense_reelle: number;
+  depense_planifiee?: number;
 }
 
 export interface BudgetSummary {
   total_budget_prevu: number;
   total_consomme: number;
+  total_planifie?: number;
   repartition_budget: BudgetSummaryItem[];
+}
+
+export interface Echeance {
+  id: string;
+  nom: string;
+  montant: number;
+  date_prevue: string;
+  categorie: string;
+  sous_categorie?: string;
+  type: 'Dépense' | 'Revenu';
+  statut: 'active' | 'paid' | 'overdue';
+  frequence: string;
+  date_debut: string;
+  date_fin?: string;
+  description?: string;
+}
+
+export interface IncomeSplit {
+  categorie: string;
+  sous_categorie: string;
+  montant: number;
+  description: string;
+}
+
+export interface IncomeScanResponse {
+  total_net: number;
+  date: string;
+  suggested_splits: IncomeSplit[];
+  archived_path?: string;
+  raw_text: string;
+}
+
+export interface SalaryPlanItem {
+  id?: number;
+  categorie: string;
+  montant: number;
+  type: 'fixed' | 'percent';
+  sub_distribution_mode: 'equal' | 'manual';
+  sub_allocations?: { name: string; value: number }[]; // Value is % of category envelope
+}
+
+export interface SalaryPlan {
+  id?: number;
+  nom: string;
+  is_active: boolean;
+  reference_salary: number;
+  default_remainder_category?: string;
+  items: SalaryPlanItem[];
 }

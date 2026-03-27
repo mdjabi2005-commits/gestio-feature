@@ -46,9 +46,9 @@ export function BudgetForm({ initial, onSave, onClose }: BudgetFormProps) {
               className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-white focus:outline-none focus:border-indigo-500/50 disabled:opacity-50"
               required
             >
-              <option value="">Sélectionner une catégorie</option>
-              {CATEGORIES.filter(c => !["Revenu", "Dépense", "Bourse"].includes(c.value)).map(c => (
-                <option key={c.value} value={c.value}>{c.label}</option>
+              <option value="" className="bg-[#0f0f13]">Sélectionner une catégorie</option>
+               {CATEGORIES.map(c => (
+                <option key={c.value} value={c.value} className="bg-[#0f0f13]">{c.label}</option>
               ))}
             </select>
           </div>

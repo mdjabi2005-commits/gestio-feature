@@ -1,6 +1,5 @@
 """
-Transaction Repository
-Gestion des données pour le domaine Transactions.
+Transaction Repository - Gestion des données pour le domaine Transactions.
 """
 
 import logging
@@ -8,9 +7,7 @@ import sqlite3
 from datetime import date
 from typing import List, Optional, Dict
 
-import pandas as pd
-
-from backend.shared.database.connection import get_db_connection, close_connection
+from backend.shared.database import db_transaction, db_cursor
 from backend.shared.utils import create_empty_transaction_df, convert_transaction_df
 from .model import Transaction
 
@@ -23,39 +20,22 @@ class TransactionRepository:
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path
 
+    def _get_with_attachments_query(self) -> str:
+        return """
+            SELECT t.*, 
+            COALESCE((SELECT 1 FROM transaction_attachments WHERE transaction_id = t.id LIMIT 1), 0) as has_attachments
+            FROM transactions t 
+        """
+
     def get_all(self) -> List[Transaction]:
         """Récupère toutes les transactions."""
-        conn = None
-        try:
-            conn = get_db_connection(db_path=self.db_path)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT t.*, 
-                COALESCE((SELECT 1 FROM transaction_attachments WHERE transaction_id = t.id LIMIT 1), 0) as has_attachments
-                FROM transactions t 
-                ORDER BY t.date DESC
-            """)
-            rows = cursor.fetchall()
-            return [Transaction(**dict(row)) for row in rows]
-
-        except sqlite3.Error as e:
-            logger.error(f"Erreur SQL: {e}")
-            return []
-        finally:
-            close_connection(conn)
+        with db_cursor(self.db_path) as cursor:
+            cursor.execute(f"{self._get_with_attachments_query()} ORDER BY t.date DESC")
+            return [Transaction(**dict(row)) for row in cursor.fetchall()]
 
     @staticmethod
     def _to_validated_db_dict(transaction) -> dict:
-        """
-        Valide, normalise et prépare les données pour la DB en une seule étape.
-
-        - Si c'est déjà une Transaction Pydantic : réutilise l'objet directement.
-        - Si c'est un dict avec clés FR : valide via Transaction.model_validate()
-          (lève ValueError si les données sont invalides).
-
-        Retourne le dict prêt pour SQLite via to_db_dict() (pas de model_dump()).
-        """
+        """Valide et normalise les données pour la DB."""
         from pydantic import ValidationError
 
         if isinstance(transaction, Transaction):
@@ -70,53 +50,47 @@ class TransactionRepository:
         return validated.to_db_dict()
 
     def add(self, transaction) -> Optional[int]:
-        """
-        Ajoute une transaction.
-        Accepte un objet Transaction (Pydantic) ou un dict avec clés FR.
-        La validation et la normalisation sont assurées par Pydantic.
-        """
-        conn = None
+        """Ajoute une transaction."""
         try:
             data = self._to_validated_db_dict(transaction)
 
-            # Doublon par external_id
             if data.get("external_id"):
-                conn = get_db_connection(db_path=self.db_path)
+                with db_cursor(self.db_path) as cursor:
+                    cursor.execute(
+                        "SELECT id FROM transactions WHERE external_id = ?",
+                        (data["external_id"],),
+                    )
+                    if cursor.fetchone():
+                        logger.info(f"Doublon ignoré: {data['external_id']}")
+                        return None
+
+            query = """
+                INSERT INTO transactions
+                (type, categorie, sous_categorie, description, montant, date,
+                 source, date_fin, external_id, echeance_id, attachment)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """
+
+            with db_transaction(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "SELECT id FROM transactions WHERE external_id = ?",
-                    (data["external_id"],),
+                    query,
+                    (
+                        data["type"],
+                        data["categorie"],
+                        data["sous_categorie"],
+                        data["description"],
+                        data["montant"],
+                        data["date"],
+                        data["source"],
+                        data["date_fin"],
+                        data["external_id"],
+                        data["echeance_id"],
+                        data["attachment"],
+                    ),
                 )
-                if cursor.fetchone():
-                    logger.info(f"Doublon ignoré: {data['external_id']}")
-                    return None
+                new_id = cursor.lastrowid
 
-            # Insertion
-            if conn is None:
-                conn = get_db_connection(db_path=self.db_path)
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO transactions
-                    (type, categorie, sous_categorie, description, montant, date,
-                     source, date_fin, external_id, echeance_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    data["type"],
-                    data["categorie"],
-                    data["sous_categorie"],
-                    data["description"],
-                    data["montant"],
-                    data["date"],
-                    data["source"],
-                    data["date_fin"],
-                    data["external_id"],
-                    data["echeance_id"],
-                ),
-            )
-            new_id = cursor.lastrowid
-            conn.commit()
             logger.info(f"Transaction ajoutée: ID {new_id}")
             return new_id
 
@@ -125,97 +99,62 @@ class TransactionRepository:
             return None
         except sqlite3.Error as e:
             logger.error(f"Erreur SQL add: {e}")
-            if conn:
-                conn.rollback()
             return None
-        finally:
-            close_connection(conn)
 
     def update(self, transaction: Dict) -> bool:
-        """
-        Met à jour une transaction existante.
-        Accepte un dict avec clés FR, doit contenir 'id'.
-        La validation et la normalisation sont assurées par Pydantic.
-        """
+        """Met à jour une transaction existante."""
         tx_id = transaction.get("id")
         if not tx_id:
             logger.error("ID manquant pour update")
             return False
 
-        conn = None
         try:
             data = self._to_validated_db_dict(transaction)
 
-            conn = get_db_connection(db_path=self.db_path)
-            cursor = conn.cursor()
-            cursor.execute(
-                """
+            query = """
                 UPDATE transactions
-                SET type           = ?,
-                    categorie      = ?,
-                    sous_categorie = ?,
-                    description    = ?,
-                    montant        = ?,
-                    date           = ?,
-                    source         = ?,
-                    date_fin       = ?,
-                    external_id    = ?,
-                    echeance_id    = ?
-                WHERE id = ?
-            """,
-                (
-                    data["type"],
-                    data["categorie"],
-                    data["sous_categorie"],
-                    data["description"],
-                    data["montant"],
-                    data["date"],
-                    data["source"],
-                    data["date_fin"],
-                    data["external_id"],
-                    data["echeance_id"],
-                    tx_id,
-                ),
-            )
-            conn.commit()
-            return cursor.rowcount > 0
+                SET type=?, categorie=?, sous_categorie=?, description=?,
+                    montant=?, date=?, source=?, date_fin=?, external_id=?, echeance_id=?, attachment=?
+                WHERE id=?
+            """
+
+            with db_transaction(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    query,
+                    (
+                        data["type"],
+                        data["categorie"],
+                        data["sous_categorie"],
+                        data["description"],
+                        data["montant"],
+                        data["date"],
+                        data["source"],
+                        data["date_fin"],
+                        data["external_id"],
+                        data["echeance_id"],
+                        data["attachment"],
+                        tx_id,
+                    ),
+                )
+                return cursor.rowcount > 0
 
         except ValueError as e:
             logger.error(f"Validation échouée update: {e}")
             return False
         except sqlite3.Error as e:
             logger.error(f"Erreur SQL update: {e}")
-            if conn:
-                conn.rollback()
             return False
-        finally:
-            close_connection(conn)
 
     def get_by_id(self, tx_id: int) -> Optional[dict]:
         """Récupère une transaction par son ID."""
-        conn = None
-        try:
-            conn = get_db_connection(db_path=self.db_path)
-            cursor = conn.cursor()
+        with db_cursor(self.db_path) as cursor:
             cursor.execute(
-                """
-                SELECT t.*, 
-                COALESCE((SELECT 1 FROM transaction_attachments WHERE transaction_id = t.id LIMIT 1), 0) as has_attachments
-                FROM transactions t 
-                WHERE t.id = ?
-            """,
+                f"{self._get_with_attachments_query()} WHERE t.id = ?",
                 (tx_id,),
             )
             row = cursor.fetchone()
-
-            if row:
-                return dict(row)
-            return None
-        except sqlite3.Error as e:
-            logger.error(f"Erreur get_by_id: {e}")
-            return None
-        finally:
-            close_connection(conn)
+            return dict(row) if row else None
 
     def get_filtered(
         self,
@@ -224,80 +163,61 @@ class TransactionRepository:
         category: Optional[str] = None,
     ) -> List[Transaction]:
         """Récupère les transactions filtrées."""
-        conn = None
-        try:
-            conn = get_db_connection(db_path=self.db_path)
+        query = f"{self._get_with_attachments_query()} WHERE 1=1"
+        params = []
 
-            query = "SELECT t.*, COALESCE((SELECT 1 FROM transaction_attachments WHERE transaction_id = t.id LIMIT 1), 0) as has_attachments FROM transactions t WHERE 1=1"
-            params = []
+        if start_date:
+            query += " AND t.date >= ?"
+            params.append(start_date.isoformat())
+        if end_date:
+            query += " AND t.date <= ?"
+            params.append(end_date.isoformat())
+        if category:
+            query += " AND t.categorie = ?"
+            params.append(category)
 
-            if start_date:
-                query += " AND t.date >= ?"
-                params.append(start_date.isoformat())
+        query += " ORDER BY t.date DESC"
 
-            if end_date:
-                query += " AND t.date <= ?"
-                params.append(end_date.isoformat())
-
-            if category:
-                query += " AND t.categorie = ?"
-                params.append(category)
-
-            query += " ORDER BY t.date DESC"
-
-            cursor = conn.cursor()
+        with db_cursor(self.db_path) as cursor:
             cursor.execute(query, params)
-            rows = cursor.fetchall()
-            return [Transaction(**dict(row)) for row in rows]
-
-        except sqlite3.Error as e:
-            logger.error(f"Erreur get_filtered: {e}")
-            return []
-        finally:
-            close_connection(conn)
+            return [Transaction(**dict(row)) for row in cursor.fetchall()]
 
     def delete(self, transaction_id: int | List[int]) -> bool:
-        """
-        Supprime une ou plusieurs transactions.
+        """Supprime une ou plusieurs transactions."""
+        if isinstance(transaction_id, int):
+            ids = [transaction_id]
+        else:
+            ids = transaction_id
 
-        Args:
-            transaction_id: Un seul ID (int) ou une liste d'IDs (List[int])
+        if not ids:
+            return True
 
-        Returns:
-            True si succès, False sinon
-        """
-        conn = None
         try:
-            # Normaliser en liste
-            if isinstance(transaction_id, int):
-                ids = [transaction_id]
-            else:
-                ids = transaction_id
-
-            if not ids:
-                return True
-
-            conn = get_db_connection(db_path=self.db_path)
-            cursor = conn.cursor()
-
-            # Utiliser IN clause (fonctionne pour 1 ou N IDs)
             placeholders = ",".join("?" * len(ids))
             query = f"DELETE FROM transactions WHERE id IN ({placeholders})"
-            cursor.execute(query, ids)
 
-            conn.commit()
-            deleted_count = cursor.rowcount
-            logger.info(f"{deleted_count} transaction(s) supprimée(s)")
+            with db_transaction(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, ids)
+
+            logger.info(f"{len(ids)} transaction(s) supprimée(s)")
             return True
 
         except sqlite3.Error as e:
             logger.error(f"Erreur delete: {e}")
-            if conn:
-                conn.rollback()
             return False
-        finally:
-            close_connection(conn)
+
+    def update_attachment(self, transaction_id: int, attachment_path: str) -> bool:
+        """Met à jour le chemin de la pièce jointe pour une transaction."""
+        try:
+            query = "UPDATE transactions SET attachment=? WHERE id=?"
+            with db_transaction(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (attachment_path, transaction_id))
+                return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            logger.error(f"Erreur update_attachment: {e}")
+            return False
 
 
-# Instance unique
 transaction_repository = TransactionRepository()

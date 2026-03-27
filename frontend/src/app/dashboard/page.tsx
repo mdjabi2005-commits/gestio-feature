@@ -1,205 +1,74 @@
 "use client";
-
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { cn } from '@/lib/utils';
 import { useFinancial } from '@/context/FinancialDataContext';
 import { KpiCards } from '@/components/dashboard/kpi-cards';
-// SunburstChart uses Plotly which depends on 'self'/'window', must be imported dynamically for SSR
-const SunburstChart = dynamic(() => import('@/components/dashboard/sunburst-chart').then(mod => mod.SunburstChart), { ssr: false });
+import { calculatePlannedByTarget } from '@/lib/budget-utils';
 import { TransactionTable } from '@/components/dashboard/transaction-table';
 import { EcheanceTable, type Echeance } from '@/components/dashboard/echeance-table';
-// BalanceChart uses Plotly which depends on 'self'/'window', must be imported dynamically for SSR
-const BalanceChart = dynamic(() => import('@/components/dashboard/balance-chart').then(mod => mod.BalanceChart), { ssr: false });
-import { FinancialCalendar } from '@/components/dashboard/financial-calendar';
+import { DashboardMetrics } from '@/components/dashboard/DashboardMetrics';
+
+const SunburstChart = dynamic(() => import('@/components/dashboard/sunburst-chart').then(mod => mod.SunburstChart), { ssr: false });
 
 export default function DashboardPage() {
   const { 
-    summary, 
-    transactions, 
-    filteredTransactions,
-    loading, 
-    filterCategory, 
-    setFilterCategory,
-    filterDateRange,
-    setFilterDateRange,
-    budgets
+    summary, transactions, loading, budgets, echeances 
   } = useFinancial();
 
-  // Calculate budget consumption
-  // We use backend summary.budget_summary if available, otherwise fallback to frontend calculation
   const budgetSummary = React.useMemo(() => {
-    if (summary?.budget_summary) return summary.budget_summary;
-    
-    // Fallback calculation
-    const now = new Date();
-    const currentMonthSpent = transactions.reduce((acc, t) => {
+    const now = new Date(), year = now.getFullYear(), month = now.getMonth();
+    const currentMonthSpent = transactions.reduce((acc: Record<string, number>, t) => {
         const d = new Date(t.date);
-        if (t.type === 'Dépense' && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
-            acc[t.categorie] = (acc[t.categorie] || 0) + t.montant;
-        }
+        if (t.type === 'Dépense' && d.getMonth() === month && d.getFullYear() === year) acc[t.categorie] = (acc[t.categorie] || 0) + t.montant;
         return acc;
-    }, {} as Record<string, number>);
-
+    }, {});
+    const plannedByCategory = calculatePlannedByTarget(echeances, transactions, year, month);
     const totalBudget = budgets.reduce((acc, b) => acc + b.montant_max, 0);
-    const totalSpentOnBudgeted = budgets.reduce((acc, b) => acc + (currentMonthSpent[b.categorie] || 0), 0);
-    
+    const totalSpent = budgets.reduce((acc, b) => acc + (currentMonthSpent[b.categorie] || 0), 0);
+    const totalPlanned = budgets.reduce((acc, b) => acc + (plannedByCategory[b.categorie] || 0), 0);
+    const totalForecasted = totalSpent + totalPlanned;
     return {
-        total_budget_prevu: totalBudget,
-        total_consomme: totalSpentOnBudgeted,
-        consommation_pct: totalBudget > 0 ? Math.round((totalSpentOnBudgeted / totalBudget) * 100) : 0
+        total_budget_prevu: totalBudget, total_consomme: totalSpent, total_planifie: totalPlanned, total_previsionnel: totalForecasted,
+        consommation_pct: totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0,
+        prevision_pct: totalBudget > 0 ? Math.round((totalForecasted / totalBudget) * 100) : 0
     };
-  }, [summary?.budget_summary, transactions, budgets]);
+  }, [transactions, budgets, echeances]);
 
-  // Real data for upcoming echéances from backend
+  if (loading || !summary) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" /></div>;
+
   const realEcheances: Echeance[] = (summary?.prochaines_echeances || []).map((e: any) => ({
-    id: e.id,
-    nom: e.nom || e.description || "Échéance",
-    montant: e.montant,
-    date_prevue: e.date_prevue,
-    categorie: e.categorie,
-    type: e.type,
-    status: e.statut || "pending"
+    id: e.id, nom: e.nom || e.description || "Échéance", montant: e.montant, date_prevue: e.date_prevue, categorie: e.categorie, type: e.type, status: e.statut || "pending"
   }));
 
-  // Calculate savings rate dynamically
-  const savingsRate = summary?.total_revenus > 0 
-    ? Math.round(((summary.total_revenus - summary.total_depenses) / summary.total_revenus) * 100) 
-    : 0;
-
-  if (loading || !summary) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-      </div>
-    );
-  }
-
-  // Map history data to component formats
-  const chartData = summary?.historique?.map((h: any) => ({
-    date: h.date,
-    balance: h.solde,
-    revenu: h.revenus,
-    depense: h.depenses
-  })) || [];
-
-  const calendarData = summary?.historique?.map((h: any) => ({
-    date: h.date,
-    revenus: h.revenus,
-    depenses: h.depenses
-  })) || [];
+  const savingsRate = summary?.total_revenus > 0 ? Math.round(((summary.total_revenus - summary.total_depenses) / summary.total_revenus) * 100) : 0;
 
   return (
     <div className="space-y-10 max-w-[1400px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+      <KpiCards balance={summary?.solde || 0} income={summary?.total_revenus || 0} expenses={summary?.total_depenses || 0} />
       
-      {/* Row 1: Big KPIs */}
-      <KpiCards 
-        balance={summary?.solde || 0} 
-        income={summary?.total_revenus || 0} 
-        expenses={summary?.total_depenses || 0} 
-      />
-      
-      {/* Row 2: Visual Summary & Progress */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-stretch">
-        <div className="lg:col-span-3 glass-card rounded-3xl p-8 h-[550px] animate-in slide-in-from-bottom-4 duration-700">
-          <SunburstChart 
-            data={summary?.repartition_categories || []} 
-            title="Distribution des flux" 
-          />
+        <div className="lg:col-span-3 glass-card rounded-3xl p-8 h-[550px]">
+          <SunburstChart data={summary?.repartition_categories || []} title="Distribution des flux" />
         </div>
-
-        <div className="lg:col-span-2 glass-card rounded-3xl p-8 flex flex-col justify-between animate-in slide-in-from-bottom-4 duration-700 delay-100 border-indigo-500/10">
-          <div className="space-y-10">
-            <h3 className="text-sm font-black text-foreground uppercase tracking-widest opacity-60">Indicateurs de Performance</h3>
-            <div className="space-y-8">
-              <div className="space-y-3">
-                <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
-                  <span className="text-muted-foreground">Taux d'épargne</span>
-                  <span className="text-emerald-400">{savingsRate}%</span>
-                </div>
-                <div className="h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                  <div className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full" style={{ width: `${savingsRate}%` }} />
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
-                  <span className="text-muted-foreground">Consommation du budget</span>
-                  <span className={cn(
-                    "transition-colors duration-300",
-                    budgetSummary.consommation_pct > 100 ? "text-rose-400" : 
-                    budgetSummary.consommation_pct >= 80 ? "text-amber-400" : "text-indigo-400"
-                  )}>
-                    {budgetSummary.consommation_pct}%
-                  </span>
-                </div>
-                <div className="h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                  <div 
-                    className={cn(
-                        "h-full rounded-full transition-all duration-1000 ease-out",
-                        budgetSummary.consommation_pct > 100 ? "bg-gradient-to-r from-rose-600 to-rose-400" :
-                        budgetSummary.consommation_pct >= 80 ? "bg-gradient-to-r from-amber-600 to-amber-400" :
-                        "bg-gradient-to-r from-indigo-600 to-indigo-400"
-                    )}
-                    style={{ width: `${Math.min(budgetSummary.consommation_pct, 100)}%` }} 
-                  />
-                </div>
-                {budgetSummary.total_budget_prevu > 0 && (
-                  <p className="text-[10px] text-white/30 text-right">
-                    {budgetSummary.total_consomme.toLocaleString('fr-FR')}€ / {budgetSummary.total_budget_prevu.toLocaleString('fr-FR')}€
-                  </p>
-                )}
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
-                  <span className="text-muted-foreground">Progression Objectif annuel</span>
-                  <span className="text-purple-400">45%</span>
-                </div>
-                <div className="h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                  <div className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full w-[45%] shadow-[0_0_15px_rgba(147,51,234,0.3)]" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mt-10">
-            <div className="glass-card bg-white/5 border-white/5 rounded-2xl p-5 text-center transition-all hover:bg-white/10">
-              <p className="text-3xl font-black text-foreground tracking-tighter">{transactions.length}</p>
-              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-2 opacity-60">Transactions</p>
-            </div>
-            <div className="glass-card bg-white/5 border-white/5 rounded-2xl p-5 text-center transition-all hover:bg-white/10">
-              <p className="text-3xl font-black text-foreground tracking-tighter">{summary.repartition_categories?.length || 0}</p>
-              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-2 opacity-60">Catégories</p>
-            </div>
-          </div>
-        </div>
+        <DashboardMetrics 
+            savingsRate={savingsRate} 
+            budgetSummary={budgetSummary} 
+            transactionCount={transactions.length} 
+            categoryCount={summary.repartition_categories?.length || 0} 
+        />
       </div>
 
-      {/* Row 3: Activity & Upcoming Echéances */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 animate-in slide-in-from-bottom-4 duration-700 delay-200">
-        
-        {/* Left: Recent Activity (60%) */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         <div className="lg:col-span-3 space-y-4">
-            <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black text-foreground uppercase tracking-widest opacity-60">Activité Récente</h3>
-            </div>
+            <h3 className="text-sm font-black text-foreground uppercase tracking-widest opacity-60">Activité Récente</h3>
             <div className="glass-card rounded-3xl p-2 border-white/5 bg-white/[0.01]">
-                <TransactionTable 
-                transactions={transactions.slice(0, 8)} 
-                categories={summary.repartition_categories}
-                />
+                <TransactionTable transactions={transactions.slice(0, 8)} categories={summary.repartition_categories} />
             </div>
         </div>
-
-        {/* Right: Upcoming Echéances (40%) */}
         <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black text-foreground uppercase tracking-widest opacity-60 text-indigo-400">Prochaines Échéances</h3>
-            </div>
+            <h3 className="text-sm font-black text-foreground uppercase tracking-widest opacity-60 text-indigo-400">Prochaines Échéances</h3>
             <div className="glass-card rounded-3xl p-6 border-white/5 bg-white/[0.01] min-h-[400px]">
-                <EcheanceTable 
-                    echeances={realEcheances} 
-                    loading={loading}
-                />
+                <EcheanceTable echeances={realEcheances} loading={loading} />
             </div>
         </div>
       </div>

@@ -131,3 +131,20 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: oklch(0.45 0.02 265);
 }
+
+/* Fix for Select Boxes in Dark Mode */
+select {
+  color-scheme: dark;
+  background-color: var(--input);
+  color: var(--foreground);
+}
+
+select option {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* Ensure the focused state also has a dark background */
+select:focus {
+  background-color: var(--background);
+}

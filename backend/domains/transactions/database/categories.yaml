@@ -70,6 +70,13 @@ categories:
 - name: Autre
   subcategories:
   - Divers
+- name: Épargne
+  subcategories:
+  - Livret A
+  - PEL
+  - Assurance Vie
+  - Cryptos
+  - Divers
 - name: Uber
   subcategories:
   - Livraison

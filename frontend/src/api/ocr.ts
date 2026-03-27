@@ -1,10 +1,34 @@
 // OCR domain API methods
 
-import type { OCRScanResponse } from './types';
+import type { OCRScanResponse, IncomeScanResponse, SalaryPlan } from './types';
 
 const API_BASE_URL = 'http://localhost:8002';
 
 export const ocrApi = {
+  // ... existing methods ...
+
+  getSalaryPlans: async (): Promise<SalaryPlan[]> => {
+    const res = await fetch(`${API_BASE_URL}/api/ocr/salary-plans`);
+    if (!res.ok) throw new Error('Failed to fetch salary plans');
+    return res.json();
+  },
+
+  saveSalaryPlan: async (plan: SalaryPlan): Promise<SalaryPlan> => {
+    const method = plan.id ? 'PUT' : 'POST';
+    const url = plan.id ? `${API_BASE_URL}/api/ocr/salary-plans/${plan.id}` : `${API_BASE_URL}/api/ocr/salary-plans`;
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(plan),
+    });
+    if (!res.ok) throw new Error('Failed to save salary plan');
+    return res.json();
+  },
+
+  deleteSalaryPlan: async (id: number): Promise<void> => {
+    const res = await fetch(`${API_BASE_URL}/api/ocr/salary-plans/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete salary plan');
+  },
   scanTicket: async (file: File): Promise<OCRScanResponse> => {
     const formData = new FormData();
     formData.append('file', file);
@@ -13,6 +37,17 @@ export const ocrApi = {
       if (res.status === 400) throw new Error('Format de fichier non supporté');
       if (res.status === 500) throw new Error('Échec de la lecture du ticket (ticket illisible ?)');
       throw new Error('Erreur lors du scan du ticket');
+    }
+    return res.json();
+  },
+
+  scanIncome: async (file: File): Promise<IncomeScanResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE_URL}/api/ocr/scan-income`, { method: 'POST', body: formData });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: 'Échec de l\'analyse de la fiche de paie' }));
+      throw new Error(error.detail || 'Échec de l\'analyse de la fiche de paie');
     }
     return res.json();
   },

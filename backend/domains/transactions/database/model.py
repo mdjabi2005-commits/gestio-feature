@@ -48,6 +48,7 @@ class Transaction(BaseModel):
     echeance_id: Optional[int] = Field(None, description="ID de l'échéance liée")
     compte_id: Optional[int] = Field(None, description="ID du compte")
     has_attachments: bool = Field(False, description="Indicateur pièces jointes")
+    attachment: Optional[str] = Field(None, description="Chemin de la pièce jointe principale")
 
     # ── Validators ──────────────────────────────────────────
 
@@ -126,6 +127,7 @@ class Transaction(BaseModel):
             "external_id":    self.external_id,
             "echeance_id":    self.echeance_id,
             "compte_id":      self.compte_id,
+            "attachment":     self.attachment,
         }
 
     # ── Config ──────────────────────────────────────────────

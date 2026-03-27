@@ -1,8 +1,9 @@
+"use client"
 import { useState, useRef } from "react"
-import { X, Save, Calendar, Repeat, Paperclip, Loader2, Tag, List } from "lucide-react"
+import { X, Save, Calendar, Repeat, Paperclip, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AttachmentSection } from "../transactions/AttachmentSection"
-import { CATEGORIES } from "@/lib/categories"
+import { CategorySubcategorySelect } from "@/components/ui/CategorySubcategorySelect"
 import type { Attachment } from "@/api"
 
 interface InstallmentFormData {
@@ -54,21 +55,17 @@ export function InstallmentForm({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file && onUpload) {
-      onUpload(file)
-    }
+    if (file && onUpload) onUpload(file)
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3">
-        {/* Nom */}
+    <div className="space-y-6 text-left">
+      <div className="grid grid-cols-2 gap-3 text-left">
         <div className="col-span-2">
           <label className={LABEL_CLASS}>Nom</label>
           <input className={FIELD_CLASS} placeholder="Ex: Loyer, Voiture..." value={form.nom} onChange={e => set("nom", e.target.value)} />
         </div>
 
-        {/* Type */}
         <div>
           <label className={LABEL_CLASS}>Type</label>
           <div className="flex gap-2">
@@ -83,48 +80,29 @@ export function InstallmentForm({
           </div>
         </div>
 
-        {/* Montant */}
         <div>
           <label className={LABEL_CLASS}>Montant (€)</label>
           <input type="number" min="0" step="0.01" className={FIELD_CLASS} placeholder="0.00" value={form.montant} onChange={e => set("montant", e.target.value)} />
         </div>
 
-        {/* Catégorie & Sous-catégorie */}
-        <div>
-          <label className={LABEL_CLASS}>Catégorie</label>
-          <div className="relative">
-            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30 pointer-events-none" />
-            <select className={cn(FIELD_CLASS, "pl-9")} value={form.categorie} 
-              onChange={e => setForm(f => ({ ...f, categorie: e.target.value, sous_categorie: "" }))}>
-              {CATEGORIES.map(c => <option key={c.value} value={c.value} className="bg-slate-900">{c.label}</option>)}
-            </select>
-          </div>
-        </div>
-        <div>
-          <label className={LABEL_CLASS}>Sous-catégorie *</label>
-          <div className="relative">
-            <List className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30 pointer-events-none" />
-            <select className={cn(FIELD_CLASS, "pl-9")} value={form.sous_categorie} onChange={e => set("sous_categorie", e.target.value)}>
-              <option value="" className="bg-slate-900">(Aucune)</option>
-              {CATEGORIES.find(c => c.value === form.categorie)?.subcategories.map(sub => (
-                <option key={sub} value={sub} className="bg-slate-900">{sub}</option>
-              ))}
-            </select>
-          </div>
+        <div className="col-span-2">
+          <CategorySubcategorySelect 
+            variant="installment" 
+            category={form.categorie} setCategory={v => set("categorie", v)} 
+            subcategory={form.sous_categorie} setSubcategory={v => set("sous_categorie", v)} 
+          />
         </div>
 
-        {/* Fréquence */}
         <div>
           <label className={LABEL_CLASS}>Fréquence</label>
           <div className="relative">
             <Repeat className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30 pointer-events-none" />
             <select className={cn(FIELD_CLASS, "pl-9")} value={form.frequence} onChange={e => set("frequence", e.target.value)}>
-              {FREQUENCIES.map(f => <option key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</option>)}
+              {FREQUENCIES.map(f => <option key={f} value={f} className="bg-[#0f0f13]">{f.charAt(0).toUpperCase() + f.slice(1)}</option>)}
             </select>
           </div>
         </div>
 
-        {/* Dates */}
         <div>
           <label className={LABEL_CLASS}>Date de début</label>
           <div className="relative">
@@ -132,7 +110,8 @@ export function InstallmentForm({
             <input type="date" className={cn(FIELD_CLASS, "pl-9")} value={form.date_debut} onChange={e => set("date_debut", e.target.value)} />
           </div>
         </div>
-        <div>
+
+        <div className="col-span-2">
           <label className={LABEL_CLASS}>Date de fin (optionnel)</label>
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30 pointer-events-none" />
@@ -140,56 +119,29 @@ export function InstallmentForm({
           </div>
         </div>
 
-        {/* Description */}
         <div className="col-span-2">
           <label className={LABEL_CLASS}>Description (optionnel)</label>
           <input className={FIELD_CLASS} placeholder="Note libre..." value={form.description} onChange={e => set("description", e.target.value)} />
         </div>
       </div>
 
-      {/* Attachments Section */}
       <div className="space-y-3 pt-2 border-t border-white/5">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-semibold text-white/40 uppercase tracking-wider">Documents associés</label>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="flex items-center gap-2 text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-50"
-          >
-            {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
-            Lier un fichier
-          </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="hidden"
-          />
-        </div>
-        
-        <AttachmentSection 
-          attachments={attachments} 
-          onDelete={onDelete} 
-          isDeletingId={isDeletingId}
-        />
-
-        {attachments.length === 0 && !isUploading && (
-          <div className="flex items-center justify-center p-4 rounded-xl border border-dashed border-white/5 bg-white/[0.02]">
-            <p className="text-[11px] text-white/20 italic text-center">Aucun document lié à cette échéance</p>
-          </div>
-        )}
+        <label className="text-xs font-semibold text-white/40 uppercase tracking-wider">Documents associés</label>
+        <AttachmentSection attachments={attachments} onDelete={onDelete} isDeletingId={isDeletingId} />
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-white/10 bg-white/[0.02] text-xs font-medium text-indigo-400 hover:bg-white/[0.04] transition-all disabled:opacity-50">
+          {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+          <span>{isUploading ? "Téléchargement..." : "Joindre un document (Facture, Contrat...)"}</span>
+        </button>
+        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-2 pt-2">
-        <button onClick={onCancel} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-white/50 hover:text-white/70 border border-white/[0.08] hover:bg-white/[0.04] transition-all">
-          <X className="w-4 h-4" />Annuler
-        </button>
+      <div className="flex gap-3 pt-2">
+        <button onClick={onCancel} className="flex-1 py-3 rounded-xl text-sm font-medium text-white/50 bg-white/5 hover:bg-white/10 transition-all border border-transparent">Annuler</button>
         <button onClick={() => isValid && onSave(form)} disabled={!isValid}
-          className={cn("flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
-            isValid ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 hover:bg-indigo-500/30" : "bg-white/[0.04] text-white/20 border border-white/[0.06] cursor-not-allowed")}>
-          <Save className="w-4 h-4" />Enregistrer
+          className={cn("flex-[2] py-3 rounded-xl text-sm font-bold transition-all shadow-lg",
+            isValid ? "bg-indigo-500 text-white shadow-indigo-500/20 hover:scale-[1.02]" : "bg-white/[0.04] text-white/20 border border-white/[0.06] cursor-not-allowed")}>
+          Enregistrer l'échéance
         </button>
       </div>
     </div>

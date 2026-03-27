@@ -57,6 +57,10 @@ class AttachmentService:
             )
             new_id = attachment_repository.add_attachment(attachment)
             if new_id:
+                # Synchronisation avec le champ attachment de la table transactions
+                from backend.domains.transactions.database.repository import transaction_repository
+                transaction_repository.update_attachment(transaction_id, str(target_path))
+                
                 logger.info(f"Attachment ajouté: {unique_name} (ID: {new_id})")
                 return True
             logger.error("Echec DB, fichier sauvegardé mais orphelin")
@@ -172,6 +176,36 @@ class AttachmentService:
             )
 
         return None
+
+    def archive_income_file(
+        self, temp_path: str, category: str, date_str: str, net_amount: float
+    ) -> Optional[str]:
+        """
+        Archive un fichier de revenu (fiche de paie) dans le dossier organisé.
+        Retourne le nouveau chemin si succès.
+        """
+        try:
+            root_dir = Path(REVENUS_TRAITES)
+            target_dir = root_dir / self._sanitize(category)
+            target_dir.mkdir(parents=True, exist_ok=True)
+
+            ext = Path(temp_path).suffix.lower()
+            safe_date = self._sanitize(date_str).replace(" ", "_")
+            filename = f"{safe_date}_Salaire_{int(net_amount)}€{ext}"
+            target_path = target_dir / filename
+
+            # Si le fichier existe déjà, on ajoute un timestamp
+            if target_path.exists():
+                filename = f"{safe_date}_Salaire_{int(net_amount)}€_{int(datetime.now().timestamp())}{ext}"
+                target_path = target_dir / filename
+
+            shutil.copy2(temp_path, target_path)
+            logger.info(f"Fiche de paie archivée : {target_path}")
+            return str(target_path)
+
+        except Exception as e:
+            logger.error(f"Erreur archive_income_file: {e}")
+            return None
 
     @staticmethod
     def _sanitize(name: str) -> str:

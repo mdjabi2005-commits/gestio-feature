@@ -1,3 +1,4 @@
+### BACKEND STARTUP CLEANED
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -7,24 +8,32 @@ from backend.api.dashboard.dashboard import router as dashboard_router
 from backend.api.attachments.attachments import router as attachments_router
 from backend.api.ocr.ocr import router as ocr_router
 from backend.api.echeances.echeances import router as echeances_router
+from backend.api.budgets.budgets import router as budgets_router
 from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Démarrage : Initialise le singleton OCR dans chaque worker
-    # Cela garantit que le premier scan est instantané car le moteur est déjà chaud
+    # Démarrage : Initialisation de la base de données
+    try:
+        from backend.domains.transactions.database.schema import init_transaction_table, init_attachments_table, init_budgets_table
+        init_transaction_table()
+        init_attachments_table()
+        init_budgets_table()
+        logger.info("Base de données initialisée (schema OK) ✅")
+    except Exception as e:
+        logger.error(f"Erreur initialisation DB : {e}")
+
+    # Initialise le singleton OCR
     try:
         get_ocr_service()
         logger.info("OCR Service pré-initialisé au démarrage du worker ✅")
     except Exception as e:
         logger.error(f"Erreur initialisation OCR au démarrage : {e}")
     yield
-
 
 app = FastAPI(title="Gestio API", version="4.0.0", lifespan=lifespan)
 
@@ -33,6 +42,7 @@ app.include_router(dashboard_router)
 app.include_router(attachments_router)
 app.include_router(ocr_router)
 app.include_router(echeances_router)
+app.include_router(budgets_router)
 
 # Set up CORS for local development
 app.add_middleware(
@@ -50,18 +60,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.get("/")
 async def root():
     return {"message": "Welcome to Gestio API (v4)"}
-
 
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
 
-
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8002, reload=True)

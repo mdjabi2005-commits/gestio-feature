@@ -8,9 +8,8 @@ import sqlite3
 from datetime import date, timedelta
 from typing import List, Optional
 from dateutil.relativedelta import relativedelta
-from dateutil.parser import parse
 
-from backend.shared.database.connection import get_db_connection, close_connection
+from backend.shared.database import db_transaction, db_cursor
 from .model_echeance import Echeance
 
 logger = logging.getLogger(__name__)
@@ -36,88 +35,55 @@ class EcheanceRepository:
 
     def get_all(self) -> List[Echeance]:
         """Récupère toutes les échéances actives."""
-        conn = None
-        echeances = []
-        try:
-            conn = get_db_connection(db_path=self.db_path)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-
+        with db_cursor(self.db_path) as cursor:
             cursor.execute(
                 "SELECT * FROM echeances WHERE statut = 'active' ORDER BY date_debut ASC"
             )
-            rows = cursor.fetchall()
-
-            for row in rows:
-                echeances.append(Echeance(**dict(row)))
-
-            logger.info(f"Récupération de {len(echeances)} échéances réussie")
-            return echeances
-        except sqlite3.Error as e:
-            logger.error(f"Erreur lors de la récupération des échéances: {e}")
-            return []
-        finally:
-            close_connection(conn)
+            return [Echeance(**dict(row)) for row in cursor.fetchall()]
 
     def get_all_raw(self) -> List[dict]:
         """Récupère toutes les échéances actives sous forme de dictionnaires."""
-        conn = None
-        try:
-            conn = get_db_connection(db_path=self.db_path)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-
+        with db_cursor(self.db_path) as cursor:
             cursor.execute(
                 "SELECT * FROM echeances WHERE statut = 'active' ORDER BY date_debut ASC"
             )
-            rows = cursor.fetchall()
-            return [dict(row) for row in rows]
-        except sqlite3.Error as e:
-            logger.error(f"Erreur lors de la récupération des échéances: {e}")
-            return []
-        finally:
-            close_connection(conn)
+            return [dict(row) for row in cursor.fetchall()]
 
     def add(self, echeance: Echeance) -> bool:
         """Ajoute une nouvelle échéance."""
-        conn = None
+        logger.info(f"Ajout d'une échéance : {echeance.nom} ({echeance.montant}€)")
+        query = """
+            INSERT INTO echeances (nom, type, categorie, sous_categorie, montant,
+                frequence, date_debut, date_fin, description, statut, type_echeance, date_creation)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, Datetime('now'))
+        """
+
         try:
-            logger.info(f"Ajout d'une échéance : {echeance.nom} ({echeance.montant}€)")
-            conn = get_db_connection(db_path=self.db_path)
-            cursor = conn.cursor()
-
-            cursor.execute(
-                """
-                INSERT INTO echeances (nom, type, categorie, sous_categorie, montant,
-                    frequence, date_debut, date_fin, description,
-                    statut, type_echeance, date_creation)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, Datetime('now'))
-            """,
-                (
-                    echeance.nom,
-                    echeance.type,
-                    echeance.categorie,
-                    echeance.sous_categorie,
-                    echeance.montant,
-                    echeance.frequence,
-                    echeance.date_debut,
-                    echeance.date_fin,
-                    echeance.description,
-                    echeance.statut,
-                    echeance.type_echeance,
-                ),
-            )
-
-            conn.commit()
-            logger.info(f"✅ Échéance ajoutée avec succès")
+            with db_transaction(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    query,
+                    (
+                        echeance.nom,
+                        echeance.type,
+                        echeance.categorie,
+                        echeance.sous_categorie,
+                        echeance.montant,
+                        echeance.frequence,
+                        echeance.date_debut,
+                        echeance.date_fin,
+                        echeance.description,
+                        echeance.statut,
+                        echeance.type_echeance,
+                    ),
+                )
+            logger.info("Échéance ajoutée avec succès")
             return True
         except sqlite3.Error as e:
             from backend.config.logging_config import log_error
 
             log_error(e, "Erreur lors de l'ajout de l'échéance")
             return False
-        finally:
-            close_connection(conn)
 
     def update(self, echeance: Echeance) -> bool:
         """Met à jour une échéance existante."""
@@ -125,39 +91,36 @@ class EcheanceRepository:
             logger.warning("Tentative de mise à jour sans ID")
             return False
 
-        conn = None
+        logger.info(f"Mise à jour de l'échéance ID {echeance.id}")
+        query = """
+            UPDATE echeances
+            SET nom=?, type=?, categorie=?, sous_categorie=?, montant=?,
+                frequence=?, date_debut=?, date_fin=?, description=?,
+                statut=?, type_echeance=?, date_modification=Datetime('now')
+            WHERE id=?
+        """
+
         try:
-            logger.info(f"Mise à jour de l'échéance ID {echeance.id}")
-            conn = get_db_connection(db_path=self.db_path)
-            cursor = conn.cursor()
-
-            cursor.execute(
-                """
-                UPDATE echeances
-                SET nom = ?, type = ?, categorie = ?, sous_categorie = ?,
-                    montant = ?, frequence = ?, date_debut = ?,
-                    date_fin = ?, description = ?, statut = ?, type_echeance = ?,
-                    date_modification = Datetime('now')
-                WHERE id = ?
-            """,
-                (
-                    echeance.nom,
-                    echeance.type,
-                    echeance.categorie,
-                    echeance.sous_categorie,
-                    echeance.montant,
-                    echeance.frequence,
-                    echeance.date_debut,
-                    echeance.date_fin,
-                    echeance.description,
-                    echeance.statut,
-                    echeance.type_echeance,
-                    echeance.id,
-                ),
-            )
-
-            conn.commit()
-            logger.info(f"✅ Échéance ID {echeance.id} mise à jour avec succès")
+            with db_transaction(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    query,
+                    (
+                        echeance.nom,
+                        echeance.type,
+                        echeance.categorie,
+                        echeance.sous_categorie,
+                        echeance.montant,
+                        echeance.frequence,
+                        echeance.date_debut,
+                        echeance.date_fin,
+                        echeance.description,
+                        echeance.statut,
+                        echeance.type_echeance,
+                        echeance.id,
+                    ),
+                )
+            logger.info(f"Échéance ID {echeance.id} mise à jour avec succès")
             return True
         except sqlite3.Error as e:
             from backend.config.logging_config import log_error
@@ -166,29 +129,20 @@ class EcheanceRepository:
                 e, f"Erreur lors de la mise à jour de l'échéance (ID: {echeance.id})"
             )
             return False
-        finally:
-            close_connection(conn)
 
     def delete(self, echeance_id: int) -> bool:
-        """Supprime une échéance et ses transactions générées (cascade)."""
-        conn = None
+        """Supprime une échéance et ses transactions générées."""
+        logger.info(f"Suppression de l'échéance ID {echeance_id}")
+        query = "DELETE FROM transactions WHERE echeance_id = ?"
+
         try:
-            logger.info(f"Suppression de l'échéance ID {echeance_id}")
-            conn = get_db_connection(db_path=self.db_path)
-            cursor = conn.cursor()
-
-            # Delete associated transactions first
-            cursor.execute(
-                "DELETE FROM transactions WHERE echeance_id = ?", (echeance_id,)
-            )
-            transactions_deleted = cursor.rowcount
-
-            # Delete the echeance itself
-            cursor.execute("DELETE FROM echeances WHERE id = ?", (echeance_id,))
-
-            conn.commit()
+            with db_transaction(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, (echeance_id,))
+                transactions_deleted = cursor.rowcount
+                cursor.execute("DELETE FROM echeances WHERE id = ?", (echeance_id,))
             logger.info(
-                f"✅ Échéance ID {echeance_id} supprimée ({transactions_deleted} transactions)"
+                f"Échéance ID {echeance_id} supprimée ({transactions_deleted} transactions)"
             )
             return True
         except sqlite3.Error as e:
@@ -198,45 +152,21 @@ class EcheanceRepository:
                 e, f"Erreur lors de la suppression de l'échéance (ID: {echeance_id})"
             )
             return False
-        finally:
-            close_connection(conn)
-
-
 
     def get_occurrences_for_month(self, year: int, month: int) -> List[dict]:
-        """
-        Calcule les occurrences d'échéance pour un mois donné.
+        """Calcule les occurrences d'échéance pour un mois donné."""
+        from calendar import monthrange
 
-        Si date_fin est NULL, projette jusqu'à fin année+1 (limite de sécurité).
-        Si date_fin est présent, ne pas dépasser cette date.
-
-        Args:
-            year: Année cible
-            month: Mois cible (1-12)
-
-        Returns:
-            Liste de dictionnaires représentant les occurrences du mois
-        """
-        conn = None
         try:
-            conn = get_db_connection(db_path=self.db_path)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT * FROM echeances 
-                WHERE statut = 'active'
-            """)
-            rows = cursor.fetchall()
-
-            occurrences = []
-
-            from calendar import monthrange
-
             _, last_day = monthrange(year, month)
             month_start = date(year, month, 1)
             month_end = date(year, month, last_day)
 
+            with db_cursor(self.db_path) as cursor:
+                cursor.execute("SELECT * FROM echeances WHERE statut = 'active'")
+                rows = cursor.fetchall()
+
+            occurrences = []
             limit_date = month_end
 
             for row in rows:
@@ -246,18 +176,17 @@ class EcheanceRepository:
                     continue
 
                 current = echeance.date_debut
-
-                if echeance.date_fin:
-                    effective_limit = min(limit_date, echeance.date_fin)
-                else:
-                    effective_limit = date(year + 1, 12, 31)
-
                 delta = FREQ_DELTAS.get(echeance.frequence.lower())
+
                 if not delta:
-                    logger.warning(
-                        f"Fréquence inconnue pour échéance {echeance.nom}: {echeance.frequence}"
-                    )
+                    logger.warning(f"Fréquence inconnue: {echeance.frequence}")
                     continue
+
+                effective_limit = (
+                    min(limit_date, echeance.date_fin)
+                    if echeance.date_fin
+                    else date(year + 1, 12, 31)
+                )
 
                 while current <= effective_limit:
                     if current >= month_start and current <= month_end:
@@ -270,8 +199,12 @@ class EcheanceRepository:
                                 "sous_categorie": echeance.sous_categorie,
                                 "montant": echeance.montant,
                                 "date": current.isoformat(),
-                                "date_debut": echeance.date_debut.isoformat() if echeance.date_debut else None,
-                                "date_fin": echeance.date_fin.isoformat() if echeance.date_fin else None,
+                                "date_debut": echeance.date_debut.isoformat()
+                                if echeance.date_debut
+                                else None,
+                                "date_fin": echeance.date_fin.isoformat()
+                                if echeance.date_fin
+                                else None,
                                 "description": echeance.description,
                                 "frequence": echeance.frequence,
                                 "type_echeance": echeance.type_echeance,
@@ -281,7 +214,6 @@ class EcheanceRepository:
                     if current >= month_end:
                         break
                     current += delta
-
                     if current > effective_limit:
                         break
 
@@ -290,5 +222,3 @@ class EcheanceRepository:
         except sqlite3.Error as e:
             logger.error(f"Erreur lors du calcul des occurrences: {e}")
             return []
-        finally:
-            close_connection(conn)

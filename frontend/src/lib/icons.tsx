@@ -15,7 +15,8 @@ import {
   HelpCircle,
   Truck,
   PlusCircle,
-  MinusCircle
+  MinusCircle,
+  PiggyBank
 } from "lucide-react"
 
 export const getCategoryIcon = (iconName: string) => {
@@ -36,6 +37,7 @@ export const getCategoryIcon = (iconName: string) => {
     case "truck": return Truck
     case "plus-circle": return PlusCircle
     case "minus-circle": return MinusCircle
+    case "piggy-bank": return PiggyBank
     default: return HelpCircle
   }
 }

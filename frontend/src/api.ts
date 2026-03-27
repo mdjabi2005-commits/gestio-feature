@@ -1,7 +1,7 @@
 // api.ts — Thin aggregator. Keep under 200 lines (AGENTS.md rule).
 // Types are in api/types.ts. Domain methods in api/*.ts
 
-export type { Transaction, Attachment, OCRScanResponse, ScannedTicket, Budget, BudgetSummaryItem, BudgetSummary } from './api/types';
+export type { Transaction, Attachment, OCRScanResponse, ScannedTicket, Budget, BudgetSummaryItem, BudgetSummary, Echeance, IncomeScanResponse, IncomeSplit, SalaryPlan, SalaryPlanItem } from './api/types';
 import { budgetsApi } from './api/budgets';
 import { ocrApi } from './api/ocr';
 
@@ -121,6 +121,24 @@ export const api = {
   },
 
   getAttachmentUrl: (id: number) => `${API_BASE_URL}/api/attachments/${id}`,
+
+  getOCRConfig: async (): Promise<{ api_key?: string }> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/ocr/config`);
+      if (!res.ok) return {}; // Silently return empty if not implemented yet
+      return res.json();
+    } catch (err) {
+      return {};
+    }
+  },
+
+  updateOCRConfig: async (data: { api_key: string }) => {
+    const res = await fetch(`${API_BASE_URL}/api/ocr/config`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to update OCR config');
+    return res.json();
+  },
 
   // Domain sub-modules
   ...budgetsApi,

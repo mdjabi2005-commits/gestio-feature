@@ -50,12 +50,15 @@ export const CATEGORY_STYLES: Record<string, { couleur: string; icone: string; s
     subcategories: ['Abonnement', 'Banque / Frais', 'Impôts / Taxes', 'Assurance', 'Courrier / Colis', 'Administratif']
   },
   "Bourse": { couleur: "#10b981", icone: "trending-up", subcategories: [] },
+  "Épargne": { couleur: "#059669", icone: "piggy-bank", subcategories: [] },
   "Revenu": { couleur: "#10b981", icone: "plus-circle", subcategories: [] },
   "Dépense": { couleur: "#f43f5e", icone: "minus-circle", subcategories: [] },
   "Autre": { couleur: "#6b7280", icone: "shopping-cart", subcategories: ['Divers'] },
 }
 
-export const CATEGORIES = Object.entries(CATEGORY_STYLES).map(([name, style]) => ({
+export const CATEGORIES = Object.entries(CATEGORY_STYLES)
+  .filter(([name]) => name !== "Revenu" && name !== "Dépense")
+  .map(([name, style]) => ({
   value: name,
   label: name,
   color: style.couleur,

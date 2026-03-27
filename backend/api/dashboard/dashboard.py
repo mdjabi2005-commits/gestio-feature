@@ -1,258 +1,75 @@
+"""
+Dashboard API - Endpoint principal pour les statistiques et vues agrégées.
+"""
+
 from fastapi import APIRouter, HTTPException
-from typing import Optional, List
+from typing import Optional
+
 from backend.domains.transactions.database.repository import TransactionRepository
-from backend.domains.transactions.database.repository_echeance import EcheanceRepository
-from backend.domains.transactions.database.model_echeance import Echeance
-from backend.domains.transactions.echeance.echeance_service import (
-    refresh_echeances,
-    calculate_next_occurrence,
+from backend.domains.transactions.echeance.echeance_service import refresh_echeances
+from backend.shared.utils.dashboard_helpers import (
+    build_daily_history,
+    aggregate_by_type,
+    build_type_breakdown,
+    get_paid_echeance_ids,
+    get_active_echeances,
+    build_echeances_list,
+    build_budget_summary,
 )
-from backend.shared.utils.categories_loader import (
-    get_category_config,
-    get_subcategories,
-)
-from backend.shared.database.connection import get_db_connection, close_connection
-from datetime import date
-import traceback
-import sqlite3
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 repo = TransactionRepository()
-echeance_repo = EcheanceRepository()
-
-
-def _dict_to_echeance(data: dict) -> Echeance:
-    """Convertit un dict en Echeance en gérant les types correctement."""
-    return Echeance(
-        id=data.get("id"),
-        nom=data.get("nom", ""),
-        type=data.get("type", "Dépense"),
-        categorie=data.get("categorie", ""),
-        sous_categorie=data.get("sous_categorie"),
-        montant=float(data.get("montant", 0)),
-        frequence=data.get("frequence", "mensuel"),
-        date_debut=date.fromisoformat(data["date_debut"])
-        if data.get("date_debut")
-        else date.today(),
-        date_fin=date.fromisoformat(data["date_fin"]) if data.get("date_fin") else None,
-        description=data.get("description"),
-        statut=data.get("statut", "active"),
-        type_echeance=data.get("type_echeance", "recurrente"),
-    )
 
 
 @router.get("/categories")
 async def get_all_categories():
-    """Retourne la liste complète des catégories (avec icônes et couleurs)."""
     from backend.shared.utils.categories_loader import _load
-    data = _load()
-    return data.get("categories", [])
+
+    return _load().get("categories", [])
 
 
 @router.get("/")
 async def get_summary(
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     category: Optional[str] = None,
 ):
     try:
         refresh_echeances()
 
-        transactions = repo.get_filtered(
-            start_date=start_date, end_date=end_date, category=category
-        )
+        from datetime import date
 
-        total_revenus = sum(t.montant for t in transactions if t.type == "Revenu")
-        total_depenses = sum(t.montant for t in transactions if t.type == "Dépense")
-        solde = total_revenus - total_depenses
+        sd = date.fromisoformat(start_date) if start_date else None
+        ed = date.fromisoformat(end_date) if end_date else None
 
-        # Last 30 days history for BalanceChart
-        today = date.today()
-        from datetime import timedelta
+        txs = repo.get_filtered(start_date=sd, end_date=ed, category=category)
 
-        # Build daily historique for BalanceChart (last 90 days)
-        daily: dict = {}
-        for t in transactions:
-            day = str(t.date)[:10]  # YYYY-MM-DD
-            if day not in daily:
-                daily[day] = {"revenus": 0.0, "depenses": 0.0}
-            if t.type == "Revenu":
-                daily[day]["revenus"] += t.montant
-            else:
-                daily[day]["depenses"] += t.montant
+        revenus = sum(t.montant for t in txs if t.type == "Revenu")
+        depenses = sum(t.montant for t in txs if t.type == "Dépense")
 
-        history = []
-        running_solde = 0.0
-        for day in sorted(daily.keys()):
-            running_solde += daily[day]["revenus"] - daily[day]["depenses"]
-            history.append(
-                {
-                    "date": day,
-                    "revenus": daily[day]["revenus"],
-                    "depenses": daily[day]["depenses"],
-                    "solde": round(running_solde, 2),
-                }
-            )
+        history = build_daily_history(txs)
+        data_by_type = aggregate_by_type(txs)
 
-        # Aggregate data for both Revenu and Dépense
-        data_by_type = {
-            "Revenu": {"total": 0, "categories": {}, "subs": {}},
-            "Dépense": {"total": 0, "categories": {}, "subs": {}},
-        }
-
-        for t in transactions:
-            if t.type in data_by_type:
-                data_by_type[t.type]["total"] += t.montant
-                data_by_type[t.type]["categories"][t.categorie] = (
-                    data_by_type[t.type]["categories"].get(t.categorie, 0) + t.montant
-                )
-
-                if t.sous_categorie:
-                    if t.categorie not in data_by_type[t.type]["subs"]:
-                        data_by_type[t.type]["subs"][t.categorie] = {}
-                    data_by_type[t.type]["subs"][t.categorie][t.sous_categorie] = (
-                        data_by_type[t.type]["subs"][t.categorie].get(
-                            t.sous_categorie, 0
-                        )
-                        + t.montant
-                    )
-
-        # Helper to build breakdown for a type
-        def build_type_breakdown(t_type, color):
-            type_nodes = []
-            type_total = data_by_type[t_type]["total"]
-
-            for cat_name, cat_val in data_by_type[t_type]["categories"].items():
-                config = get_category_config(cat_name)
-                cat_color = config.get("color", "#6b7280")
-                cat_icon = config.get("icon", "help-circle")
-
-                sub_nodes = []
-                if cat_name in data_by_type[t_type]["subs"]:
-                    # Get subcategories config
-                    subs_config = get_subcategories(cat_name)
-                    yaml_subs = {
-                        s.get("name", "") if isinstance(s, dict) else s: (
-                            s.get("color") if isinstance(s, dict) else None
-                        )
-                        for s in subs_config
-                    }
-
-                    for sub_name, sub_val in data_by_type[t_type]["subs"][
-                        cat_name
-                    ].items():
-                        sub_nodes.append(
-                            {
-                                "nom": sub_name,
-                                "valeur": sub_val,
-                                "montant": sub_val,
-                                "couleur": yaml_subs.get(sub_name) or cat_color,
-                                "pourcentage": int((sub_val / cat_val * 100))
-                                if cat_val > 0
-                                else 0,
-                            }
-                        )
-
-                type_nodes.append(
-                    {
-                        "nom": cat_name,
-                        "valeur": cat_val,
-                        "montant": cat_val,
-                        "couleur": cat_color,
-                        "icone": cat_icon,
-                        "enfants": sub_nodes,
-                        "pourcentage": int((cat_val / type_total * 100))
-                        if type_total > 0
-                        else 0,
-                    }
-                )
-
-            return {
-                "nom": t_type,
-                "valeur": type_total,
-                "montant": type_total,
-                "couleur": color,
-                "icone": "plus-circle" if t_type == "Revenu" else "minus-circle",
-                "enfants": type_nodes,
-                "pourcentage": 50,  # Balanced view for the roots
-            }
-
-        # Build final 3-layer breakdown
-        # The Sunburst top level will be Revenus and Dépenses
         breakdown = [
-            build_type_breakdown("Revenu", "#10b981"),  # Green
-            build_type_breakdown("Dépense", "#f43f5e"),  # Red
+            build_type_breakdown("Revenu", "#10b981", data_by_type),
+            build_type_breakdown("Dépense", "#f43f5e", data_by_type),
         ]
 
-        conn = get_db_connection()
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT * FROM echeances 
-            WHERE statut = 'active' 
-            ORDER BY date_debut ASC
-        """)
-        rows = cursor.fetchall()
-
-        # Smart paid detection: check transactions with echeance_id for current month
-        today = date.today()
-        month_start = today.replace(day=1).isoformat()
-        if today.month == 12:
-            month_end = today.replace(year=today.year + 1, month=1, day=1).isoformat()
-        else:
-            month_end = today.replace(month=today.month + 1, day=1).isoformat()
-
-        cursor.execute("""
-            SELECT echeance_id FROM transactions
-            WHERE date >= ? AND date < ? AND echeance_id IS NOT NULL
-        """, (month_start, month_end))
-        paid_echeance_ids = {row["echeance_id"] for row in cursor.fetchall()}
-
-        prochaines = []
-        for row in rows:
-            echeance_dict = dict(row)
-            echeance = _dict_to_echeance(echeance_dict)
-            next_date = calculate_next_occurrence(echeance)
-
-            # Compute status from echeance_id presence in transactions
-            echeance_id = echeance_dict["id"]
-            if echeance_id in paid_echeance_ids:
-                computed_status = "paid"
-            elif next_date < today:
-                computed_status = "overdue"
-            else:
-                computed_status = "active"
-
-            prochaines.append(
-                {
-                    "id": echeance_dict["id"],
-                    "nom": echeance_dict.get("nom", ""),
-                    "montant": echeance_dict["montant"],
-                    "date_prevue": next_date.isoformat(),
-                    "categorie": echeance_dict["categorie"],
-                    "sous_categorie": echeance_dict.get("sous_categorie", ""),
-                    "type": echeance_dict["type"],
-                    "statut": computed_status,
-                    "frequence": echeance_dict.get("frequence", "mensuel"),
-                    "date_debut": echeance_dict.get("date_debut", ""),
-                    "date_fin": echeance_dict.get("date_fin"),
-                    "description": echeance_dict.get("description", ""),
-                }
-            )
-
-        prochaines = sorted(prochaines, key=lambda x: x["date_prevue"])[:10]
-        close_connection(conn)
-
-
+        paid_ids = get_paid_echeance_ids()
+        echeance_rows = get_active_echeances()
+        prochaines = build_echeances_list(echeance_rows, paid_ids)
 
         return {
-            "total_revenus": total_revenus,
-            "total_depenses": total_depenses,
-            "solde": solde,
+            "total_revenus": revenus,
+            "total_depenses": depenses,
+            "solde": revenus - depenses,
             "repartition_categories": breakdown,
             "historique": history,
             "prochaines_echeances": prochaines,
+            "budget_summary": build_budget_summary(),
         }
     except Exception as e:
+        import traceback
+
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(500, str(e))

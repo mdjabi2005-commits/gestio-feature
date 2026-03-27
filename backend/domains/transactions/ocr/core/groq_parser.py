@@ -30,17 +30,26 @@ class GroqParser:
         puis récupère la clé d'API (GROQ_API_KEY).
         """
         from dotenv import load_dotenv
+
         load_dotenv()
-        
+
         self.model_name = model_name
-        self.api_key = os.getenv("GROQ_API_KEY")
-        
+
+        try:
+            from backend.config.ocr_config import get_groq_api_key
+
+            self.api_key = get_groq_api_key()
+        except Exception:
+            self.api_key = os.getenv("GROQ_API_KEY")
+
         if not self.api_key:
-            logger.warning("GROQ_API_KEY absente ! Le parsing LLM échouera systématiquement.")
+            logger.warning(
+                "GROQ_API_KEY absente ! Le parsing LLM échouera systématiquement."
+            )
             self.client = None
         else:
             self.client = Groq(api_key=self.api_key)
-            
+
         # Construction du prompt avec catégories + sous-catégories depuis le YAML
         # Mise en cache pour éviter rechargement à chaque parse()
         GroqParser._categories = get_categories()
@@ -93,7 +102,9 @@ Rien d'autre ne doit être renvoyé à part l'objet JSON contenant ces 3 clés.
             return self._fallback()
 
         try:
-            logger.info(f"Envoi du texte brut ({len(text)} car) à Groq ({self.model_name})...")
+            logger.info(
+                f"Envoi du texte brut ({len(text)} car) à Groq ({self.model_name})..."
+            )
 
             chat_completion = self.client.chat.completions.create(
                 messages=[
@@ -104,11 +115,13 @@ Rien d'autre ne doit être renvoyé à part l'objet JSON contenant ces 3 clés.
                     {
                         "role": "user",
                         "content": f"Texte du Ticket :\n{text}",
-                    }
+                    },
                 ],
                 model=self.model_name,
-                response_format={"type": "json_object"},  # Clé magique pour la sécurité du parsing
-                temperature=0.0, # 0 = Logique mathématique absolue, pas "d'imagination"
+                response_format={
+                    "type": "json_object"
+                },  # Clé magique pour la sécurité du parsing
+                temperature=0.0,  # 0 = Logique mathématique absolue, pas "d'imagination"
             )
 
             content = chat_completion.choices[0].message.content
@@ -130,14 +143,25 @@ Rien d'autre ne doit être renvoyé à part l'objet JSON contenant ces 3 clés.
                 if subcategory not in valid_subs:
                     # Correspondance insensible à la casse
                     sub_lower = subcategory.lower()
-                    match = next((s for s in valid_subs if s.lower() == sub_lower), None)
+                    match = next(
+                        (s for s in valid_subs if s.lower() == sub_lower), None
+                    )
                     if match:
                         data["subcategory"] = match
                     else:
                         # Correspondance partielle (ex: "Gazole" → "Essence")
-                        match = next((s for s in valid_subs if s.lower() in sub_lower or sub_lower in s.lower()), None)
+                        match = next(
+                            (
+                                s
+                                for s in valid_subs
+                                if s.lower() in sub_lower or sub_lower in s.lower()
+                            ),
+                            None,
+                        )
                         data["subcategory"] = match if match else valid_subs[0]
-                        logger.info(f"Sous-catégorie '{subcategory}' → '{data['subcategory']}' (correction)")
+                        logger.info(
+                            f"Sous-catégorie '{subcategory}' → '{data['subcategory']}' (correction)"
+                        )
             elif valid_subs and not subcategory:
                 data["subcategory"] = valid_subs[0]
 
@@ -152,5 +176,5 @@ Rien d'autre ne doit être renvoyé à part l'objet JSON contenant ces 3 clés.
         return {
             "category": "Autre",
             "subcategory": None,
-            "description": "Transaction sans catégorie"
+            "description": "Transaction sans catégorie",
         }

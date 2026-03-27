@@ -1,12 +1,26 @@
 "use client";
 
 import React from 'react';
+import { SalaryPlanManager } from '@/components/settings/SalaryPlanManager';
+import { OCRConfig } from '@/components/settings/OCRConfig';
 
 export default function SettingsPage() {
   return (
-    <div className="glass-card rounded-2xl p-12 text-center max-w-2xl mx-auto mt-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <h3 className="text-xl font-semibold text-foreground mb-2">Paramètres</h3>
-      <p className="text-muted-foreground">Cette fonctionnalité sera disponible prochainement dans Gestio V4.</p>
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-white tracking-tight">Paramètres</h1>
+        <p className="text-sm text-white/40 mt-0.5">Configurez vos préférences et automations.</p>
+      </div>
+
+      <div className="space-y-6">
+        <div className="glass-card rounded-2xl p-8 border border-white/10 shadow-xl">
+          <SalaryPlanManager />
+        </div>
+
+        <div className="glass-card rounded-2xl p-8 border border-white/10 shadow-xl bg-emerald-500/[0.02]">
+          <OCRConfig />
+        </div>
+      </div>
     </div>
   );
 }
