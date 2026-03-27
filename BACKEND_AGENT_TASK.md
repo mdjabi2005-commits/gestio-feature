@@ -107,24 +107,20 @@ Mettre en place un mécanisme pour détecter les fichiers déposés manuellement
 
 ---
 
-# NOUVEAU : Mission 🔧 Fix Catégorisation Groq (URGENT)
 
-L'agent Frontend (Gemini) a identifié un bug majeur empêchant la catégorisation automatique des tickets.
+---
 
-## 1. Conflit de Configuration (Action Immédiate)
-- **Problème** : Le fichier `backend/config/ocr_config.json` contient une clé fictive `"gsk_validkey"`. Le code du backend (`ocr_config.py`) privilégie ce fichier par rapport au fichier `.env`.
-- **Action** : **Supprimer** le fichier `backend/config/ocr_config.json` ou s'assurer qu'il est vide pour laisser la clé réelle du `.env` être utilisée.
+# NOUVEAU : Mission 🚨 Fix Dashboard (500 Error)
 
-## 2. Correction de l'Endpoint API
-- **Fichier** : `backend/api/ocr/ocr.py`
-- **Endpoint** : `POST /api/ocr/config`
-- **Problème** : L'argument `api_key: str = None` est interprété par FastAPI comme un Query Param. Le frontend l'envoie en JSON Body.
-- **Action** : Créer un modèle Pydantic :
-  ```python
-  class OCRUpdate(BaseModel):
-      api_key: str
-  ```
-  Et mettre à jour l'endpoint pour utiliser `api_key: OCRUpdate`.
+L'agent Frontend (Gemini) a identifié la cause du crash "Failed to fetch summary" sur le dashboard.
 
-## 3. Validation
-- Vérifier que `get_groq_api_key()` retourne bien la clé commençant par `gsk_AKIg...` (depuis le `.env`) une fois le JSON supprimé.
+## 1. Modèle Transaction (Urgent)
+- **Fichier** : `backend/domains/transactions/database/model.py`
+- **Correction** : 
+  - Passer `sous_categorie` en `Optional[str] = Field(None, ...)` car la base de données contient des valeurs NULL. Actuellement, cela fait crasher l'instanciation Pydantic.
+  - Revoir ou assouplir le validateur `@model_validator(mode="after") def validate_date_not_future`. Si une transaction (échéance passée en transaction par le `backfill`) a une date dans le futur, le dashboard ne doit pas crasher.
+
+## 2. Fix Catégorisation & Config OCR
+(Mission précédente toujours d'actualité) :
+- Supprimer `backend/config/ocr_config.json`.
+- Modifier `backend/api/ocr/ocr.py` pour accepter `OCRUpdate` (JSON Body) pour l'API de config.

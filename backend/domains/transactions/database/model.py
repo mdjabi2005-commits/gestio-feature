@@ -36,11 +36,11 @@ class Transaction(BaseModel):
     type: str = Field(..., description="Type (Dépense/Revenu)")
     date: DateType = Field(..., description="Date de la transaction")
     categorie: str = Field("Non catégorisé", description="Catégorie principale")
-    sous_categorie: str = Field(..., description="Sous-catégorie")
     montant: float = Field(..., description="Montant en euros", ge=0)
 
     # ── Champs optionnels ───────────────────────────────────
     id: Optional[int] = Field(None, description="ID (DB)")
+    sous_categorie: Optional[str] = Field(None, description="Sous-catégorie")
     description: Optional[str] = Field(None, description="Description libre")
     source: str = Field(DEFAULT_SOURCE, description="Source de la transaction")
     date_fin: Optional[DateType] = Field(None, description="Date de fin")
@@ -113,10 +113,13 @@ class Transaction(BaseModel):
 
     @model_validator(mode="after")
     def validate_date_not_future(self) -> "Transaction":
+        import logging
         from datetime import date as today_date
 
         if self.date and self.date > today_date.today():
-            raise ValueError(f"La date {self.date} ne peut pas être dans le futur")
+            logging.getLogger(__name__).warning(
+                f"Transaction avec date future: {self.date} (autorisé pour les échéances)"
+            )
         return self
 
     # ── Méthode DB ──────────────────────────────────────────
