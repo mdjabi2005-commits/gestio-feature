@@ -72,7 +72,7 @@ export function TransactionRow({
         <div className="text-right shrink-0">
           <AmountDisplay amount={transaction.montant} type={transaction.type} />
           <p className="text-[10px] text-muted-foreground mt-0.5 uppercase font-bold tracking-tighter opacity-60">
-            {formatDate(transaction.date)} · {formatTime(transaction.date)}
+            {formatDate(transaction.date)}
           </p>
         </div>
       </div>

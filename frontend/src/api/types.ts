@@ -14,22 +14,21 @@ export interface Transaction {
   recurrence?: string;
   date_fin?: string;
   echeance_id?: string;
-  attachment?: string;
+  attachment?: string; // Optional temporary field for OCR/Income scans
 }
 
 export interface Attachment {
   id?: number;
   transaction_id?: number;
   echeance_id?: string;
-  file_name: string;
-  file_type?: string;
-  upload_date: string;
+  file_path: string;
 }
 
 export interface OCRScanResponse {
   transaction: Transaction;
   warnings: string[];
   raw_ocr_text: string;
+  archived_path?: string;
 }
 
 export interface ScannedTicket {
@@ -104,4 +103,19 @@ export interface SalaryPlan {
   reference_salary: number;
   default_remainder_category?: string;
   items: SalaryPlanItem[];
+}
+
+export interface Objectif {
+  id?: number;
+  nom: string;
+  montant_cible: number;
+  date_echeance?: string;
+  categorie: string;
+  description?: string;
+  statut?: 'active' | 'completed' | 'archived';
+  date_creation?: string;
+  montant_actuel?: number;
+  montant_mensuel?: number;
+  progression_pourcentage?: number;
+  projection_date?: string;
 }

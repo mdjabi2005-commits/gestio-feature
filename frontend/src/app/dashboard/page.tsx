@@ -7,6 +7,7 @@ import { calculatePlannedByTarget } from '@/lib/budget-utils';
 import { TransactionTable } from '@/components/dashboard/transaction-table';
 import { EcheanceTable, type Echeance } from '@/components/dashboard/echeance-table';
 import { DashboardMetrics } from '@/components/dashboard/DashboardMetrics';
+import { api } from '@/api';
 
 const SunburstChart = dynamic(() => import('@/components/dashboard/sunburst-chart').then(mod => mod.SunburstChart), { ssr: false });
 
@@ -34,13 +35,33 @@ export default function DashboardPage() {
     };
   }, [transactions, budgets, echeances]);
 
+  const [annualSummary, setAnnualSummary] = React.useState<any>(null);
+  
+  React.useEffect(() => {
+    const fetchAnnual = async () => {
+      const year = new Date().getFullYear();
+      // Assuming 'api' is imported or available globally, e.g., from a utility file
+      // If not, this line will cause a reference error.
+      const res = await api.getSummary({ 
+        start_date: `${year}-01-01`, 
+        end_date: `${year}-12-31` 
+      });
+      setAnnualSummary(res);
+    };
+    fetchAnnual();
+  }, [transactions]); // Refresh when transactions change
+
   if (loading || !summary) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" /></div>;
 
   const realEcheances: Echeance[] = (summary?.prochaines_echeances || []).map((e: any) => ({
     id: e.id, nom: e.nom || e.description || "Échéance", montant: e.montant, date_prevue: e.date_prevue, categorie: e.categorie, type: e.type, status: e.statut || "pending"
   }));
 
-  const savingsRate = summary?.total_revenus > 0 ? Math.round(((summary.total_revenus - summary.total_depenses) / summary.total_revenus) * 100) : 0;
+  const monthlyBalance = (summary?.total_revenus || 0) - (summary?.total_depenses || 0);
+  const savingsRate = summary?.total_revenus > 0 ? Math.round((monthlyBalance / summary.total_revenus) * 100) : 0;
+  
+  const annualSavings = annualSummary ? (annualSummary.total_revenus - annualSummary.total_depenses) : 0;
+  const annualGoalProgress = (annualSavings / 3000) * 100;
 
   return (
     <div className="space-y-10 max-w-[1400px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
@@ -52,6 +73,8 @@ export default function DashboardPage() {
         </div>
         <DashboardMetrics 
             savingsRate={savingsRate} 
+            monthlyBalance={monthlyBalance}
+            annualGoalProgress={annualGoalProgress}
             budgetSummary={budgetSummary} 
             transactionCount={transactions.length} 
             categoryCount={summary.repartition_categories?.length || 0} 

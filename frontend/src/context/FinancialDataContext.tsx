@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, ReactNode, useState } from 'react';
 import { useFinancialData } from '@/hooks/useFinancialData';
-import type { Transaction, Budget } from '@/api';
+import type { Transaction, Budget, Objectif } from '@/api';
 import { api } from '@/api';
 
 interface FinancialContextType {
@@ -44,6 +44,13 @@ interface FinancialContextType {
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   filteredTransactions: Transaction[];
+
+  // Objectifs State
+  objectifs: Objectif[];
+  objectifsLoading: boolean;
+  setObjectif: (data: Objectif) => Promise<void>;
+  deleteObjectif: (id: number) => Promise<void>;
+  refreshObjectifs: () => Promise<void>;
 }
 
 const FinancialContext = createContext<FinancialContextType | undefined>(undefined);
@@ -74,10 +81,32 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
     finally { setEcheancesLoading(false); }
   };
 
+  // Objectifs
+  const [objectifs, setObjectifs] = useState<Objectif[]>([]);
+  const [objectifsLoading, setObjectifsLoading] = useState(false);
+
+  const fetchObjectifs = async () => {
+    setObjectifsLoading(true);
+    try { setObjectifs(await api.getObjectifs()); } catch {}
+    finally { setObjectifsLoading(false); }
+  };
+
   React.useEffect(() => { 
     fetchBudgets();
     fetchEcheances();
+    fetchObjectifs();
   }, []);
+
+  const handleSetObjectif = async (data: Objectif) => {
+    if (data.id) await api.updateObjectif(data.id, data);
+    else await api.addObjectif(data);
+    await fetchObjectifs();
+  };
+
+  const handleDeleteObjectif = async (id: number) => {
+    await api.deleteObjectif(id);
+    await fetchObjectifs();
+  };
 
   const handleSetBudget = async (data: Budget) => {
     await api.setBudget(data);
@@ -153,6 +182,11 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
     echeances,
     echeancesLoading,
     refreshEcheances: fetchEcheances,
+    objectifs,
+    objectifsLoading,
+    setObjectif: handleSetObjectif,
+    deleteObjectif: handleDeleteObjectif,
+    refreshObjectifs: fetchObjectifs,
   };
 
   return (

@@ -35,8 +35,8 @@ export function FinancialCalendar({
   }
 
   return (
-    <div className="h-full flex flex-col select-none">
-      <div className="flex items-center justify-between mb-4 shrink-0">
+    <div className="h-full flex flex-col select-none overflow-hidden">
+      <div className="flex items-center justify-between mb-1 shrink-0">
         <h3 className="text-sm font-black text-foreground uppercase tracking-widest opacity-60">Calendrier Financier</h3>
         <div className="flex gap-4">
           {(selectedRange.start || selectedRange.end) && (
@@ -46,17 +46,17 @@ export function FinancialCalendar({
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-4 shrink-0 bg-secondary/20 p-1.5 rounded-xl border border-white/5">
-        <button onClick={goToPrevMonth} className="p-1.5 rounded-lg hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-all"><ChevronLeft className="w-4 h-4" /></button>
-        <span className="text-xs font-black text-foreground uppercase tracking-widest">{MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}</span>
-        <button onClick={goToNextMonth} className="p-1.5 rounded-lg hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-all"><ChevronRight className="w-4 h-4" /></button>
+      <div className="flex items-center justify-between mb-2 shrink-0 bg-secondary/20 p-1 rounded-xl border border-white/5">
+        <button onClick={goToPrevMonth} className="p-1 rounded-lg hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-all"><ChevronLeft className="w-4 h-4" /></button>
+        <span className="text-[11px] font-black text-foreground uppercase tracking-widest">{MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}</span>
+        <button onClick={goToNextMonth} className="p-1 rounded-lg hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-all"><ChevronRight className="w-4 h-4" /></button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 mb-2 shrink-0">
-        {DAYS.map((day) => <div key={day} className="text-center text-[10px] font-black text-muted-foreground py-1 uppercase opacity-40">{day}</div>)}
+      <div className="grid grid-cols-7 gap-0.5 mb-1 shrink-0">
+        {DAYS.map((day) => <div key={day} className="text-center text-[10px] font-black text-muted-foreground py-0.5 uppercase opacity-40">{day}</div>)}
       </div>
 
-      <div className="grid grid-cols-7 gap-1 flex-1 min-h-0">
+      <div className="grid grid-cols-7 gap-0.5 flex-1 min-h-0">
         {calendarDays.map((day: any, index: number) => {
           const dateStr = formatLocalDate(day.date)
           const isSelected = selectedRange.start === dateStr || selectedRange.end === dateStr
@@ -67,7 +67,7 @@ export function FinancialCalendar({
               onClick={() => day.isCurrentMonth && handleDateClick(dateStr, selectedRange)}
               disabled={!day.isCurrentMonth}
               className={cn(
-                "relative flex flex-col items-center justify-center rounded-lg text-xs font-bold transition-all duration-300 aspect-square",
+                "relative flex flex-col items-center justify-center rounded-lg text-xs font-bold transition-all duration-300 grow min-h-0 aspect-square",
                 day.isCurrentMonth ? "text-foreground hover:bg-secondary/50" : "text-muted-foreground/10 cursor-default",
                 isToday(day.date) && "ring-1 ring-indigo-500/50 bg-indigo-500/10",
                 isSelected && "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 z-10",
@@ -86,9 +86,9 @@ export function FinancialCalendar({
         })}
       </div>
 
-      <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-border/50 shrink-0">
-        <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Revenus</span></div>
-        <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-500" /><span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Dépenses</span></div>
+      <div className="flex items-center justify-center gap-4 mt-auto pt-1 border-t border-border/50 shrink-0">
+        <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Revenus</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-rose-500" /><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Dépenses</span></div>
       </div>
     </div>
   )

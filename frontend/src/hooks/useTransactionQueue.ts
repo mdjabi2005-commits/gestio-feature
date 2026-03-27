@@ -66,7 +66,11 @@ export function useTransactionQueue(refreshData: () => void, setEditingTransacti
           })
         }
       } else {
-        flattened.push(res as ScannedTicket)
+        const ticket = res as ScannedTicket;
+        if (ticket.result.archived_path) {
+          ticket.result.transaction.attachment = ticket.result.archived_path;
+        }
+        flattened.push(ticket);
       }
     })
     setScanResultsQueue(prev => [...prev, ...flattened])

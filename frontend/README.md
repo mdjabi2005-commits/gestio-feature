@@ -1,6 +1,6 @@
 # Frontend — Gestio V4
 
-Interface utilisateur React + TypeScript + Tailwind (Vite).
+Interface utilisateur React + TypeScript + Tailwind (Next.js).
 
 ## Structure
 
@@ -9,8 +9,9 @@ src/
 ├── app/                    # Pages (Next.js App Router)
 │   ├── dashboard/          # Page dashboard
 │   ├── transactions/       # Page transactions
-│   ├── recurrences/       # Page récurrences (à implémenter)
-│   └── settings/           # Page paramètres (à implémenter)
+│   ├── recurrences/        # Page récurrences
+│   ├── budgets/            # Page budgets
+│   └── settings/           # Page paramètres
 │
 ├── components/             # Composants réutilisables
 │   └── dashboard/          # Composants spécifiques dashboard
@@ -25,14 +26,14 @@ src/
 
 ```bash
 npm install          # Installer les dépendances
-npm run dev          # Lancer en dev (http://localhost:5173)
+npm run dev          # Lancer en dev (http://localhost:3000)
 npm run build        # Build production
 npm run lint         # Vérifier le code
 ```
 
 ## API
 
-Le client API communique avec le backend FastAPI sur `http://localhost:8001`.
+Le client API communique avec le backend FastAPI sur `http://localhost:8002`.
 
 ```typescript
 import { api } from '@/api';

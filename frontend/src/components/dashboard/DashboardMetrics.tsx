@@ -5,6 +5,8 @@ import { formatCurrency } from "@/lib/formatters"
 
 interface DashboardMetricsProps {
   savingsRate: number;
+  monthlyBalance: number;
+  annualGoalProgress: number;
   budgetSummary: {
     total_budget_prevu: number;
     total_consomme: number;
@@ -17,7 +19,14 @@ interface DashboardMetricsProps {
   categoryCount: number;
 }
 
-export function DashboardMetrics({ savingsRate, budgetSummary, transactionCount, categoryCount }: DashboardMetricsProps) {
+export function DashboardMetrics({ 
+  savingsRate, 
+  monthlyBalance,
+  annualGoalProgress, 
+  budgetSummary, 
+  transactionCount, 
+  categoryCount 
+}: DashboardMetricsProps) {
   return (
     <div className="lg:col-span-2 glass-card rounded-3xl p-8 flex flex-col justify-between border-indigo-500/10">
       <div className="space-y-10">
@@ -27,11 +36,20 @@ export function DashboardMetrics({ savingsRate, budgetSummary, transactionCount,
           {/* Taux d'épargne */}
           <div className="space-y-3">
             <div className="flex justify-between text-[10px] font-black uppercase tracking-wider">
-              <span className="text-muted-foreground">Taux d'épargne</span>
-              <span className="text-emerald-400">{savingsRate}%</span>
+              <span className="text-muted-foreground">{savingsRate >= 0 ? "Taux d'épargne" : "Déficit mensuel"}</span>
+              <span className={savingsRate < 0 ? "text-rose-400" : "text-emerald-400"}>{Math.abs(savingsRate)}%</span>
             </div>
             <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
-              <div className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.3)]" style={{ width: `${savingsRate}%` }} />
+              <div 
+                className={cn(
+                  "h-full transition-all duration-1000 shadow-[0_0_10px_rgba(16,185,129,0.3)]",
+                  savingsRate < 0 ? "bg-gradient-to-r from-rose-600 to-rose-400" : "bg-gradient-to-r from-emerald-600 to-emerald-400"
+                )} 
+                style={{ width: `${Math.min(Math.abs(savingsRate), 100)}%` }} 
+              />
+            </div>
+            <div className="flex justify-between text-[9px] font-black text-white/20 uppercase tracking-widest mt-1">
+               <p>Solde : {formatCurrency(monthlyBalance)}</p>
             </div>
           </div>
 
@@ -72,11 +90,14 @@ export function DashboardMetrics({ savingsRate, budgetSummary, transactionCount,
           {/* Objectif annuel */}
           <div className="space-y-3">
             <div className="flex justify-between text-[10px] font-black uppercase tracking-wider">
-              <span className="text-muted-foreground">Progression Objectif annuel</span>
-              <span className="text-purple-400">45%</span>
+              <span className="text-muted-foreground">Objectif annuel (3000€)</span>
+              <span className="text-purple-400">{Math.min(Math.round(annualGoalProgress), 100)}%</span>
             </div>
             <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
-              <div className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full w-[45%] shadow-[0_0_10px_rgba(168,85,247,0.3)]" />
+              <div 
+                className="h-full bg-gradient-to-r from-purple-600 to-purple-400 transition-all duration-1000 shadow-[0_0_10px_rgba(168,85,247,0.3)]" 
+                style={{ width: `${Math.min(Math.max(annualGoalProgress, 0), 100)}%` }}
+              />
             </div>
           </div>
         </div>

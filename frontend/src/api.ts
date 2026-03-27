@@ -1,9 +1,10 @@
 // api.ts — Thin aggregator. Keep under 200 lines (AGENTS.md rule).
 // Types are in api/types.ts. Domain methods in api/*.ts
 
-export type { Transaction, Attachment, OCRScanResponse, ScannedTicket, Budget, BudgetSummaryItem, BudgetSummary, Echeance, IncomeScanResponse, IncomeSplit, SalaryPlan, SalaryPlanItem } from './api/types';
+export type { Transaction, Attachment, OCRScanResponse, ScannedTicket, Budget, BudgetSummaryItem, BudgetSummary, Echeance, IncomeScanResponse, IncomeSplit, SalaryPlan, SalaryPlanItem, Objectif } from './api/types';
 import { budgetsApi } from './api/budgets';
 import { ocrApi } from './api/ocr';
+import { objectifsApi } from './api/objectifs';
 
 const API_BASE_URL = 'http://localhost:8002';
 
@@ -33,8 +34,14 @@ export const api = {
   },
 
   addTransaction: async (data: any) => {
-    const res = await fetch(`${API_BASE_URL}/api/transactions/`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+    const attachment = data.attachment;
+    const cleanData = { ...data };
+    delete cleanData.attachment;
+    const url = attachment 
+      ? `${API_BASE_URL}/api/transactions/?attachment=${encodeURIComponent(attachment)}`
+      : `${API_BASE_URL}/api/transactions/`;
+    const res = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cleanData),
     });
     if (!res.ok) throw new Error('Failed to add transaction');
     return res.json();
@@ -143,4 +150,5 @@ export const api = {
   // Domain sub-modules
   ...budgetsApi,
   ...ocrApi,
+  ...objectifsApi,
 };

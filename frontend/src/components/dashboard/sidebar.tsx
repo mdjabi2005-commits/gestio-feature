@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Wallet,
+  Target,
 } from "lucide-react"
 
 interface SidebarProps {
@@ -23,6 +24,7 @@ const navItems = [
   { id: "transactions", href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
   { id: "echeances", href: "/echeances", label: "Échéances", icon: RefreshCw },
   { id: "budgets", href: "/budgets", label: "Budgets", icon: Wallet },
+  { id: "objectifs", href: "/objectifs", label: "Objectifs", icon: Target },
   { id: "settings", href: "/settings", label: "Paramètres", icon: Settings },
 ]
 
@@ -38,10 +40,9 @@ export function Sidebar({}: SidebarProps) {
       )}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 p-6 border-b border-sidebar-border">
-        <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 shadow-lg shadow-indigo-500/25">
-          <span className="text-lg font-bold text-primary-foreground">G</span>
-          <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-400/20 to-transparent" />
+      <div className="flex items-center gap-3 p-6 border-b border-sidebar-border overflow-hidden">
+        <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-sidebar-accent shadow-lg shadow-indigo-500/10 border border-white/5 overflow-hidden">
+          <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
         </div>
         {!isCollapsed && (
           <div className="flex flex-col">
@@ -102,21 +103,15 @@ export function Sidebar({}: SidebarProps) {
       {/* Footer */}
       <div className="p-4 border-t border-sidebar-border">
         <div className={cn(
-          "flex items-center gap-3 px-4 py-3 rounded-xl bg-secondary/30",
-          isCollapsed && "justify-center"
+          "flex items-center gap-3 px-4 py-3 rounded-xl bg-secondary/30 transition-all duration-300",
+          isCollapsed ? "justify-center p-2" : "justify-start"
         )}>
-          <div className="relative">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-sm font-medium text-primary-foreground">
-              JD
+          <div className="relative shrink-0">
+            <div className="w-9 h-9 rounded-xl border border-white/10 overflow-hidden flex items-center justify-center bg-card shadow-inner">
+               <img src="/logo.png" alt="Avatar" className="w-full h-full object-cover" />
             </div>
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-sidebar" />
+            <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-sidebar shadow-sm" />
           </div>
-          {!isCollapsed && (
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-medium text-foreground truncate">Jean Dupont</span>
-              <span className="text-xs text-muted-foreground">Pro Account</span>
-            </div>
-          )}
         </div>
       </div>
     </aside>

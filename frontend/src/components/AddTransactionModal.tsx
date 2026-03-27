@@ -68,14 +68,16 @@ const AddTransactionModal: React.FC<Props> = ({
       const transaction: Transaction = {
         id: initialData?.id, type, date, montant: parseFloat(amount),
         categorie: category, sous_categorie: subcategory || undefined,
-        description: description || undefined, source: initialData?.source || 'manual'
+        description: description || undefined, source: initialData?.source || 'manual',
+        attachment: (initialData as any)?.attachment // Preservation of archived path
       };
       if (initialData?.id) {
         await api.updateTransaction(initialData.id, transaction);
         toast.success("Transaction mise à jour !");
       } else {
         const id = await api.addTransaction(transaction);
-        if (scannedFile) {
+        // Only upload if NOT already archived (e.g. manual entry with file, not OCR)
+        if (scannedFile && !transaction.attachment) {
           try {
             await api.uploadAttachment(id, scannedFile);
             toast.success("Transaction créée avec pièce jointe !");
