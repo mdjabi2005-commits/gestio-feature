@@ -16,10 +16,10 @@ Avant toute modification de code, effectuer **obligatoirement** dans cet ordre :
 ## Contexte du projet
 
 Application de **gestion financière personnelle** en Python avec FastAPI et React.
-- **Stack** : Python 3.12, FastAPI, SQLite, React 19, TypeScript, Tailwind, Vite
+- **Stack** : Python 3.12, FastAPI, SQLite, React 19, TypeScript, Tailwind, Next.js
 - **Architecture** : Domain-Driven Design (DDD) — chaque domaine dans `backend/domains/`
-- **API** : RESTful sur http://localhost:8001
-- **Frontend** : http://localhost:5173
+- **API** : RESTful sur http://localhost:8002
+- **Frontend** : http://localhost:3000
 
 ## Structure des domaines
 

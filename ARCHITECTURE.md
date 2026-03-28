@@ -35,7 +35,7 @@ graph TB
 
 | Service | Port | Description |
 |---------|------|-------------|
-| Frontend | 5173 | Next.js (développement) |
+| Frontend | 3000 | Next.js (développement) |
 | Backend | 8002 | FastAPI |
 
 ## Structure des Données

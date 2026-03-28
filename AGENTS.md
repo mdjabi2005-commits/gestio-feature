@@ -112,7 +112,7 @@ gestion-financiere/
 │   ├── domains/      # Logique métier (DDD)
 │   ├── shared/       # Composants partagés
 │   └── config/       # Configuration (Paths, etc.)
-├── frontend/         # React + TypeScript + Tailwind (port 5173)
+├── frontend/         # React + TypeScript + Tailwind (port 3000)
 │   └── src/app/     # Pages
 └── tests/           # Tests pytest
 ```
