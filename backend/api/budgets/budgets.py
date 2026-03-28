@@ -136,24 +136,12 @@ async def save_salary_plan(plan_data: dict):
                                 )
                             )
                 else:
-                    known_subs = get_subcategories(category)
-                    if known_subs:
-                        sub_amount = round(category_amount / len(known_subs), 2)
-                        for sub_name in known_subs:
-                            if sub_amount > 0:
-                                budget_repository.upsert(
-                                    Budget(
-                                        categorie=f"{category} > {sub_name}",
-                                        montant_max=sub_amount,
-                                    )
-                                )
-                    else:
-                        budget_repository.upsert(
-                            Budget(
-                                categorie=category,
-                                montant_max=round(category_amount, 2),
-                            )
+                    budget_repository.upsert(
+                        Budget(
+                            categorie=category,
+                            montant_max=round(category_amount, 2),
                         )
+                    )
 
         import yaml
         from pathlib import Path

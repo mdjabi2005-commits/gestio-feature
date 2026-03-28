@@ -107,11 +107,11 @@ Chercher s'il existe un fichier `LOGIC_FLOW.md` ou une documentation dans le REA
 
 ```
 gestion-financiere/
-├── backend/           # FastAPI + SQLite (port 8001)
+├── backend/           # FastAPI
 │   ├── api/          # Endpoints REST
 │   ├── domains/      # Logique métier (DDD)
 │   ├── shared/       # Composants partagés
-│   └── config/      # Configuration
+│   └── config/       # Configuration (Paths, etc.)
 ├── frontend/         # React + TypeScript + Tailwind (port 5173)
 │   └── src/app/     # Pages
 └── tests/           # Tests pytest
@@ -137,7 +137,7 @@ graph TB
         Repos[Repositories<br/>domains/*/database]
     end
 
-    DB[(SQLite finances.db)]
+    DB[(Base de données SQLite)]
 
     Pages --> Context
     Context --> Hooks
@@ -163,6 +163,16 @@ graph TB
 |---------|------|
 | Backend (FastAPI) | 8002 |
 | Frontend (Next.js) | 3000 |
+
+---
+
+## 📍 Gestion des Chemins (Paths)
+
+**IMPORTANT** : Les chemins vers la base de données, les dossiers de scan et d'archives ne sont **JAMAIS** en dur dans le code. 
+Ils sont définis dynamiquement dans : `backend/config/paths.py`.
+
+> [!WARNING]
+> La base de données ne se trouve **PAS** dans le dossier `backend/`. Son emplacement est géré par la variable `DATA_DIR` dans `paths.py`.
 
 ---
 

@@ -10,7 +10,9 @@ import { PlanningSummary } from "@/components/budgets/PlanningSummary"
 import { StrategyCard } from "@/components/budgets/StrategyCard"
 import { SalaryPlanSetup } from "@/components/budgets/SalaryPlanSetup"
 import { calculatePlannedExpenses, calculatePlannedIncomes } from "@/lib/budget-utils"
-import type { Budget, Echeance, SalaryPlan } from "@/api"
+import { getCategoryIcon } from "@/lib/icons"
+import { cn } from "@/lib/utils"
+import type { Budget, Echeance, SalaryPlan, SalaryPlanItem } from "@/api"
 
 export default function BudgetsPage() {
   const { 
@@ -20,6 +22,7 @@ export default function BudgetsPage() {
   const [showForm, setShowForm] = useState(false)
   const [showPlanSetup, setShowPlanSetup] = useState(false)
   const [editTarget, setEditTarget] = useState<Budget | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
   // Dépenses et Revenus réels du mois par catégorie
   const now = new Date()
@@ -93,8 +96,57 @@ export default function BudgetsPage() {
 
   const allCategories = summary?.repartition_categories ?? []
 
+  // Filtrage
+  const parentCategories = useMemo(() => {
+    const set = new Set<string>()
+    budgets.forEach(b => {
+      const parent = b.categorie.includes(' > ') ? b.categorie.split(' > ')[0] : b.categorie
+      set.add(parent)
+    })
+    return Array.from(set).sort()
+  }, [budgets])
+
+  const filteredBudgets = useMemo(() => {
+    if (!selectedCategory) {
+      // Filtrer : on ne garde les parents que s'ils n'ont AUCUNE sous-catégorie définie
+      const subCategoryParents = new Set(
+        budgets
+          .filter(b => b.categorie.includes(' > '))
+          .map(b => b.categorie.split(' > ')[0])
+      )
+
+      const leafBudgets = budgets.filter(b => {
+        const isParent = !b.categorie.includes(' > ')
+        if (isParent) {
+          // Si c'est un parent et qu'il a des sous-budgets, on le cache dans la vue "TOUS"
+          return !subCategoryParents.has(b.categorie)
+        }
+        return true // On garde toutes les sous-catégories
+      })
+
+      // Tri groupé pour la lisibilité
+      return leafBudgets.sort((a, b) => {
+        const pA = a.categorie.split(' > ')[0]
+        const pB = b.categorie.split(' > ')[0]
+        if (pA === pB) return a.categorie.localeCompare(b.categorie)
+        return pA.localeCompare(pB)
+      })
+    }
+    // Vue "Focus" : Uniquement les sous-catégories (le parent est déjà dans le header)
+    return budgets.filter(b => b.categorie.startsWith(selectedCategory) && b.categorie !== selectedCategory)
+  }, [budgets, selectedCategory])
+
   const handleEdit = (budget: Budget) => { setEditTarget(budget); setShowForm(true) }
   const handleClose = () => { setShowForm(false); setEditTarget(null) }
+
+  const handleAddSub = async (subName: string) => {
+    if (!selectedCategory) return
+    const newBudget: Budget = {
+      categorie: `${selectedCategory} > ${subName}`,
+      montant_max: 0 // Will be adjusted with the slider
+    }
+    await setBudget(newBudget)
+  }
 
   if (budgetsLoading) return (
     <div className="flex items-center justify-center h-64">
@@ -123,8 +175,8 @@ export default function BudgetsPage() {
       {/* Synergy Planning Section */}
       <div className="space-y-6 mb-10">
         {!activeSalaryPlan ? (
-          <div className="glass-card rounded-3xl p-8 border border-white/5 bg-indigo-500/[0.02] flex flex-col md:flex-row items-center justify-between gap-6 group">
-            <div className="flex items-center gap-6">
+          <div className="glass-card rounded-3xl p-8 border-indigo-500/20 bg-indigo-500/5 flex flex-col md:flex-row items-center justify-between gap-8 animate-in fade-in zoom-in duration-500">
+            <div className="flex flex-col md:flex-row items-center gap-6">
               <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
                 <PiggyBank className="w-8 h-8 text-indigo-400" />
               </div>
@@ -144,18 +196,43 @@ export default function BudgetsPage() {
           </div>
         ) : (
           <div className="relative group">
-            <PlanningSummary 
-              referenceSalary={activeSalaryPlan?.reference_salary || 0}
-              planName={activeSalaryPlan?.nom}
-              fixedCosts={echeances.filter((e: Echeance) => e.type === 'depense').reduce((s: number, e: Echeance) => s + e.montant, 0)}
-              variableBudgets={budgets.reduce((s, b) => {
-                const hasEcheance = echeances.some((e: Echeance) => e.categorie === b.categorie && e.type === 'depense');
+            {(() => {
+              // Calcul des revenus récurrents (échéances de type 'revenu')
+              const recurringIncomes = echeances
+                .filter((e: Echeance) => e.type === 'revenu' && e.statut === 'active')
+                .reduce((s: number, e: Echeance) => s + e.montant, 0);
+
+              // Calcul des charges fixes (échéances de type 'depense')
+              const totalFixedCosts = echeances
+                .filter((e: Echeance) => e.type === 'depense' && e.statut === 'active')
+                .reduce((s: number, e: Echeance) => s + e.montant, 0);
+
+              // Calcul des budgets variables restants (budgets sans échéance associée)
+              // On évite de compter deux fois les catégories qui ont déjà une échéance fixe
+              const totalVariableBudgets = budgets.reduce((s, b) => {
+                const isSub = b.categorie.includes(' > ');
+                const parentCat = isSub ? b.categorie.split(' > ')[0] : b.categorie;
+                const hasEcheance = echeances.some((e: Echeance) => 
+                  (e.categorie === b.categorie || e.categorie === parentCat) && 
+                  e.type === 'depense' && e.statut === 'active'
+                );
                 return hasEcheance ? s : s + b.montant_max;
-              }, 0)}
-            />
+              }, 0);
+
+              return (
+                <PlanningSummary 
+                  referenceSalary={activeSalaryPlan.reference_salary}
+                  recurringIncomes={recurringIncomes}
+                  fixedCosts={totalFixedCosts}
+                  variableBudgets={totalVariableBudgets}
+                  planName={activeSalaryPlan.nom}
+                />
+              );
+            })()}
+            
             <button 
               onClick={() => setShowPlanSetup(true)}
-              className="absolute top-4 right-4 p-2 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
+              className="absolute top-4 right-4 p-2 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100 z-10"
               title="Modifier le plan"
             >
               <TrendingDown className="w-4 h-4 rotate-180" />
@@ -181,29 +258,198 @@ export default function BudgetsPage() {
         />
       )}
 
+      {/* Category Filter Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide no-scrollbar">
+        <button 
+          onClick={() => setSelectedCategory(null)}
+          className={cn(
+            "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all shrink-0 border",
+            !selectedCategory ? "bg-white/10 text-white border-white/20" : "bg-white/[0.02] text-white/40 border-transparent hover:bg-white/5"
+          )}
+        >
+          Tous
+        </button>
+        {parentCategories.map(cat => {
+          const style = CATEGORY_STYLES[cat] || { icone: 'help-circle', couleur: '#666' }
+          const IconComp = getCategoryIcon(style.icone)
+          return (
+            <button 
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all shrink-0 border",
+                selectedCategory === cat 
+                  ? "bg-white/10 text-white border-white/20" 
+                  : "bg-white/[0.02] text-white/40 border-transparent hover:bg-white/5"
+              )}
+            >
+              <IconComp className="w-3.5 h-3.5" style={{ color: selectedCategory === cat ? style.couleur : 'inherit' }} />
+              {cat}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Focus Mode Header & Envelope Bar */}
+      {selectedCategory && (
+        <div className="space-y-6 mb-8 animate-in slide-in-from-top-2 duration-300">
+           {/* Envelope Header */}
+           <div className="flex items-center justify-between">
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                {selectedCategory}
+              </h3>
+              <div className="text-right">
+                 <p className="text-[10px] text-white/40 uppercase font-black tracking-widest">Capacité Totale</p>
+                 <p className="text-xl font-black text-white">
+                   {(() => {
+                      const budgetObj = budgets.find(b => b.categorie === selectedCategory)
+                      if (budgetObj) return budgetObj.montant_max.toLocaleString("fr-FR")
+                      
+                      // Fallback sur le SalaryPlan si le budget n'est pas "créé"
+                      const planItem = activeSalaryPlan?.items.find((c: SalaryPlanItem) => c.categorie === selectedCategory)
+                      return (planItem?.montant || 0).toLocaleString("fr-FR")
+                   })()} €
+                 </p>
+              </div>
+           </div>
+
+           {/* Dual Progress Bars */}
+           <div className="grid grid-cols-1 gap-4">
+             {/* 1. Allocation Bar (What we PLAN to spend) */}
+             <div className="glass-card p-4 rounded-2xl border border-white/5 bg-white/[0.02] space-y-3">
+               <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-indigo-400/60">
+                 <span>Planification des Sous-Budgets</span>
+                 <span>Allocations (%)</span>
+               </div>
+               <div className="relative h-3 bg-white/[0.05] rounded-full overflow-hidden flex gap-0.5 p-0.5">
+                  {budgets
+                    .filter(b => b.categorie.startsWith(`${selectedCategory} > `))
+                    .map((sub, idx, arr) => {
+                      const parentBudget = budgets.find(pb => pb.categorie === selectedCategory)
+                      const parentStyle = CATEGORY_STYLES[selectedCategory] || { couleur: '#6366f1' }
+                      const width = parentBudget && parentBudget.montant_max > 0 
+                        ? (sub.montant_max / parentBudget.montant_max) * 100 
+                        : 0
+                      
+                      const opacity = 1 - (idx / (arr.length || 1)) * 0.6
+                      
+                      return (
+                        <div 
+                          key={sub.categorie}
+                          className="h-full transition-all duration-700 first:rounded-l-full last:rounded-r-full"
+                          style={{ 
+                            width: `${width}%`, 
+                            backgroundColor: parentStyle.couleur,
+                            opacity: opacity
+                          }}
+                        />
+                      )
+                    })
+                  }
+               </div>
+             </div>
+
+             {/* 2. Real Spending Bar (What we ACTUALLY spent) */}
+             <div className="glass-card p-4 rounded-2xl border border-white/11 bg-white/[0.04] space-y-3">
+               <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-rose-400/60">
+                 <span>Dépenses Réelles de l'Enveloppe</span>
+                 <span>{
+                    (() => {
+                      const totalSpent = budgets
+                        .filter(b => b.categorie.startsWith(selectedCategory))
+                        .reduce((acc, b) => acc + (spentByCategory[b.categorie] || 0), 0)
+                      return totalSpent.toLocaleString("fr-FR")
+                    })()
+                 }€</span>
+               </div>
+               <div className="h-3 bg-white/[0.05] rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-rose-600 to-rose-400 transition-all duration-1000"
+                    style={{ 
+                      width: `${(() => {
+                        const parentBudget = budgets.find(pb => pb.categorie === selectedCategory)
+                        const totalSpent = budgets
+                          .filter(b => b.categorie.startsWith(selectedCategory))
+                          .reduce((acc, b) => acc + (spentByCategory[b.categorie] || 0), 0)
+                        return parentBudget && parentBudget.montant_max > 0 
+                          ? Math.min((totalSpent / parentBudget.montant_max) * 100, 100) 
+                          : 0
+                      })()}%` 
+                    }}
+                  />
+               </div>
+             </div>
+           </div>
+
+           <div className="flex items-center justify-between pt-2">
+             <div className="flex items-center gap-4">
+               <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">Sous-catégories trackées</h3>
+             </div>
+             
+             <select 
+               onChange={(e) => {
+                 if (e.target.value) handleAddSub(e.target.value)
+                 e.target.value = ""
+               }}
+               className="bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/60 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer hover:bg-white/10 transition-all"
+             >
+               <option value="">+ Ajouter une sous-catégorie</option>
+               {(CATEGORY_STYLES[selectedCategory]?.subcategories || [])
+                 .filter(sub => !budgets.some(b => b.categorie === `${selectedCategory} > ${sub}`))
+                 .map(sub => (
+                   <option key={sub} value={sub} className="bg-[#121216]">{sub}</option>
+                 ))
+               }
+             </select>
+           </div>
+        </div>
+      )}
+
       {/* Budget Cards Grid */}
-      {budgets.length === 0 ? (
+      {filteredBudgets.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 gap-4">
           <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
             <Wallet className="w-8 h-8 text-indigo-400/50" />
           </div>
-          <p className="text-white/40 text-sm">Aucun budget défini. Créez-en un pour commencer.</p>
+          <p className="text-white/40 text-sm">Aucun budget défini pour cette catégorie.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {budgets.map(b => (
-            <BudgetCard
-              key={b.id}
-              budget={b}
-              spent={spentByCategory[b.categorie] ?? 0}
-              planned={plannedExpensesByCategory[b.categorie] ?? 0}
-              income={incomeByCategory[b.categorie] ?? 0}
-              plannedIncome={plannedIncomeByCategory[b.categorie] ?? 0}
-              allCategories={allCategories}
-              onDelete={deleteBudget}
-              onEdit={handleEdit}
-            />
-          ))}
+          {filteredBudgets.map((b) => {
+            const isSub = b.categorie.includes(' > ')
+            const parentName = isSub ? b.categorie.split(' > ')[0] : null
+            
+            // On cherche le budget parent dans les budgets existants
+            let parentBudget = parentName ? budgets.find(pb => pb.categorie === parentName) : null
+            
+            // Si on ne le trouve pas mais qu'on a un plan de salaire, on crée un "objet" virtuel
+            // pour que les sliders puissent fonctionner avec la capacité du plan.
+            if (!parentBudget && parentName && activeSalaryPlan) {
+               const planItem = activeSalaryPlan.items.find(c => c.categorie === parentName)
+               if (planItem) {
+                 parentBudget = {
+                   categorie: parentName,
+                   montant_max: planItem.montant
+                 }
+               }
+            }
+
+            return (
+              <BudgetCard
+                key={b.id || b.categorie}
+                budget={b}
+                spent={spentByCategory[b.categorie] ?? 0}
+                planned={plannedExpensesByCategory[b.categorie] ?? 0}
+                income={incomeByCategory[b.categorie] ?? 0}
+                plannedIncome={plannedIncomeByCategory[b.categorie] ?? 0}
+                allCategories={allCategories}
+                onDelete={deleteBudget}
+                onEdit={handleEdit}
+                isFiltered={!!selectedCategory}
+                parentBudget={parentBudget}
+              />
+            )
+          })}
         </div>
       )}
 

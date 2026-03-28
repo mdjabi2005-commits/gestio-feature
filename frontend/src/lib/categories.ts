@@ -4,6 +4,9 @@ export interface CategoryMetadata {
   nom: string
   couleur: string
   icone: string
+  isSubVariant?: boolean
+  hueShift?: number
+  lightShift?: number
 }
 
 // Frontend Source of Truth for Category Styles
@@ -64,8 +67,11 @@ export const CATEGORIES = Object.entries(CATEGORY_STYLES)
 }))
 
 export const getCategoryMetadata = (categories: any[], categoryName: string): CategoryMetadata => {
-  // 1. Priorité aux styles statiques du Frontend (Design System)
-  const style = CATEGORY_STYLES[categoryName]
+  // 1. Détection du parent pour le style si c'est une sous-catégorie (format: "Parent > Sub")
+  const parentName = categoryName.includes(' > ') ? categoryName.split(' > ')[0] : categoryName;
+  
+  // 2. Priorité aux styles statiques du Frontend (Design System)
+  const style = CATEGORY_STYLES[parentName]
   if (style) {
     return {
       nom: categoryName,
@@ -93,8 +99,29 @@ export const getCategoryMetadata = (categories: any[], categoryName: string): Ca
       icone: cat.icone || "help-circle"
     }
   }
+
+  // 3. Génération de couleur dynamique pour les sous-catégories non définies
+  if (categoryName.includes(' > ')) {
+    const parent = categoryName.split(' > ')[0]
+    const sub = categoryName.split(' > ')[1]
+    const parentStyle = CATEGORY_STYLES[parent] || CATEGORY_STYLES["Autre"]
+    
+    // Générer une variante de couleur basée sur le nom de la sous-catégorie
+    const hash = sub.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+    const hueShift = (hash % 40) - 20 // Petites variations de teinte
+    const lightShift = (hash % 20) - 10 // Petites variations de luminosité
+    
+    return {
+      nom: categoryName,
+      couleur: parentStyle.couleur,
+      icone: parentStyle.icone,
+      isSubVariant: true,
+      hueShift,
+      lightShift
+    }
+  }
   
-  // 3. Fallback absolu (Bleu Ardoise discret)
+  // 4. Fallback absolu (Bleu Ardoise discret)
   return {
     nom: categoryName,
     couleur: "#94a3b8",

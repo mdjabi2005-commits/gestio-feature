@@ -6,14 +6,16 @@ import { cn } from "@/lib/utils"
 
 interface PlanningSummaryProps {
   referenceSalary: number
+  recurringIncomes?: number
   fixedCosts: number
   variableBudgets: number
   planName?: string
   className?: string
 }
 
-export function PlanningSummary({ referenceSalary, fixedCosts, variableBudgets, planName, className }: PlanningSummaryProps) {
-  const disposableIncome = referenceSalary - fixedCosts
+export function PlanningSummary({ referenceSalary, recurringIncomes = 0, fixedCosts, variableBudgets, planName, className }: PlanningSummaryProps) {
+  const totalIncome = referenceSalary + recurringIncomes
+  const disposableIncome = totalIncome - fixedCosts
   const theoreticalSavings = disposableIncome - variableBudgets
   const isDeficit = theoreticalSavings < 0
 
@@ -41,8 +43,13 @@ export function PlanningSummary({ referenceSalary, fixedCosts, variableBudgets, 
                   {planName}
                 </span>
               )}
+              {recurringIncomes > 0 && (
+                <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-black uppercase tracking-tighter">
+                  +{recurringIncomes}€ récurrents
+                </span>
+              )}
             </div>
-            <p className="text-2xl font-black text-white tabular-nums">{referenceSalary.toLocaleString("fr-FR")} €</p>
+            <p className="text-2xl font-black text-white tabular-nums">{totalIncome.toLocaleString("fr-FR")} €</p>
           </div>
         </div>
 
