@@ -68,6 +68,42 @@ graph LR
 
 Les Services **ne font pas de SQL direct** (sauf pour la récurrence qui est un cas spécial). Ils délèguent tout au Repository.
 
+---
+
+## 🔧 Quick Reference
+
+### Erreurs courantes
+
+| Erreur | Cause | Solution |
+|--------|-------|----------|
+| `Au moins une allocation est requise` | `items` vide ou mal formaté | Vérifier que `plan.items` contient des allocations |
+| `Allocations >= 100%` | Total percent > 100 | Ajouter une catégorie reliquat (ex: Épargne) |
+| `Catégorie non trouvée` | Catégorie absente de categories.yaml | Warning seulement, continue |
+| `Fichier orphelin` | Attachment ajouté mais pas en DB | Supprimer le fichier physique |
+
+### Validation Salary Plan
+
+```python
+# Format attendu pour validation
+plan = {
+    "allocations": [
+        {"category": "Alimentation", "value": 50, "type": "percent"},
+        ...
+    ]
+}
+validate_salary_plan(plan)  # Lève SalaryPlanError si invalide
+```
+
+### Debug Attachment
+
+```python
+# Trouver un fichier par nom
+attachment_service.find_file("mon_fichier.jpg")
+
+# Récupérer le contenu
+content, filename, mime = attachment_service.get_file_content(attachment_id)
+```
+
 Voir aussi :
 - [README principal du domaine](../README.md)
 - [Database README](../database/README.md)

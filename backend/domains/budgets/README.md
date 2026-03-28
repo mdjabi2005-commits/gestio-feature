@@ -67,3 +67,36 @@ Le calcul du "Solde Échéances" (Strategic Balance) se fait côté frontend :
 3. **Solde** = Revenus récurrents - Charges fixes
 
 Les échéances avec `status === 'paid'` sont incluses dans le calcul car elles représentent des charges/revenus du mois en cours.
+
+---
+
+## 🔧 Quick Reference
+
+### Endpoints API
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| `GET` | `/api/budgets/` | Liste budgets |
+| `POST` | `/api/budgets/` | Créer budget |
+| `GET` | `/api/budgets/salary-plans` | Liste plans |
+| `POST` | `/api/budgets/salary-plans` | Sauvegarder plan |
+
+### Erreurs courantes
+
+| Erreur | Cause | Solution |
+|--------|-------|----------|
+| `Échec upsert budget` | DB lock ou erreur SQL | Vérifier la connexion DB |
+| `Au moins une allocation requise` | `items` vide | Ajouter au moins 1 item |
+| `Total >= 100%` | Somme pourcentages > 100 | Ajouter catégorie reliquat |
+
+### Format SalaryPlan (API)
+
+```json
+{
+  "nom": "Plan Test",
+  "reference_salary": 3000,
+  "items": [
+    {"categorie": "Alimentation", "montant": 50, "type": "percent", "sub_distribution_mode": "equal"}
+  ]
+}
+```

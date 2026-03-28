@@ -48,3 +48,38 @@ Gère les expressions régulières (Regex) pour identifier :
 - **Parsing Échoué** : Si aucun montant n'est trouvé, une erreur explicite est remontée à l'UI pour demander une saisie
   manuelle.
 - **Fallback** : Si la date n'est pas trouvée, la date du jour est proposée par défaut.
+
+---
+
+## 🔧 Quick Reference
+
+### Endpoints API
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| `POST` | `/api/ocr/scan` | Scanner ticket (image) |
+| `POST` | `/api/ocr/scan-income` | Scanner fiche de paie (PDF) |
+
+### Erreurs courantes
+
+| Erreur | Cause | Solution |
+|--------|-------|----------|
+| `Format non supporté` | Extension non acceptée | Utiliser jpg, png, bmp, tiff, webp, pdf |
+| `pdfminer.six non installé` | Dépendance manquante | `uv add pdfminer.six` |
+| `GROQ_API_KEY absente` | Pas de clé API | Catégorisation IA désactivée |
+| `Invalid API Key` | Clé Groq invalide | Vérifier la clé dans .env |
+
+### Debug OCR
+
+```python
+# Tester l'extraction
+from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
+ocr = get_ocr_service()
+tx = ocr.process_ticket("chemin/vers/ticket.jpg")
+print(tx.montant, tx.categorie)
+```
+
+### Configuration
+
+- Clé API Groq : `.env` → `GROQ_API_KEY`
+- Patterns montant/date : `ocr/services/pattern_manager.py`

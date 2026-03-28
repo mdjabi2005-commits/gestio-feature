@@ -77,3 +77,26 @@ graph TD
 
 - **Le modèle de données d'une transaction ?**
   👉 [`database/model.py`](database/model.py) (Doc: [`database/README.md`](database/README.md))
+
+---
+
+## 🔧 Quick Reference
+
+### Fonctions clés à connaître
+
+| Fonction | Fichier | Usage |
+|----------|---------|-------|
+| `calculate_next_occurrence` | `echeance/echeance_service.py` | Calcule la prochaine date d'une échéance |
+| `backfill_echeances` | `echeance/echeance_service.py` | Génère les transactions manquantes depuis les échéances |
+| `_get_paid_this_month` | `api/echeances/echeances.py` | Retourne les IDs des échéances payées ce mois |
+| `apply_salary_split` | `services/salary_plan_service.py` | Applique le split salaire |
+| `validate_salary_plan` | `services/salary_plan_service.py` | Valide un plan (< 100%) |
+
+### Erreurs courantes
+
+| Erreur | Cause probable | Solution |
+|--------|---------------|----------|
+| `Échéance non trouvée` | ID inexistant dans la DB | Vérifier que l'ID existe dans `transactions` table |
+| `Solde échéance = 0` | Échéances filtrées par `status === 'paid'` | Inclure les 'paid' dans le calcul (elles comptent ce mois) |
+| `Allocations >= 100%` | Total des pourcentages trop élevé | Ajouter une catégorie reliquat (Épargne) |
+| `Module 'domains' not found` | Import sans `backend.` prefix | Utiliser `from backend.domains...` |

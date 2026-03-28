@@ -152,3 +152,40 @@ La méthode `get_occurrences_for_month(year, month)` calcule les occurrences :
 - **Dashboard** appelle `refresh_echeances()` et retourne `prochaines_echeances`
 - Les échéances sont générées depuis les recurrences actives
 - Chaque recurrence génère des occurrences futures dans `echeances`
+
+---
+
+## 🔧 Quick Reference
+
+### Endpoints
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| `GET` | `/api/echeances/` | Liste échéances |
+| `GET` | `/api/echeances/calendar` | Occurrences calendrier |
+| `POST` | `/api/echeances/` | Créer échéance |
+
+### Statut des échéances
+
+| Status | Signification |
+|--------|---------------|
+| `paid` | Échéance liée à une transaction ce mois |
+| `pending` | Échéance active, pas encore payée |
+| `overdue` | Échéance active, date dépassée |
+
+### Erreurs courantes
+
+| Erreur | Cause | Solution |
+|--------|-------|----------|
+| `Solde échéance = 0` | Filtré par `status === 'paid'` | **Inclure** 'paid' dans le calcul |
+
+### Statut calcul (echeances.py)
+
+```python
+if is_paid:
+    status = "paid"
+elif echeance.statut == "active":
+    status = "overdue" if next_date < today else "pending"
+else:
+    status = "paid"  # inactive traité comme paid
+```
