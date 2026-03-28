@@ -9,7 +9,7 @@ import { BudgetForm } from "@/components/budgets/BudgetForm"
 import { PlanningSummary } from "@/components/budgets/PlanningSummary"
 import { StrategyCard } from "@/components/budgets/StrategyCard"
 import { SalaryPlanSetup } from "@/components/budgets/SalaryPlanSetup"
-import { calculatePlannedExpenses, calculatePlannedIncomes } from "@/lib/budget-utils"
+import { calculatePlannedExpenses, calculatePlannedIncomes, getMonthOccurrences } from "@/lib/budget-utils"
 import { getCategoryIcon } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import type { Budget, Echeance, SalaryPlan, SalaryPlanItem } from "@/api"
@@ -111,29 +111,29 @@ export default function BudgetsPage() {
       // Filtrer : on ne garde les parents que s'ils n'ont AUCUNE sous-catégorie définie
       const subCategoryParents = new Set(
         budgets
-          .filter(b => b.categorie.includes(' > '))
-          .map(b => b.categorie.split(' > ')[0])
+          .filter(b => b.categorie.trim().includes(' > '))
+          .map(b => b.categorie.trim().split(' > ')[0])
       )
 
       const leafBudgets = budgets.filter(b => {
-        const isParent = !b.categorie.includes(' > ')
+        const cat = b.categorie.trim()
+        const isParent = !cat.includes(' > ')
         if (isParent) {
-          // Si c'est un parent et qu'il a des sous-budgets, on le cache dans la vue "TOUS"
-          return !subCategoryParents.has(b.categorie)
+          return !subCategoryParents.has(cat)
         }
-        return true // On garde toutes les sous-catégories
+        return true
       })
 
-      // Tri groupé pour la lisibilité
       return leafBudgets.sort((a, b) => {
-        const pA = a.categorie.split(' > ')[0]
-        const pB = b.categorie.split(' > ')[0]
-        if (pA === pB) return a.categorie.localeCompare(b.categorie)
+        const catA = a.categorie.trim()
+        const catB = b.categorie.trim()
+        const pA = catA.split(' > ')[0]
+        const pB = catB.split(' > ')[0]
+        if (pA === pB) return catA.localeCompare(catB)
         return pA.localeCompare(pB)
       })
     }
-    // Vue "Focus" : Uniquement les sous-catégories (le parent est déjà dans le header)
-    return budgets.filter(b => b.categorie.startsWith(selectedCategory) && b.categorie !== selectedCategory)
+    return budgets.filter(b => b.categorie.trim().startsWith(selectedCategory) && b.categorie.trim() !== selectedCategory)
   }, [budgets, selectedCategory])
 
   const handleEdit = (budget: Budget) => { setEditTarget(budget); setShowForm(true) }
@@ -197,33 +197,53 @@ export default function BudgetsPage() {
         ) : (
           <div className="relative group">
             {(() => {
-              // Calcul des revenus récurrents (échéances de type 'revenu')
-              const recurringIncomes = echeances
-                .filter((e: Echeance) => e.type === 'revenu' && e.statut === 'active')
-                .reduce((s: number, e: Echeance) => s + e.montant, 0);
+              // Récupération de TOUTES les occurrences prévues pour le mois en cours (peu importe le statut de paiement)
+              const now = new Date();
+              const year = now.getFullYear();
+              const month = now.getMonth();
 
-              // Calcul des charges fixes (échéances de type 'depense')
-              const totalFixedCosts = echeances
-                .filter((e: Echeance) => e.type === 'depense' && e.statut === 'active')
-                .reduce((s: number, e: Echeance) => s + e.montant, 0);
+              let totalStrategicIncome = 0;
+              let totalStrategicExpense = 0;
+              const fixedExpenseCategories = new Set<string>();
 
-              // Calcul des budgets variables restants (budgets sans échéance associée)
-              // On évite de compter deux fois les catégories qui ont déjà une échéance fixe
-              const totalVariableBudgets = budgets.reduce((s, b) => {
-                const isSub = b.categorie.includes(' > ');
-                const parentCat = isSub ? b.categorie.split(' > ')[0] : b.categorie;
-                const hasEcheance = echeances.some((e: Echeance) => 
-                  (e.categorie === b.categorie || e.categorie === parentCat) && 
-                  e.type === 'depense' && e.statut === 'active'
-                );
-                return hasEcheance ? s : s + b.montant_max;
+              echeances.forEach(ech => {
+                if (ech.statut !== 'active' && ech.statut !== 'overdue') return;
+                
+                const occurrences = getMonthOccurrences(ech, year, month);
+                const totalAmount = occurrences.length * Number(ech.montant);
+                
+                if (totalAmount > 0) {
+                  if (ech.type === 'revenu') {
+                    totalStrategicIncome += totalAmount;
+                  } else {
+                    totalStrategicExpense += totalAmount;
+                    fixedExpenseCategories.add(ech.categorie.trim().toLowerCase());
+                    if (ech.sous_categorie) {
+                      fixedExpenseCategories.add(`${ech.categorie.trim()} > ${ech.sous_categorie.trim()}`.toLowerCase());
+                    }
+                  }
+                }
+              });
+
+              // Solde "Reste fin de mois" stratégique
+              const fixedChargesBalance = totalStrategicIncome - totalStrategicExpense;
+
+              // Somme des budgets variables (uniquement ceux qui ne sont pas déjà couverts par une échéance fixe)
+              const totalVariableBudgets = budgets.reduce((acc, b) => {
+                const cat = b.categorie.trim().toLowerCase();
+                const isSub = cat.includes(' > ');
+                const parentCat = isSub ? cat.split(' > ')[0] : cat;
+                
+                if (fixedExpenseCategories.has(cat) || fixedExpenseCategories.has(parentCat)) {
+                  return acc;
+                }
+                return acc + b.montant_max;
               }, 0);
 
               return (
                 <PlanningSummary 
                   referenceSalary={activeSalaryPlan.reference_salary}
-                  recurringIncomes={recurringIncomes}
-                  fixedCosts={totalFixedCosts}
+                  fixedChargesBalance={fixedChargesBalance}
                   variableBudgets={totalVariableBudgets}
                   planName={activeSalaryPlan.nom}
                 />

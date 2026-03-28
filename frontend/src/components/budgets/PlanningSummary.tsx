@@ -6,33 +6,68 @@ import { cn } from "@/lib/utils"
 
 interface PlanningSummaryProps {
   referenceSalary: number
-  recurringIncomes?: number
-  fixedCosts: number
+  fixedChargesBalance: number
   variableBudgets: number
   planName?: string
   className?: string
 }
 
-export function PlanningSummary({ referenceSalary, recurringIncomes = 0, fixedCosts, variableBudgets, planName, className }: PlanningSummaryProps) {
-  const totalIncome = referenceSalary + recurringIncomes
-  const disposableIncome = totalIncome - fixedCosts
+export function PlanningSummary({ referenceSalary, fixedChargesBalance, variableBudgets, planName, className }: PlanningSummaryProps) {
+  const disposableIncome = referenceSalary + fixedChargesBalance
   const theoreticalSavings = disposableIncome - variableBudgets
   const isDeficit = theoreticalSavings < 0
+  
+  // Le revenu total affiché est le salaire de base + les gains récurrents nets (si positifs)
+  const totalCapacity = Math.max(referenceSalary, referenceSalary + fixedChargesBalance)
 
-  const segments = [
-    { label: "Fixe", value: fixedCosts, color: "bg-indigo-500", icon: Receipt },
-    { label: "Variable", value: variableBudgets, color: "bg-emerald-500", icon: ShoppingCart },
-    { label: isDeficit ? "Déficit" : "Épargne", value: Math.abs(theoreticalSavings), color: isDeficit ? "bg-rose-500" : "bg-sky-400", icon: PiggyBank },
-  ]
+  const segments = []
+  
+  // 1. Si le solde des échéances est négatif, c'est une "charge fixe" (Rouge)
+  if (fixedChargesBalance < 0) {
+    segments.push({ 
+      label: "Charges Fixes", 
+      value: Math.abs(fixedChargesBalance), 
+      color: "bg-rose-600", 
+      icon: Receipt 
+    })
+  }
+  
+  // 2. Si le solde est positif, c'est un "gain récurrent" (Vert Foncé)
+  if (fixedChargesBalance > 0) {
+    segments.push({ 
+      label: "Revenus Récurrents", 
+      value: fixedChargesBalance, 
+      color: "bg-emerald-700", 
+      icon: TrendingUp 
+    })
+  }
 
-  const total = segments.reduce((acc, s) => acc + s.value, 0)
-  const maxVal = Math.max(total, referenceSalary)
+  // 3. Budgets Variables (Vert)
+  segments.push({ 
+    label: "Variables", 
+    value: variableBudgets, 
+    color: "bg-emerald-500", 
+    icon: ShoppingCart 
+  })
+
+  // 4. Épargne (Bleu)
+  if (!isDeficit) {
+    segments.push({ 
+      label: "Épargne", 
+      value: theoreticalSavings, 
+      color: "bg-sky-400", 
+      icon: PiggyBank 
+    })
+  }
+
+  const barTotal = segments.reduce((acc, s) => acc + s.value, 0)
+  const maxVal = Math.max(barTotal, totalCapacity)
 
   return (
     <div className={cn("glass-card rounded-3xl p-6 border-white/5 bg-white/[0.01]", className)}>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
             <Wallet className="w-6 h-6 text-indigo-400" />
           </div>
           <div>
@@ -43,22 +78,23 @@ export function PlanningSummary({ referenceSalary, recurringIncomes = 0, fixedCo
                   {planName}
                 </span>
               )}
-              {recurringIncomes > 0 && (
-                <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-black uppercase tracking-tighter">
-                  +{recurringIncomes}€ récurrents
-                </span>
-              )}
             </div>
-            <p className="text-2xl font-black text-white tabular-nums">{totalIncome.toLocaleString("fr-FR")} €</p>
+            <p className="text-2xl font-black text-white tabular-nums">{referenceSalary.toLocaleString("fr-FR")} €</p>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-4 md:gap-8">
           <div className="space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400/60 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" /> Charges Fixes
+            <p className={cn(
+              "text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5",
+              fixedChargesBalance >= 0 ? "text-emerald-500/60" : "text-rose-500/60"
+            )}>
+              <span className={cn("w-1.5 h-1.5 rounded-full", fixedChargesBalance >= 0 ? "bg-emerald-600" : "bg-rose-600")} /> 
+              Solde Échéances
             </p>
-            <p className="text-lg font-bold text-white tabular-nums">{fixedCosts.toLocaleString("fr-FR")} €</p>
+            <p className={cn("text-lg font-bold tabular-nums", fixedChargesBalance >= 0 ? "text-emerald-400" : "text-rose-400")}>
+              {fixedChargesBalance >= 0 ? "+" : ""}{fixedChargesBalance.toLocaleString("fr-FR")} €
+            </p>
           </div>
           <div className="space-y-1">
             <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400/60 flex items-center gap-1.5">
@@ -94,14 +130,15 @@ export function PlanningSummary({ referenceSalary, recurringIncomes = 0, fixedCo
         </div>
       )}
 
-      {/* Visual Indicator */}
+      {/* Visual Indicator - Multi-segment bar */}
       <div className="space-y-4">
-        <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden flex">
+        <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden flex gap-0.5 p-0.5">
           {segments.map((s, i) => (
             <div
               key={i}
-              className={cn(s.color, "h-full transition-all duration-1000 ease-out border-r border-black/20 last:border-0")}
+              className={cn(s.color, "h-full transition-all duration-1000 ease-out first:rounded-l-full last:rounded-r-full")}
               style={{ width: `${(s.value / maxVal) * 100}%` }}
+              title={`${s.label}: ${s.value}€`}
             />
           ))}
         </div>
@@ -110,9 +147,10 @@ export function PlanningSummary({ referenceSalary, recurringIncomes = 0, fixedCo
           <span>0 €</span>
           <div className="flex items-center gap-2">
             <ArrowRight className="w-3 h-3" />
-            <span>Planification mensuelle</span>
+            <span>Capacité Totale: {maxVal.toLocaleString("fr-FR")} €</span>
+            {isDeficit && <span className="text-rose-500 font-black ml-2">DÉFICIT DE {Math.abs(theoreticalSavings)}€</span>}
           </div>
-          <span>{maxVal.toLocaleString("fr-FR")} €</span>
+          <p className="text-[9px] font-black tabular-nums">{maxVal.toLocaleString("fr-FR")} €</p>
         </div>
       </div>
     </div>
