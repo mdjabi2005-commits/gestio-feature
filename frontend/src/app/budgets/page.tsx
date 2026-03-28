@@ -207,8 +207,10 @@ export default function BudgetsPage() {
               const fixedExpenseCategories = new Set<string>();
 
               echeances.forEach(ech => {
-                // Les statuts retournés par l'API sont 'pending', 'overdue' ou 'paid'
-                if (ech.status === 'paid' || ech.status === 'inactive') return;
+                // On inclut toutes les échéances actives (y compris 'paid') car elles représentent
+                // des charges/revenus du mois en cours. Le statut 'paid' signifie juste qu'elles
+                // ont déjà été payées, mais elles comptent toujours dans le solde.
+                if (ech.status === 'inactive') return;
                 
                 const occurrences = getMonthOccurrences(ech, year, month);
                 const amount = Number(ech.amount) || 0;
