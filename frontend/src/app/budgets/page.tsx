@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { Plus, Wallet, TrendingDown, Target, AlertTriangle, CheckCircle2, PiggyBank } from "lucide-react"
+import { useState } from "react"
+import { Plus, Wallet, TrendingDown, PiggyBank } from "lucide-react"
 import { useFinancial } from "@/context/FinancialDataContext"
 import { CATEGORY_STYLES } from "@/lib/categories"
 import { BudgetCard } from "@/components/budgets/BudgetCard"
@@ -9,10 +9,10 @@ import { BudgetForm } from "@/components/budgets/BudgetForm"
 import { PlanningSummary } from "@/components/budgets/PlanningSummary"
 import { StrategyCard } from "@/components/budgets/StrategyCard"
 import { SalaryPlanSetup } from "@/components/budgets/SalaryPlanSetup"
-import { calculatePlannedExpenses, calculatePlannedIncomes, getMonthOccurrences } from "@/lib/budget-utils"
+import { useBudgetCalculations, useStrategicBalance, useBudgetFilters } from "@/hooks/useBudgetCalculations"
 import { getCategoryIcon } from "@/lib/icons"
 import { cn } from "@/lib/utils"
-import type { Budget, Echeance, SalaryPlan, SalaryPlanItem } from "@/api"
+import type { Budget } from "@/api"
 
 export default function BudgetsPage() {
   const { 
@@ -24,117 +24,18 @@ export default function BudgetsPage() {
   const [editTarget, setEditTarget] = useState<Budget | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
-  // Dépenses et Revenus réels du mois par catégorie
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth()
+  const {
+    spentByCategory,
+    incomeByCategory,
+    plannedExpensesByCategory,
+    plannedIncomeByCategory,
+    totalForecastedSavings,
+  } = useBudgetCalculations(budgets, transactions, echeances)
 
-  const spentByCategory = useMemo(() => {
-    const map: Record<string, number> = {}
-    transactions.forEach(t => {
-      const d = new Date(t.date)
-      if (t.type === "depense" && d.getMonth() === month && d.getFullYear() === year) {
-        const parentKey = t.categorie;
-        const subKey = t.sous_categorie ? `${t.categorie} > ${t.sous_categorie}` : null;
-        
-        map[parentKey] = (map[parentKey] ?? 0) + t.montant;
-        if (subKey) {
-          map[subKey] = (map[subKey] ?? 0) + t.montant;
-        }
-      }
-    })
-    return map
-  }, [transactions, month, year])
-
-  const incomeByCategory = useMemo(() => {
-    const map: Record<string, number> = {}
-    transactions.forEach(t => {
-      const d = new Date(t.date)
-      if (t.type === "revenu" && d.getMonth() === month && d.getFullYear() === year) {
-        const parentKey = t.categorie;
-        const subKey = t.sous_categorie ? `${t.categorie} > ${t.sous_categorie}` : null;
-        
-        map[parentKey] = (map[parentKey] ?? 0) + t.montant;
-        if (subKey) {
-          map[subKey] = (map[subKey] ?? 0) + t.montant;
-        }
-      }
-    })
-    return map
-  }, [transactions, month, year])
-
-  // Prévisions (échéances à venir) par catégorie
-  const plannedExpensesByCategory = useMemo(() => {
-    return calculatePlannedExpenses(echeances, transactions, year, month)
-  }, [echeances, transactions, year, month])
-
-  const plannedIncomeByCategory = useMemo(() => {
-    return calculatePlannedIncomes(echeances, transactions, year, month)
-  }, [echeances, transactions, year, month])
-
-  // Global stats
-  const totalBudget = budgets.reduce((s, b) => s + b.montant_max, 0)
-  const totalSpent = budgets.reduce((s, b) => s + (spentByCategory[b.categorie] ?? 0), 0)
-  const totalIncome = budgets.reduce((s, b) => s + (incomeByCategory[b.categorie] ?? 0), 0)
-  
-  const totalPlannedExpenses = budgets.reduce((s, b) => s + (plannedExpensesByCategory[b.categorie] ?? 0), 0)
-  const totalPlannedIncome = budgets.reduce((s, b) => s + (plannedIncomeByCategory[b.categorie] ?? 0), 0)
-  
-  const totalForecastedExpenses = totalSpent + totalPlannedExpenses
-  const totalForecastedIncome = totalIncome + totalPlannedIncome
-  const totalForecastedSavings = totalForecastedIncome - totalForecastedExpenses
-  
-  const globalPct = totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0
-  const forecastPct = totalBudget > 0 ? Math.min((totalForecastedExpenses / totalBudget) * 100, 100) : 0
-  
-  const overBudget = budgets.filter(b => (spentByCategory[b.categorie] ?? 0) > b.montant_max)
-  const potentiallyOver = budgets.filter(b => {
-    const spent = spentByCategory[b.categorie] ?? 0
-    const planned = plannedExpensesByCategory[b.categorie] ?? 0
-    return spent <= b.montant_max && (spent + planned) > b.montant_max
-  })
+  const { fixedChargesBalance, totalVariableBudgets } = useStrategicBalance(echeances, budgets)
+  const { parentCategories, filteredBudgets } = useBudgetFilters(budgets, selectedCategory)
 
   const allCategories = summary?.repartition_categories ?? []
-
-  // Filtrage
-  const parentCategories = useMemo(() => {
-    const set = new Set<string>()
-    budgets.forEach(b => {
-      const parent = b.categorie.includes(' > ') ? b.categorie.split(' > ')[0] : b.categorie
-      set.add(parent)
-    })
-    return Array.from(set).sort()
-  }, [budgets])
-
-  const filteredBudgets = useMemo(() => {
-    if (!selectedCategory) {
-      // Filtrer : on ne garde les parents que s'ils n'ont AUCUNE sous-catégorie définie
-      const subCategoryParents = new Set(
-        budgets
-          .filter(b => b.categorie.trim().includes(' > '))
-          .map(b => b.categorie.trim().split(' > ')[0])
-      )
-
-      const leafBudgets = budgets.filter(b => {
-        const cat = b.categorie.trim()
-        const isParent = !cat.includes(' > ')
-        if (isParent) {
-          return !subCategoryParents.has(cat)
-        }
-        return true
-      })
-
-      return leafBudgets.sort((a, b) => {
-        const catA = a.categorie.trim()
-        const catB = b.categorie.trim()
-        const pA = catA.split(' > ')[0]
-        const pB = catB.split(' > ')[0]
-        if (pA === pB) return catA.localeCompare(catB)
-        return pA.localeCompare(pB)
-      })
-    }
-    return budgets.filter(b => b.categorie.trim().startsWith(selectedCategory) && b.categorie.trim() !== selectedCategory)
-  }, [budgets, selectedCategory])
 
   const handleEdit = (budget: Budget) => { setEditTarget(budget); setShowForm(true) }
   const handleClose = () => { setShowForm(false); setEditTarget(null) }
@@ -143,10 +44,13 @@ export default function BudgetsPage() {
     if (!selectedCategory) return
     const newBudget: Budget = {
       categorie: `${selectedCategory} > ${subName}`,
-      montant_max: 0 // Will be adjusted with the slider
+      montant_max: 0
     }
     await setBudget(newBudget)
   }
+
+  const totalOutflow = budgets.reduce((s, b) => s + b.montant_max, 0)
+  const deficit = (activeSalaryPlan?.reference_salary || 0) - totalOutflow
 
   if (budgetsLoading) return (
     <div className="flex items-center justify-center h-64">
@@ -156,7 +60,6 @@ export default function BudgetsPage() {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Budgets</h1>
@@ -172,7 +75,6 @@ export default function BudgetsPage() {
         </button>
       </div>
 
-      {/* Synergy Planning Section */}
       <div className="space-y-6 mb-10">
         {!activeSalaryPlan ? (
           <div className="glass-card rounded-3xl p-8 border-indigo-500/20 bg-indigo-500/5 flex flex-col md:flex-row items-center justify-between gap-8 animate-in fade-in zoom-in duration-500">
@@ -196,65 +98,12 @@ export default function BudgetsPage() {
           </div>
         ) : (
           <div className="relative group">
-            {(() => {
-              // Récupération de TOUTES les occurrences prévues pour le mois en cours (peu importe le statut de paiement)
-              const now = new Date();
-              const year = now.getFullYear();
-              const month = now.getMonth();
-
-              let totalStrategicIncome = 0;
-              let totalStrategicExpense = 0;
-              const fixedExpenseCategories = new Set<string>();
-
-              echeances.forEach(ech => {
-                // On inclut toutes les échéances actives (y compris 'paid') car elles représentent
-                // des charges/revenus du mois en cours. Le statut 'paid' signifie juste qu'elles
-                // ont déjà été payées, mais elles comptent toujours dans le solde.
-                if (ech.status === 'inactive') return;
-                
-                const occurrences = getMonthOccurrences(ech, year, month);
-                const amount = Number(ech.amount) || 0;
-                const totalAmount = occurrences.length * amount;
-                
-                if (totalAmount > 0) {
-                  if (ech.type === 'income') {
-                    totalStrategicIncome += totalAmount;
-                  } else {
-                    totalStrategicExpense += totalAmount;
-                    const cat = ech.category.trim().toLowerCase();
-                    fixedExpenseCategories.add(cat);
-                    if (ech.sous_categorie) {
-                      fixedExpenseCategories.add(`${cat} > ${ech.sous_categorie.trim().toLowerCase()}`);
-                    }
-                  }
-                }
-              });
-
-              // Solde "Reste fin de mois" stratégique
-              const fixedChargesBalance = totalStrategicIncome - totalStrategicExpense;
-
-              // Somme des budgets variables (uniquement ceux qui ne sont pas déjà couverts par une échéance fixe)
-              const totalVariableBudgets = budgets.reduce((acc, b) => {
-                const cat = b.categorie.trim().toLowerCase();
-                const isSub = cat.includes(' > ');
-                const parentCat = isSub ? cat.split(' > ')[0] : cat;
-                
-                if (fixedExpenseCategories.has(cat) || fixedExpenseCategories.has(parentCat)) {
-                  return acc;
-                }
-                return acc + b.montant_max;
-              }, 0);
-
-              return (
-                <PlanningSummary 
-                  referenceSalary={activeSalaryPlan.reference_salary}
-                  fixedChargesBalance={fixedChargesBalance}
-                  variableBudgets={totalVariableBudgets}
-                  planName={activeSalaryPlan.nom}
-                />
-              );
-            })()}
-            
+            <PlanningSummary 
+              referenceSalary={activeSalaryPlan.reference_salary}
+              fixedChargesBalance={fixedChargesBalance}
+              variableBudgets={totalVariableBudgets}
+              planName={activeSalaryPlan.nom}
+            />
             <button 
               onClick={() => setShowPlanSetup(true)}
               className="absolute top-4 right-4 p-2 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100 z-10"
@@ -265,16 +114,9 @@ export default function BudgetsPage() {
           </div>
         )}
         
-        {/* Uber Strategy Card (if deficit) */}
-        {(() => {
-          const refSalary = activeSalaryPlan?.reference_salary || 0;
-          const totalOutflow = budgets.reduce((s, b) => s + b.montant_max, 0);
-          const deficit = refSalary - totalOutflow;
-          return deficit < 0 ? <StrategyCard deficit={deficit} className="animate-in fade-in slide-in-from-top-4 duration-700" /> : null;
-        })()}
+        {deficit < 0 && <StrategyCard deficit={deficit} className="animate-in fade-in slide-in-from-top-4 duration-700" />}
       </div>
 
-      {/* Plan Setup Drawer/Modal */}
       {showPlanSetup && (
         <SalaryPlanSetup 
           plan={activeSalaryPlan} 
@@ -283,7 +125,6 @@ export default function BudgetsPage() {
         />
       )}
 
-      {/* Category Filter Bar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide no-scrollbar">
         <button 
           onClick={() => setSelectedCategory(null)}
@@ -315,122 +156,16 @@ export default function BudgetsPage() {
         })}
       </div>
 
-      {/* Focus Mode Header & Envelope Bar */}
       {selectedCategory && (
-        <div className="space-y-6 mb-8 animate-in slide-in-from-top-2 duration-300">
-           {/* Envelope Header */}
-           <div className="flex items-center justify-between">
-              <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
-                {selectedCategory}
-              </h3>
-              <div className="text-right">
-                 <p className="text-[10px] text-white/40 uppercase font-black tracking-widest">Capacité Totale</p>
-                 <p className="text-xl font-black text-white">
-                   {(() => {
-                      const budgetObj = budgets.find(b => b.categorie === selectedCategory)
-                      if (budgetObj) return budgetObj.montant_max.toLocaleString("fr-FR")
-                      
-                      // Fallback sur le SalaryPlan si le budget n'est pas "créé"
-                      const planItem = activeSalaryPlan?.items.find((c: SalaryPlanItem) => c.categorie === selectedCategory)
-                      return (planItem?.montant || 0).toLocaleString("fr-FR")
-                   })()} €
-                 </p>
-              </div>
-           </div>
-
-           {/* Dual Progress Bars */}
-           <div className="grid grid-cols-1 gap-4">
-             {/* 1. Allocation Bar (What we PLAN to spend) */}
-             <div className="glass-card p-4 rounded-2xl border border-white/5 bg-white/[0.02] space-y-3">
-               <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-indigo-400/60">
-                 <span>Planification des Sous-Budgets</span>
-                 <span>Allocations (%)</span>
-               </div>
-               <div className="relative h-3 bg-white/[0.05] rounded-full overflow-hidden flex gap-0.5 p-0.5">
-                  {budgets
-                    .filter(b => b.categorie.startsWith(`${selectedCategory} > `))
-                    .map((sub, idx, arr) => {
-                      const parentBudget = budgets.find(pb => pb.categorie === selectedCategory)
-                      const parentStyle = CATEGORY_STYLES[selectedCategory] || { couleur: '#6366f1' }
-                      const width = parentBudget && parentBudget.montant_max > 0 
-                        ? (sub.montant_max / parentBudget.montant_max) * 100 
-                        : 0
-                      
-                      const opacity = 1 - (idx / (arr.length || 1)) * 0.6
-                      
-                      return (
-                        <div 
-                          key={sub.categorie}
-                          className="h-full transition-all duration-700 first:rounded-l-full last:rounded-r-full"
-                          style={{ 
-                            width: `${width}%`, 
-                            backgroundColor: parentStyle.couleur,
-                            opacity: opacity
-                          }}
-                        />
-                      )
-                    })
-                  }
-               </div>
-             </div>
-
-             {/* 2. Real Spending Bar (What we ACTUALLY spent) */}
-             <div className="glass-card p-4 rounded-2xl border border-white/11 bg-white/[0.04] space-y-3">
-               <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-rose-400/60">
-                 <span>Dépenses Réelles de l'Enveloppe</span>
-                 <span>{
-                    (() => {
-                      const totalSpent = budgets
-                        .filter(b => b.categorie.startsWith(selectedCategory))
-                        .reduce((acc, b) => acc + (spentByCategory[b.categorie] || 0), 0)
-                      return totalSpent.toLocaleString("fr-FR")
-                    })()
-                 }€</span>
-               </div>
-               <div className="h-3 bg-white/[0.05] rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-rose-600 to-rose-400 transition-all duration-1000"
-                    style={{ 
-                      width: `${(() => {
-                        const parentBudget = budgets.find(pb => pb.categorie === selectedCategory)
-                        const totalSpent = budgets
-                          .filter(b => b.categorie.startsWith(selectedCategory))
-                          .reduce((acc, b) => acc + (spentByCategory[b.categorie] || 0), 0)
-                        return parentBudget && parentBudget.montant_max > 0 
-                          ? Math.min((totalSpent / parentBudget.montant_max) * 100, 100) 
-                          : 0
-                      })()}%` 
-                    }}
-                  />
-               </div>
-             </div>
-           </div>
-
-           <div className="flex items-center justify-between pt-2">
-             <div className="flex items-center gap-4">
-               <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">Sous-catégories trackées</h3>
-             </div>
-             
-             <select 
-               onChange={(e) => {
-                 if (e.target.value) handleAddSub(e.target.value)
-                 e.target.value = ""
-               }}
-               className="bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/60 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer hover:bg-white/10 transition-all"
-             >
-               <option value="">+ Ajouter une sous-catégorie</option>
-               {(CATEGORY_STYLES[selectedCategory]?.subcategories || [])
-                 .filter(sub => !budgets.some(b => b.categorie === `${selectedCategory} > ${sub}`))
-                 .map(sub => (
-                   <option key={sub} value={sub} className="bg-[#121216]">{sub}</option>
-                 ))
-               }
-             </select>
-           </div>
-        </div>
+        <BudgetFocusView
+          selectedCategory={selectedCategory}
+          budgets={budgets}
+          spentByCategory={spentByCategory}
+          activeSalaryPlan={activeSalaryPlan}
+          onAddSub={handleAddSub}
+        />
       )}
 
-      {/* Budget Cards Grid */}
       {filteredBudgets.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 gap-4">
           <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
@@ -444,11 +179,8 @@ export default function BudgetsPage() {
             const isSub = b.categorie.includes(' > ')
             const parentName = isSub ? b.categorie.split(' > ')[0] : null
             
-            // On cherche le budget parent dans les budgets existants
             let parentBudget = parentName ? budgets.find(pb => pb.categorie === parentName) : null
             
-            // Si on ne le trouve pas mais qu'on a un plan de salaire, on crée un "objet" virtuel
-            // pour que les sliders puissent fonctionner avec la capacité du plan.
             if (!parentBudget && parentName && activeSalaryPlan) {
                const planItem = activeSalaryPlan.items.find(c => c.categorie === parentName)
                if (planItem) {
@@ -478,10 +210,112 @@ export default function BudgetsPage() {
         </div>
       )}
 
-      {/* Form Modal */}
       {showForm && (
         <BudgetForm initial={editTarget} onSave={setBudget} onClose={handleClose} />
       )}
+    </div>
+  )
+}
+
+function BudgetFocusView({
+  selectedCategory,
+  budgets,
+  spentByCategory,
+  activeSalaryPlan,
+  onAddSub,
+}: {
+  selectedCategory: string
+  budgets: Budget[]
+  spentByCategory: Record<string, number>
+  activeSalaryPlan: any
+  onAddSub: (name: string) => void
+}) {
+  const budgetObj = budgets.find(b => b.categorie === selectedCategory)
+  const planItem = activeSalaryPlan?.items.find((c: any) => c.categorie === selectedCategory)
+  const capacity = budgetObj?.montant_max || planItem?.montant || 0
+
+  const subBudgets = budgets.filter(b => b.categorie.startsWith(`${selectedCategory} > `))
+  const parentStyle = CATEGORY_STYLES[selectedCategory] || { couleur: '#6366f1' }
+
+  const totalSpent = budgets
+    .filter(b => b.categorie.startsWith(selectedCategory))
+    .reduce((acc, b) => acc + (spentByCategory[b.categorie] || 0), 0)
+
+  const spentPct = capacity > 0 ? Math.min((totalSpent / capacity) * 100, 100) : 0
+
+  return (
+    <div className="space-y-6 mb-8 animate-in slide-in-from-top-2 duration-300">
+      <div className="flex items-center justify-between">
+        <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+          {selectedCategory}
+        </h3>
+        <div className="text-right">
+          <p className="text-[10px] text-white/40 uppercase font-black tracking-widest">Capacité Totale</p>
+          <p className="text-xl font-black text-white">{capacity.toLocaleString("fr-FR")} €</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        <div className="glass-card p-4 rounded-2xl border border-white/5 bg-white/[0.02] space-y-3">
+          <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-indigo-400/60">
+            <span>Planification des Sous-Budgets</span>
+            <span>Allocations (%)</span>
+          </div>
+          <div className="relative h-3 bg-white/[0.05] rounded-full overflow-hidden flex gap-0.5 p-0.5">
+            {subBudgets.map((sub, idx, arr) => {
+              const width = capacity > 0 ? (sub.montant_max / capacity) * 100 : 0
+              const opacity = 1 - (idx / (arr.length || 1)) * 0.6
+              
+              return (
+                <div 
+                  key={sub.categorie}
+                  className="h-full transition-all duration-700 first:rounded-l-full last:rounded-r-full"
+                  style={{ 
+                    width: `${width}%`, 
+                    backgroundColor: parentStyle.couleur,
+                    opacity
+                  }}
+                />
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="glass-card p-4 rounded-2xl border border-white/11 bg-white/[0.04] space-y-3">
+          <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-rose-400/60">
+            <span>Dépenses Réelles de l'Enveloppe</span>
+            <span>{totalSpent.toLocaleString("fr-FR")}€</span>
+          </div>
+          <div className="h-3 bg-white/[0.05] rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-rose-600 to-rose-400 transition-all duration-1000"
+              style={{ width: `${spentPct}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center gap-4">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">Sous-catégories trackées</h3>
+        </div>
+        
+        <select 
+          onChange={(e) => {
+            if (e.target.value) onAddSub(e.target.value)
+            e.target.value = ""
+          }}
+          className="bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/60 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer hover:bg-white/10 transition-all"
+        >
+          <option value="">+ Ajouter une sous-catégorie</option>
+          {(CATEGORY_STYLES[selectedCategory]?.subcategories || [])
+            .filter(sub => !budgets.some(b => b.categorie === `${selectedCategory} > ${sub}`))
+            .map(sub => (
+              <option key={sub} value={sub} className="bg-[#121216]">{sub}</option>
+            ))
+          }
+        </select>
+      </div>
     </div>
   )
 }

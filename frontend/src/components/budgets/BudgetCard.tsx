@@ -2,10 +2,10 @@
 import { useState, useEffect } from "react"
 import { Trash2, AlertTriangle, CheckCircle2, Check, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getCategoryMetadata } from "@/lib/categories"
 import { getCategoryIcon } from "@/lib/icons"
 import type { Budget } from "@/api"
 import { useFinancial } from "@/context/FinancialDataContext"
+import { useBudgetCardCalculations } from "@/hooks/useBudgetCalculations"
 
 interface BudgetCardProps {
   budget: Budget
@@ -28,39 +28,29 @@ export function BudgetCard({
   const [localAmount, setLocalAmount] = useState(budget.montant_max)
   const [isPending, setIsPending] = useState(false)
   
-  // Sync local amount with prop if budget changes externally
   useEffect(() => {
     setLocalAmount(budget.montant_max)
   }, [budget.montant_max])
 
-  const totalForecastedSpent = spent + planned
-  const totalForecastedIncome = income + plannedIncome
-  const netForecasted = totalForecastedIncome - totalForecastedSpent
-  
-  const pctRealSpent = budget.montant_max > 0 ? Math.min((spent / budget.montant_max) * 100, 100) : 0
-  const pctPlannedSpent = budget.montant_max > 0 ? Math.min((planned / budget.montant_max) * 100, 100 - pctRealSpent) : 0
-  const pctIncome = budget.montant_max > 0 ? Math.min((totalForecastedIncome / budget.montant_max) * 100, 100) : 0
-  
-  const remainingActual = budget.montant_max - spent
-  const remainingForecast = budget.montant_max - totalForecastedSpent
-  
-  const isOver = spent > budget.montant_max
-  const isPotentiallyOver = !isOver && totalForecastedSpent > budget.montant_max
-  const isWarning = budget.montant_max > 0 && (spent / budget.montant_max) >= 0.8 && !isOver
+  const {
+    pctRealSpent,
+    pctPlannedSpent,
+    pctIncome,
+    remainingActual,
+    remainingForecast,
+    isOver,
+    isPotentiallyOver,
+    isWarning,
+    localPct,
+    cardColor,
+  } = useBudgetCardCalculations(
+    budget, spent, planned, income, plannedIncome,
+    allCategories, localAmount, parentBudget, isFiltered
+  )
 
-  const catMeta = getCategoryMetadata(allCategories, budget.categorie)
-  const Icon = getCategoryIcon(catMeta.icone)
-
-  // Application des dégradés du parent pour les sous-catégories
-  const cardColor = catMeta.couleur
-  
+  const Icon = getCategoryIcon(getCategoryMetadata(allCategories, budget.categorie).icone)
   const isSub = budget.categorie.includes(' > ')
   const hasChanged = Math.abs(localAmount - budget.montant_max) > 0.01
-
-  // Calcul du % basé sur le montant local pour la fluidité
-  const localPct = (isSub && parentBudget && parentBudget.montant_max > 0) 
-    ? Math.round((localAmount / parentBudget.montant_max) * 100) 
-    : 0
 
   const handleSliderChange = (newPct: number) => {
     if (!parentBudget) return
@@ -83,6 +73,8 @@ export function BudgetCard({
     setLocalAmount(budget.montant_max)
   }
 
+  const totalForecastedIncome = income + plannedIncome
+
   return (
     <div
       className={cn(
@@ -96,11 +88,9 @@ export function BudgetCard({
       )}
       onClick={() => { if (!isFiltered) onEdit(budget) }}
     >
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center relative overflow-hidden" style={{ backgroundColor: `${cardColor}20` }}>
-            {/* Overlay pour le dégradé sub */}
             {isSub && <div className="absolute inset-0 bg-black/20" />}
             <Icon className="w-5 h-5 relative z-10" style={{ color: cardColor }} />
           </div>
@@ -156,7 +146,6 @@ export function BudgetCard({
         </div>
       </div>
 
-      {/* Interactive Slider (Only in Focus Mode for Subs) */}
       {isFiltered && isSub && parentBudget && (
         <div className="mb-6 space-y-2 px-1" onClick={(e) => e.stopPropagation()}>
           <div className="flex justify-between items-center">
@@ -183,9 +172,7 @@ export function BudgetCard({
         </div>
       )}
 
-      {/* Progress Bars */}
       <div className={cn("space-y-4 transition-opacity", hasChanged && "opacity-40")}>
-        {/* Barre Dépenses (uniquement si une limite est définie OU si on est en mode Focus pour permettre l'ajustement) */}
         {(budget.montant_max > 0 || (isFiltered && isSub)) ? (
           <div className="space-y-1">
             <div className="flex justify-between text-[9px] font-bold uppercase text-rose-400/60 tracking-wider">
@@ -212,7 +199,6 @@ export function BudgetCard({
           </div>
         )}
 
-        {/* Barre Revenus (Only if relevant) */}
         {(totalForecastedIncome > 0) && !isSub && (
           <div className="space-y-1">
             <div className="flex justify-between text-[9px] font-bold uppercase text-emerald-400/60 tracking-wider">
@@ -228,7 +214,6 @@ export function BudgetCard({
           </div>
         )}
 
-        {/* Barre Déjà payé / Reste */}
         <div className="pt-2 border-t border-white/[0.05] flex items-center justify-between">
           <div className="flex flex-col text-left">
             <span className="text-[9px] font-bold uppercase text-white/30 tracking-wider">Déjà payé</span>
@@ -251,4 +236,13 @@ export function BudgetCard({
       </div>
     </div>
   )
+}
+
+function getCategoryMetadata(allCategories: any[], categorie: string) {
+  for (const cat of allCategories || []) {
+    if (cat.nom === categorie) return cat
+    const sub = (cat.sous_categories || []).find((s: any) => s.nom === categorie)
+    if (sub) return sub
+  }
+  return { icone: 'help-circle', couleur: '#666' }
 }
