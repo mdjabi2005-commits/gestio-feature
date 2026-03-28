@@ -75,6 +75,7 @@ graph TD
 | Methode | Path | Entrée | Sortie |
 |---------|------|--------|---------|
 | `GET` | `/api/dashboard/` | - | `DashboardSummary` |
+| `GET` | `/api/dashboard/categories` | - | `List[Dict]` (Hierarchical Categories) |
 
 ## Fonctionnalités spéciales
 

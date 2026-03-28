@@ -81,20 +81,25 @@ class AttachmentRepository:
         self, attachment: TransactionAttachment, conn: sqlite3.Connection = None
     ) -> Optional[int]:
         if conn:
-            return self._add_attachment_with_conn(attachment, conn)
+            return self._add_attachment_with_conn(attachment, conn, commit=False)
 
         conn = None
         try:
             conn = get_db_connection(db_path=self.db_path)
-            return self._add_attachment_with_conn(attachment, conn)
+            result = self._add_attachment_with_conn(attachment, conn, commit=True)
+            close_connection(conn)
+            return result
         except sqlite3.Error as e:
             logger.error(f"Erreur add_attachment: {e}")
+            if conn:
+                close_connection(conn)
             return None
-        finally:
-            close_connection(conn)
 
     def _add_attachment_with_conn(
-        self, attachment: TransactionAttachment, conn: sqlite3.Connection
+        self,
+        attachment: TransactionAttachment,
+        conn: sqlite3.Connection,
+        commit: bool = True,
     ) -> Optional[int]:
         try:
             cursor = conn.cursor()
@@ -108,10 +113,14 @@ class AttachmentRepository:
                     attachment.file_path,
                 ),
             )
+            if commit:
+                conn.commit()
             new_id = cursor.lastrowid
             return new_id
         except sqlite3.Error as e:
             logger.error(f"Erreur add_attachment: {e}")
+            if commit:
+                conn.rollback()
             return None
 
     def delete_attachment(self, attachment_id: int) -> bool:

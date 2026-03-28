@@ -4,7 +4,8 @@
 
 ```
 src/app/transactions/
-└── page.tsx                    # Page principale
+├── page.tsx                    # Page principale (Vue Liste)
+└── excel/page.tsx              # Page Haute Densité (Vue Excel)
 
 src/context/
 └── FinancialDataContext.tsx    # Context provider (et useFinancial)
@@ -102,8 +103,10 @@ graph TD
 | Methode | Endpoint | Description |
 |---------|----------|-------------|
 | `GET` | `/api/dashboard/` | Résumé financier (totaux, catégories, historique) |
+| `GET` | `/api/dashboard/categories` | Structure hiérarchique des catégories (YAML) |
 | `GET` | `/api/transactions/` | Liste toutes les transactions |
 | `POST` | `/api/transactions/` | Ajouter une transaction |
+| `PATCH` | `/api/transactions/bulk` | Mise à jour en masse (Mode Excel) |
 | `DELETE` | `/api/transactions/:id` | Supprimer une transaction |
 
 ## Entrées → Sorties

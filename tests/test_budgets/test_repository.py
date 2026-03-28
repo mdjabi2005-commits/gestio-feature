@@ -12,28 +12,10 @@ from backend.domains.budgets.repository import BudgetRepository
 def budget_repo(db_path) -> BudgetRepository:
     """Repository branché sur la DB de test."""
     repo = BudgetRepository(db_path=db_path)
-    from backend.domains.budgets.repository import init_budget_table
+    from backend.domains.transactions.database.schema import init_budgets_table
 
-    init_budget_table(db_path)
+    init_budgets_table(db_path)
     return repo
-
-
-def init_budget_table(db_path):
-    """Initialise la table budgets pour les tests."""
-    import sqlite3
-
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS budgets (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            categorie TEXT NOT NULL,
-            montant_max REAL NOT NULL,
-            date_creation TEXT
-        )
-    """)
-    conn.commit()
-    conn.close()
 
 
 @pytest.fixture

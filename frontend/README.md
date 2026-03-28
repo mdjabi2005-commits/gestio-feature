@@ -9,6 +9,7 @@ src/
 ├── app/                    # Pages (Next.js App Router)
 │   ├── dashboard/          # Page dashboard
 │   ├── transactions/       # Page transactions
+│   │   └── excel/          # - Mode Haute Densité (Excel)
 │   ├── recurrences/        # Page récurrences
 │   ├── budgets/            # Page budgets
 │   ├── objectifs/          # Page objectifs

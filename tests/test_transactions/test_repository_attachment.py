@@ -38,9 +38,6 @@ def test_transaction_id(db_path) -> int:
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(
-    reason="Bug backend: add_attachment ne fait pas de commit (repository_attachment.py)"
-)
 def test_attachment_crud(attachment_repo, test_transaction_id):
     """Test complet du cycle CRUD des attachments."""
     attachment = TransactionAttachment(

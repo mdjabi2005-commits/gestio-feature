@@ -184,9 +184,6 @@ def test_get_filtered_par_date(repo: TransactionRepository, transactions_batch: 
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(
-    reason="Bug backend: compte_id non inséré dans la DB (repository.py ligne 75-105)"
-)
 def test_add_with_compte_id(repo: TransactionRepository):
     """Ajoute une transaction avec compte_id."""
     tx = Transaction(

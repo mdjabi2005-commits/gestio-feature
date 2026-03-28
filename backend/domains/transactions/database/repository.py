@@ -75,8 +75,8 @@ class TransactionRepository:
             query = """
                 INSERT INTO transactions
                 (type, categorie, sous_categorie, description, montant, date,
-                 source, external_id, echeance_id, objectif_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 source, external_id, compte_id, echeance_id, objectif_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
 
             # Handle attachment if provided in the input (as a temporary field)
@@ -99,6 +99,7 @@ class TransactionRepository:
                         data["date"],
                         data["source"],
                         data["external_id"],
+                        data.get("compte_id"),
                         data["echeance_id"],
                         data["objectif_id"],
                     ),
@@ -242,14 +243,18 @@ class TransactionRepository:
             return False
 
     def update_attachment(self, transaction_id: int, attachment_path: str) -> bool:
-        """Met à jour le chemin de la pièce jointe pour une transaction."""
+        """Ajoute une pièce jointe pour une transaction (méthode legacy)."""
         try:
-            query = "UPDATE transactions SET attachment=? WHERE id=?"
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(query, (attachment_path, transaction_id))
-                return cursor.rowcount > 0
-        except sqlite3.Error as e:
+            from .repository_attachment import attachment_repository
+            from .model_attachment import TransactionAttachment
+
+            attachment = TransactionAttachment(
+                transaction_id=transaction_id,
+                file_path=attachment_path,
+            )
+            new_id = attachment_repository.add_attachment(attachment)
+            return new_id is not None
+        except Exception as e:
             logger.error(f"Erreur update_attachment: {e}")
             return False
 
