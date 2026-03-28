@@ -19,6 +19,15 @@ from backend.shared.database import db_transaction
 router = APIRouter(prefix="/api/echeances", tags=["echeances"])
 repo = EcheanceRepository()
 
+AUTOMATIC_FREQUENCIES = {
+    "mensuel",
+    "mensuelle",
+    "annuel",
+    "annuelle",
+    "trimestriel",
+    "trimestrielle",
+}
+
 
 def _get_paid_this_month() -> set:
     """Récupère les IDs des échéances payées ce mois."""
@@ -48,54 +57,81 @@ def _get_paid_dates_map() -> dict:
         for row in cursor.fetchall():
             eid = row["echeance_id"]
             d = row["date"][:10]
-            if eid not in res:
-                res[eid] = []
-            res[eid].append(d)
+            res.setdefault(eid, []).append(d)
         return res
 
 
-class EcheanceResponse:
-    """Format de réponse attendu par le frontend."""
+def _get_payment_method(frequence: str) -> str:
+    """Détermine si le paiement est automatique selon la fréquence."""
+    return "automatic" if frequence.lower() in AUTOMATIC_FREQUENCIES else "manual"
 
-    def __init__(self, echeance: Echeance, is_paid: bool = False):
-        next_date = calculate_next_occurrence(echeance)
-        today = date.today()
 
-        self.id = str(echeance.id) if echeance.id else ""
-        self.name = echeance.description or echeance.nom or ""
-        self.category = echeance.categorie
-        self.sous_categorie = echeance.sous_categorie or ""
-        self.categoryType = echeance.sous_categorie or ""
-        self.date = next_date.strftime("%d %b.") if next_date else ""
-        self.daysRemaining = (next_date - today).days if next_date else 0
-        self.amount = echeance.montant
-        self.type = "income" if echeance.type == "revenu" else "expense"
-        self.frequence = echeance.frequence
-        self.date_debut = echeance.date_debut.isoformat() if echeance.date_debut else ""
-        self.date_fin = echeance.date_fin.isoformat() if echeance.date_fin else None
-        self.description = echeance.description or ""
-        self.date_prevue = next_date.isoformat() if next_date else ""
+def _build_echeance_response(echeance: Echeance, is_paid: bool = False) -> dict:
+    """Construit la réponse JSON pour une échéance."""
+    next_date = calculate_next_occurrence(echeance)
+    today = date.today()
 
-        if is_paid:
-            self.status = "paid"
-        elif echeance.statut == "active":
-            self.status = "overdue" if (next_date and next_date < today) else "pending"
-        else:
-            self.status = "paid"
-
-        self.paymentMethod = (
-            "automatic"
-            if echeance.frequence
-            in [
-                "mensuel",
-                "mensuelle",
-                "annuel",
-                "annuelle",
-                "trimestriel",
-                "trimestrielle",
-            ]
-            else "manual"
+    status = (
+        "paid"
+        if is_paid
+        else (
+            "overdue"
+            if echeance.statut == "active" and next_date and next_date < today
+            else "pending"
+            if echeance.statut == "active"
+            else "paid"
         )
+    )
+
+    return {
+        "id": str(echeance.id) if echeance.id else "",
+        "name": echeance.description or echeance.nom or "",
+        "category": echeance.categorie,
+        "sous_categorie": echeance.sous_categorie or "",
+        "categoryType": echeance.sous_categorie or "",
+        "date": next_date.strftime("%d %b.") if next_date else "",
+        "daysRemaining": (next_date - today).days if next_date else 0,
+        "amount": echeance.montant,
+        "type": "income" if echeance.type == "revenu" else "expense",
+        "frequence": echeance.frequence,
+        "date_debut": echeance.date_debut.isoformat() if echeance.date_debut else "",
+        "date_fin": echeance.date_fin.isoformat() if echeance.date_fin else None,
+        "description": echeance.description or "",
+        "date_prevue": next_date.isoformat() if next_date else "",
+        "status": status,
+        "paymentMethod": _get_payment_method(echeance.frequence),
+    }
+
+
+def _build_calendar_occurrence(o: dict, today: date, paid_map: dict) -> dict:
+    """Construit une occurrence de calendrier."""
+    iso_date = o["date"][:10]
+    echeance_id = o["id"]
+    is_paid = echeance_id in paid_map and iso_date in paid_map[echeance_id]
+
+    status = (
+        "paid"
+        if is_paid
+        else ("overdue" if iso_date < today.isoformat() else "pending")
+    )
+
+    return {
+        "id": f"{echeance_id}-{iso_date}",
+        "echeance_base_id": echeance_id,
+        "name": o["nom"],
+        "category": o["categorie"],
+        "sous_categorie": o.get("sous_categorie", ""),
+        "categoryType": o.get("sous_categorie", ""),
+        "date": date.fromisoformat(iso_date).strftime("%d %b."),
+        "date_prevue": iso_date,
+        "date_debut": o.get("date_debut", iso_date),
+        "date_fin": o.get("date_fin"),
+        "amount": o["montant"],
+        "type": "income" if o["type"] == "revenu" else "expense",
+        "status": status,
+        "frequence": o["frequence"],
+        "paymentMethod": _get_payment_method(o["frequence"]),
+    }
 
 
 @router.get("/")
@@ -105,7 +141,7 @@ async def get_echeances():
         echeances = repo.get_all()
         paid_ids = _get_paid_this_month()
         return [
-            EcheanceResponse(e, is_paid=e.id in paid_ids).__dict__ for e in echeances
+            _build_echeance_response(e, is_paid=e.id in paid_ids) for e in echeances
         ]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -118,47 +154,16 @@ async def get_calendar_echeances():
         today = date.today()
         start_month = today - relativedelta(months=6)
         end_month = today + relativedelta(months=24)
-
         paid_map = _get_paid_dates_map()
+
         all_occurrences = []
-
         current = start_month.replace(day=1)
+
         while current <= end_month:
-            occ = repo.get_occurrences_for_month(current.year, current.month)
-            for o in occ:
-                iso_date = o["date"][:10]
-                echeance_id = o["id"]
-                is_paid = echeance_id in paid_map and iso_date in paid_map[echeance_id]
-
-                status = (
-                    "paid"
-                    if is_paid
-                    else ("overdue" if iso_date < today.isoformat() else "pending")
-                )
-
-                all_occurrences.append(
-                    {
-                        "id": f"{echeance_id}-{iso_date}",
-                        "echeance_base_id": echeance_id,
-                        "name": o["nom"],
-                        "category": o["categorie"],
-                        "sous_categorie": o.get("sous_categorie", ""),
-                        "categoryType": o.get("sous_categorie", ""),
-                        "date": date.fromisoformat(iso_date).strftime("%d %b."),
-                        "date_prevue": iso_date,
-                        "date_debut": o.get("date_debut", iso_date),
-                        "date_fin": o.get("date_fin"),
-                        "amount": o["montant"],
-                        "type": "income" if o["type"] == "revenu" else "expense",
-                        "status": status,
-                        "frequence": o["frequence"],
-                        "paymentMethod": "automatic"
-                        if o["frequence"]
-                        in ["mensuel", "mensuelle", "annuel", "annuelle"]
-                        else "manual",
-                    }
-                )
-
+            occurrences = repo.get_occurrences_for_month(current.year, current.month)
+            all_occurrences.extend(
+                _build_calendar_occurrence(o, today, paid_map) for o in occurrences
+            )
             current += relativedelta(months=1)
 
         return all_occurrences
