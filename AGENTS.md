@@ -189,3 +189,13 @@ Ils sont définis dynamiquement dans : `backend/config/paths.py`.
 1. **Mettre à jour les READMEs** des dossiers concernés
 2. **Créer ou mettre à jour** le fichier `LOGIC_FLOW.md` si le flux de données a changé
 3. **Vérifier** que la documentation reflète les nouvelles structures
+
+**TOUJOURS** vérifier et mettre à jour :
+- **Les tests** : Lancer `python -m pytest tests/ -v` et corriger les tests cassés
+- **Les READMEs/LOGIC_FLOWs** : S'assurer qu'ils sont à jour avec le code
+
+> [!IMPORTANT]
+> Quand l'utilisateur dit **"fin de session"** ou **"session terminée"** :
+> 1. Lancer les tests (`python -m pytest tests/ -v`) et corriger les échecs
+> 2. Passer en revue **tous** les READMEs et LOGIC_FLOWs modifiés pendant la session
+> 3. Les mettre à jour si besoin (nouvelles fonctions, endpoints, erreurs courantes)
