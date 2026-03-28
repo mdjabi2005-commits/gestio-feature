@@ -8,10 +8,10 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from backend.api.ocr.ocr import (
-    _archive_file,
-    _archive_ticket_file,
-    _archive_payroll_file,
+from backend.api.attachments.attachments import (
+    archive_file as _archive_file,
+    archive_ticket_file,
+    archive_payroll_file,
 )
 from backend.domains.transactions.database.model import Transaction
 
