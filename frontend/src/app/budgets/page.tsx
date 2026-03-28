@@ -207,19 +207,22 @@ export default function BudgetsPage() {
               const fixedExpenseCategories = new Set<string>();
 
               echeances.forEach(ech => {
-                if (ech.statut !== 'active' && ech.statut !== 'overdue') return;
+                // Les statuts retournés par l'API sont 'pending', 'overdue' ou 'paid'
+                if (ech.status === 'paid' || ech.status === 'inactive') return;
                 
                 const occurrences = getMonthOccurrences(ech, year, month);
-                const totalAmount = occurrences.length * Number(ech.montant);
+                const amount = Number(ech.amount) || 0;
+                const totalAmount = occurrences.length * amount;
                 
                 if (totalAmount > 0) {
-                  if (ech.type === 'revenu') {
+                  if (ech.type === 'income') {
                     totalStrategicIncome += totalAmount;
                   } else {
                     totalStrategicExpense += totalAmount;
-                    fixedExpenseCategories.add(ech.categorie.trim().toLowerCase());
+                    const cat = ech.category.trim().toLowerCase();
+                    fixedExpenseCategories.add(cat);
                     if (ech.sous_categorie) {
-                      fixedExpenseCategories.add(`${ech.categorie.trim()} > ${ech.sous_categorie.trim()}`.toLowerCase());
+                      fixedExpenseCategories.add(`${cat} > ${ech.sous_categorie.trim().toLowerCase()}`);
                     }
                   }
                 }

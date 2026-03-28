@@ -46,8 +46,8 @@ export function getMonthOccurrences(echeance: Echeance, year: number, month: num
  * en excluant les échéances déjà payées.
  */
 function calculatePlannedByType(
-  type: 'depense' | 'revenu',
-  echeances: Echeance[],
+  type: 'expense' | 'income',
+  echeances: any[],
   transactions: Transaction[],
   year: number,
   month: number
@@ -58,34 +58,39 @@ function calculatePlannedByType(
     transactions
       .filter(t => {
         const d = new Date(t.date);
-        return t.echeance_id && d.getFullYear() === year && d.getMonth() === month && t.type === type;
+        return t.echeance_id && d.getFullYear() === year && d.getMonth() === month && 
+               (type === 'expense' ? t.type === 'depense' : t.type === 'revenu');
       })
       .map(t => t.echeance_id)
   );
 
   echeances.forEach(ech => {
-    if (ech.statut !== 'active' && ech.statut !== 'overdue') return;
+    // Les statuts activés incluent active, pending, overdue
+    if (ech.status === 'paid' || ech.status === 'inactive') return;
     if (ech.type !== type) return;
 
     const occurrences = getMonthOccurrences(ech, year, month);
+    const amount = Number(ech.amount) || 0;
     
     if (paidEcheanceIds.has(ech.id)) {
-      if (!ech.frequence.includes("hebdomadaire") && !ech.frequence.includes("quotidien")) {
+      const freq = (ech.frequence || "").toLowerCase();
+      if (!freq.includes("hebdomadaire") && !freq.includes("quotidien")) {
         return;
       }
       
-      const paidCount = transactions.filter(t => t.echeance_id === ech.id && t.type === type).length;
+      const paidCount = transactions.filter(t => t.echeance_id === ech.id && (type === 'expense' ? t.type === 'depense' : t.type === 'revenu')).length;
       const totalOccurrences = occurrences.length;
       const remainingOccurrences = Math.max(0, totalOccurrences - paidCount);
       
       if (remainingOccurrences > 0) {
-        plannedMap[ech.categorie] = (plannedMap[ech.categorie] ?? 0) + (remainingOccurrences * ech.montant);
+        const cat = ech.category.trim();
+        plannedMap[cat] = (plannedMap[cat] ?? 0) + (remainingOccurrences * amount);
       }
     } else {
-      const totalAmount = occurrences.length * ech.montant;
+      const totalAmount = occurrences.length * amount;
       if (totalAmount > 0) {
-        const parentKey = ech.categorie;
-        const subKey = ech.sous_categorie ? `${ech.categorie} > ${ech.sous_categorie}` : null;
+        const parentKey = ech.category.trim();
+        const subKey = ech.sous_categorie ? `${parentKey} > ${ech.sous_categorie.trim()}` : null;
         
         plannedMap[parentKey] = (plannedMap[parentKey] ?? 0) + totalAmount;
         if (subKey) {
@@ -99,21 +104,21 @@ function calculatePlannedByType(
 }
 
 export function calculatePlannedExpenses(
-  echeances: Echeance[],
+  echeances: any[],
   transactions: Transaction[],
   year: number,
   month: number
 ): Record<string, number> {
-  return calculatePlannedByType('depense', echeances, transactions, year, month);
+  return calculatePlannedByType('expense', echeances, transactions, year, month);
 }
 
 export function calculatePlannedIncomes(
-  echeances: Echeance[],
+  echeances: any[],
   transactions: Transaction[],
   year: number,
   month: number
 ): Record<string, number> {
-  return calculatePlannedByType('revenu', echeances, transactions, year, month);
+  return calculatePlannedByType('income', echeances, transactions, year, month);
 }
 
 // Keep backward compatibility for now if needed, but we should update callers
