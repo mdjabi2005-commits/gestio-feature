@@ -23,7 +23,7 @@ export default function BudgetsPage() {
     const map: Record<string, number> = {}
     transactions.forEach(t => {
       const d = new Date(t.date)
-      if (t.type === "Dépense" && d.getMonth() === month && d.getFullYear() === year) {
+      if (t.type === "depense" && d.getMonth() === month && d.getFullYear() === year) {
         map[t.categorie] = (map[t.categorie] ?? 0) + t.montant
       }
     })
@@ -34,7 +34,7 @@ export default function BudgetsPage() {
     const map: Record<string, number> = {}
     transactions.forEach(t => {
       const d = new Date(t.date)
-      if (t.type === "Revenu" && d.getMonth() === month && d.getFullYear() === year) {
+      if (t.type === "revenu" && d.getMonth() === month && d.getFullYear() === year) {
         map[t.categorie] = (map[t.categorie] ?? 0) + t.montant
       }
     })

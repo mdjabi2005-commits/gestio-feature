@@ -26,7 +26,7 @@ class AttachmentService:
         filename: str,
         category: str = "Autre",
         subcategory: str = "",
-        transaction_type: str = "Dépense",
+        transaction_type: str = "depense",
     ) -> bool:
         """
         Sauvegarde le fichier dans le dossier organisé et enregistre les métadonnées en BDD.

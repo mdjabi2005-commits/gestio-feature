@@ -69,7 +69,7 @@ class EcheanceResponse:
         self.date = next_date.strftime("%d %b.") if next_date else ""
         self.daysRemaining = (next_date - today).days if next_date else 0
         self.amount = echeance.montant
-        self.type = "income" if echeance.type == "Revenu" else "expense"
+        self.type = "income" if echeance.type == "revenu" else "expense"
         self.frequence = echeance.frequence
         self.date_debut = echeance.date_debut.isoformat() if echeance.date_debut else ""
         self.date_fin = echeance.date_fin.isoformat() if echeance.date_fin else None
@@ -149,7 +149,7 @@ async def get_calendar_echeances():
                         "date_debut": o.get("date_debut", iso_date),
                         "date_fin": o.get("date_fin"),
                         "amount": o["montant"],
-                        "type": "income" if o["type"] == "Revenu" else "expense",
+                        "type": "income" if o["type"] == "revenu" else "expense",
                         "status": status,
                         "frequence": o["frequence"],
                         "paymentMethod": "automatic"

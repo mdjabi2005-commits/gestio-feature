@@ -32,7 +32,7 @@ const AddTransactionModal: React.FC<Props> = ({
     return `${year}-${month}-${day}`;
   };
 
-  const [type, setType] = useState<'Dépense' | 'Revenu'>(initialData?.type || 'Dépense');
+  const [type, setType] = useState<'depense' | 'revenu'>(initialData?.type || 'depense');
   const [date, setDate] = useState(initialData?.date || getLocalDate());
   const [amount, setAmount] = useState(initialData?.montant?.toString() || '');
   const [category, setCategory] = useState(initialData?.categorie || 'Alimentation');

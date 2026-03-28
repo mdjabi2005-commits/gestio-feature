@@ -55,7 +55,7 @@ export const CATEGORY_STYLES: Record<string, { couleur: string; icone: string; s
 }
 
 export const CATEGORIES = Object.entries(CATEGORY_STYLES)
-  .filter(([name]) => name !== "Revenu" && name !== "Dépense")
+  .filter(([name]) => name !== "revenu" && name !== "depense")
   .map(([name, style]) => ({
   value: name,
   label: name,

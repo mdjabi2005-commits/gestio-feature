@@ -61,6 +61,7 @@ class Transaction(BaseModel):
             "dépense": TYPE_DEPENSE,
             "expense": TYPE_DEPENSE,
             "revenu": TYPE_REVENU,
+            "revenue": TYPE_REVENU,
             "income": TYPE_REVENU,
         }
         normalized = mapping.get(v.strip().lower(), v.strip())
@@ -143,7 +144,7 @@ class Transaction(BaseModel):
         "extra": "ignore",
         "json_schema_extra": {
             "example": {
-                "type": "Dépense",
+                "type": "depense",
                 "categorie": "Alimentation",
                 "sous_categorie": "Restaurant",
                 "montant": 42.50,

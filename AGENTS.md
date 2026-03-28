@@ -92,8 +92,11 @@ Chercher s'il existe un fichier `LOGIC_FLOW.md` ou une documentation dans le REA
 
 | Fichier modifié | Fichier à synchroniser |
 |-----------------|------------------------|
-| `backend/.../model.py` (Pydantic) | `frontend/src/api.ts` (TypeScript) |
-| `backend/api/*.py` (nouveau endpoint) | `frontend/src/api.ts` (nouvelle méthode) |
+| `backend/domains/transactions/database/model.py` (Pydantic) | `frontend/src/api/types.ts` (TypeScript) |
+| `backend/api/*.py` (nouveau endpoint) | `frontend/src/api/types.ts` (nouvelle méthode) |
+
+> [!TIP]
+> **Standardisation des types** : Les types de transactions (`type`) sont stockés en **minuscule** et sans accent : `depense`, `revenu`.
 
 **Exemple** :
 > Tu ajoutes un champ `description` au modèle Transaction → Tu DOIS ajouter `description?: string` à l'interface Transaction dans `frontend/src/api.ts`
@@ -134,7 +137,7 @@ graph TB
         Repos[Repositories<br/>domains/*/database]
     end
 
-    DB[(SQLite<br/>base.db)]
+    DB[(SQLite finances.db)]
 
     Pages --> Context
     Context --> Hooks

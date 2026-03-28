@@ -11,7 +11,7 @@ export interface Echeance {
   montant: number;
   date_prevue: string;
   categorie: string;
-  type: 'Dépense' | 'Revenu';
+  type: 'depense' | 'revenu';
   status: 'pending' | 'paid' | 'overdue';
 }
 
@@ -60,7 +60,7 @@ export function EcheanceTable({ echeances, loading }: EcheanceTableProps) {
           <div className="flex items-center gap-4">
             <div className={cn(
               "p-2 rounded-lg border",
-              e.type === 'Revenu' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-rose-500/10 border-rose-500/20 text-rose-400"
+              e.type === 'revenu' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-rose-500/10 border-rose-500/20 text-rose-400"
             )}>
               <Clock className="w-4 h-4" />
             </div>
@@ -81,9 +81,9 @@ export function EcheanceTable({ echeances, loading }: EcheanceTableProps) {
           <div className="text-right">
             <p className={cn(
               "text-sm font-black tracking-tight",
-              e.type === 'Revenu' ? "text-emerald-400" : "text-foreground"
+              e.type === 'revenu' ? "text-emerald-400" : "text-foreground"
             )}>
-              {e.type === 'Revenu' ? '+' : '-'}{fmt(e.montant)}
+              {e.type === 'revenu' ? '+' : '-'}{fmt(e.montant)}
             </p>
             <div className={cn(
               "inline-flex items-center px-1.5 py-0.5 rounded-md border text-[9px] font-bold uppercase tracking-widest mt-1",

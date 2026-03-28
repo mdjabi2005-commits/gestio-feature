@@ -6,7 +6,7 @@
  * Formats a numeric amount as a EUR currency string.
  * Optionally adds a '+' or '-' sign based on transaction type.
  */
-export const formatCurrency = (amount: number, type?: "Dépense" | "Revenu" | "income" | "expense") => {
+export const formatCurrency = (amount: number, type?: "depense" | "revenu" | "income" | "expense") => {
   const formatted = new Intl.NumberFormat("fr-FR", {
     style: "currency",
     currency: "EUR",
@@ -15,7 +15,7 @@ export const formatCurrency = (amount: number, type?: "Dépense" | "Revenu" | "i
 
   if (!type) return formatted
   
-  const isIncome = type === "Revenu" || type === "income"
+  const isIncome = type === "revenu" || type === "income"
   return isIncome ? `+${formatted}` : `-${formatted}`
 }
 

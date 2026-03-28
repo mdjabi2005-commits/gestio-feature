@@ -39,7 +39,7 @@ const TransactionList: React.FC<Props> = ({ onSelect }) => {
               className="clickable-row"
             >
               <td>{t.date}</td>
-              <td className={t.type === 'Revenu' ? 'text-green' : 'text-red'}>{t.type}</td>
+              <td className={t.type === 'revenu' ? 'text-green' : 'text-red'}>{t.type}</td>
               <td>{t.categorie}</td>
               <td className="font-bold">{t.montant.toFixed(2)} €</td>
               <td>{t.description}</td>

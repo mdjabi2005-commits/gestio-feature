@@ -141,7 +141,7 @@ async def scan_batch(files: List[UploadFile] = File(...)):
                 formatted.append(
                     OCRScanResponse(
                         transaction=Transaction(
-                            type="Dépense",
+                            type="depense",
                             categorie="Erreur",
                             sous_categorie="Autre",
                             montant=0,
@@ -454,7 +454,7 @@ async def scan_income(file: UploadFile = File(...)):
             logger.error(f"Salary plan error: {e}")
             txs = [
                 Transaction(
-                    type="Revenu",
+                    type="revenu",
                     categorie="Épargne",
                     sous_categorie="Divers",
                     montant=net,

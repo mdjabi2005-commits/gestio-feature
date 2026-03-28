@@ -18,7 +18,7 @@ class Echeance(BaseModel):
     # ── Champs ──────────────────────────────────────────────
     id: Optional[int] = Field(None, description="ID unique")
     nom: str = Field(..., description="Nom (ex: Loyer, Netflix)")
-    type: Literal["Revenu", "Dépense"] = Field(..., description="Type")
+    type: Literal["revenu", "depense"] = Field(..., description="Type")
     categorie: str = Field(..., description="Catégorie principale")
     sous_categorie: Optional[str] = Field(None, description="Sous-catégorie")
     montant: float = Field(..., gt=0, description="Montant")
@@ -38,10 +38,10 @@ class Echeance(BaseModel):
         if not isinstance(v, str):
             return v
         normalized = v.strip().lower()
-        if normalized == "revenu":
-            return "Revenu"
-        if normalized in {"depense", "dépense"}:
-            return "Dépense"
+        if normalized == "revenu" or normalized == "revenue":
+            return "revenu"
+        if normalized in {"depense", "dépense", "expense"}:
+            return "depense"
         return v
 
     # ── Propriétés calculées ────────────────────────────────
@@ -69,7 +69,7 @@ class Echeance(BaseModel):
         json_schema_extra={
             "example": {
                 "nom": "Netflix",
-                "type": "Dépense",
+                "type": "depense",
                 "categorie": "Loisirs",
                 "sous_categorie": "Streaming",
                 "montant": 13.49,

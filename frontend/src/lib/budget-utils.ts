@@ -46,7 +46,7 @@ export function getMonthOccurrences(echeance: Echeance, year: number, month: num
  * en excluant les échéances déjà payées.
  */
 function calculatePlannedByType(
-  type: 'Dépense' | 'Revenu',
+  type: 'depense' | 'revenu',
   echeances: Echeance[],
   transactions: Transaction[],
   year: number,
@@ -98,7 +98,7 @@ export function calculatePlannedExpenses(
   year: number,
   month: number
 ): Record<string, number> {
-  return calculatePlannedByType('Dépense', echeances, transactions, year, month);
+  return calculatePlannedByType('depense', echeances, transactions, year, month);
 }
 
 export function calculatePlannedIncomes(
@@ -107,7 +107,7 @@ export function calculatePlannedIncomes(
   year: number,
   month: number
 ): Record<string, number> {
-  return calculatePlannedByType('Revenu', echeances, transactions, year, month);
+  return calculatePlannedByType('revenu', echeances, transactions, year, month);
 }
 
 // Keep backward compatibility for now if needed, but we should update callers

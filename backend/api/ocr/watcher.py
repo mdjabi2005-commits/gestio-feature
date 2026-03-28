@@ -97,7 +97,7 @@ def _process_file(file_path: str) -> bool:
             except SalaryPlanError:
                 transactions = [
                     Transaction(
-                        type="Revenu",
+                        type="revenu",
                         categorie="Épargne",
                         sous_categorie="Divers",
                         montant=net,

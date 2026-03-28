@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, ReactNode, useState } from 'react';
 import { useFinancialData } from '@/hooks/useFinancialData';
+import { useFinancialFilters } from '@/hooks/useFinancialFilters';
 import type { Transaction, Budget, Objectif } from '@/api';
 import { api } from '@/api';
 
@@ -10,7 +11,7 @@ interface FinancialContextType {
   transactions: Transaction[];
   loading: boolean;
   apiStatus: "connected" | "disconnected" | "loading";
-  refreshData: (params?: { start_date?: string | null, end_date?: string | null, category?: string | null }) => Promise<void>;
+  refreshData: (params?: any) => Promise<void>;
   addTransaction: (transaction: Transaction) => Promise<void>;
   addEcheance: (echeance: any) => Promise<void>;
   deleteEcheance: (id: number | string) => Promise<void>;
@@ -37,13 +38,25 @@ interface FinancialContextType {
   setIsViewMode: (v: boolean) => void;
 
   // Filtering State
-  filterCategory: string | null;
-  setFilterCategory: (c: string | null) => void;
+  filterCategories: string[];
+  setFilterCategories: (c: string[]) => void;
+  toggleCategory: (c: string) => void;
+  filterMonths: string[];
+  setFilterMonths: (m: string[]) => void;
+  toggleMonth: (m: string) => void;
   filterDateRange: { start: string | null, end: string | null };
   setFilterDateRange: (range: { start: string | null, end: string | null }) => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+  isSunburstSynced: boolean;
+  setIsSunburstSynced: (v: boolean) => void;
   filteredTransactions: Transaction[];
+  clearAllFilters: () => void;
+  bulkDeleteTransactions: (ids: number[]) => Promise<void>;
+  bulkUpdateTransactions: (updates: Transaction[]) => Promise<void>;
+
+  // Categories Structure
+  categoriesYaml: any[];
 
   // Objectifs State
   showFinishedGoals: boolean;
@@ -66,7 +79,6 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
   // Budgets
   const [budgets, setBudgetsState] = useState<Budget[]>([]);
   const [budgetsLoading, setBudgetsLoading] = useState(false);
-
   const fetchBudgets = async () => {
     setBudgetsLoading(true);
     try { setBudgetsState(await api.getBudgets()); } catch {}
@@ -76,7 +88,6 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
   // Echeances
   const [echeances, setEcheances] = useState<any[]>([]);
   const [echeancesLoading, setEcheancesLoading] = useState(false);
-
   const fetchEcheances = async () => {
     setEcheancesLoading(true);
     try { setEcheances(await api.getEcheances()); } catch {}
@@ -87,100 +98,39 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
   const [objectifs, setObjectifs] = useState<Objectif[]>([]);
   const [objectifsLoading, setObjectifsLoading] = useState(false);
   const [showFinishedGoals, setShowFinishedGoals] = useState(false);
-
   const fetchObjectifs = async () => {
     setObjectifsLoading(true);
     try { setObjectifs(await api.getObjectifs()); } catch {}
     finally { setObjectifsLoading(false); }
+  };
+  
+  // Categories Yaml
+  const [categoriesYaml, setCategoriesYaml] = useState<any[]>([]);
+  const fetchCategories = async () => {
+    try { setCategoriesYaml(await api.getCategories()); } catch {}
   };
 
   React.useEffect(() => { 
     fetchBudgets();
     fetchEcheances();
     fetchObjectifs();
+    fetchCategories();
   }, []);
 
-  const handleSetObjectif = async (data: Objectif) => {
-    if (data.id) await api.updateObjectif(data.id, data);
-    else await api.addObjectif(data);
-    await fetchObjectifs();
-  };
-
-  const handleDeleteObjectif = async (id: number) => {
-    await api.deleteObjectif(id);
-    await fetchObjectifs();
-  };
-
-  const handleSetBudget = async (data: Budget) => {
-    await api.setBudget(data);
-    await fetchBudgets();
-  };
-
-  const handleDeleteBudget = async (id: number) => {
-    await api.deleteBudget(id);
-    await fetchBudgets();
-  };
-
-  // Filters
-  const [filterCategory, setFilterCategory] = useState<string | null>(null);
-  const [filterDateRange, setFilterDateRange] = useState<{ start: string | null, end: string | null }>({ start: null, end: null });
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const filteredTransactions = React.useMemo(() => {
-    return financialData.transactions.filter(t => {
-      // Category/Type filter (checks type, main category and sub-categories)
-      if (filterCategory && 
-          t.type !== filterCategory && 
-          t.categorie !== filterCategory && 
-          t.sous_categorie !== filterCategory) return false;
-
-      // Date range filter
-      if (filterDateRange.start || filterDateRange.end) {
-        const tDate = new Date(t.date).getTime();
-        if (filterDateRange.start && tDate < new Date(filterDateRange.start).getTime()) return false;
-        if (filterDateRange.end && tDate > new Date(filterDateRange.end).getTime()) return false;
-      }
-
-      // Search query
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        const desc = (t.description || "").toLowerCase();
-        const cat = t.categorie.toLowerCase();
-        const sub = (t.sous_categorie || "").toLowerCase();
-        if (!desc.includes(q) && !cat.includes(q) && !sub.includes(q) && !t.montant.toString().includes(q)) return false;
-      }
-
-      return true;
-    });
-  }, [financialData.transactions, filterCategory, filterDateRange, searchQuery]);
-
-  // Synchronize dashboard summary when date filter changed
-  React.useEffect(() => {
-    financialData.refreshData({
-       start_date: filterDateRange.start,
-       end_date: filterDateRange.end
-    });
-  }, [filterDateRange]);
-
+  const filters = useFinancialFilters(financialData.transactions, financialData.refreshData);
 
   const contextValue = {
     ...financialData,
+    ...filters,
     isAddModalOpen,
     setIsAddModalOpen,
     editingTransaction,
     setEditingTransaction,
     isViewMode,
     setIsViewMode,
-    filterCategory,
-    setFilterCategory,
-    filterDateRange,
-    setFilterDateRange,
-    searchQuery,
-    setSearchQuery,
-    filteredTransactions,
     budgets,
-    setBudget: handleSetBudget,
-    deleteBudget: handleDeleteBudget,
+    setBudget: async (d: Budget) => { await api.setBudget(d); fetchBudgets(); },
+    deleteBudget: async (id: number) => { await api.deleteBudget(id); fetchBudgets(); },
     budgetsLoading,
     echeances,
     echeancesLoading,
@@ -189,9 +139,18 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
     setShowFinishedGoals,
     objectifs,
     objectifsLoading,
-    setObjectif: handleSetObjectif,
-    deleteObjectif: handleDeleteObjectif,
+    setObjectif: async (d: Objectif) => { if (d.id) await api.updateObjectif(d.id, d); else await api.addObjectif(d); fetchObjectifs(); },
+    deleteObjectif: async (id: number) => { await api.deleteObjectif(id); fetchObjectifs(); },
     refreshObjectifs: fetchObjectifs,
+    categoriesYaml,
+    bulkDeleteTransactions: async (ids: number[]) => {
+      await Promise.all(ids.map(id => financialData.deleteTransaction(id)));
+      await financialData.refreshData();
+    },
+    bulkUpdateTransactions: async (updates: Transaction[]) => {
+      await Promise.all(updates.map(t => financialData.updateTransaction(t.id!, t)));
+      await financialData.refreshData();
+    },
   };
 
   return (
@@ -203,8 +162,6 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
 
 export function useFinancial() {
   const context = useContext(FinancialContext);
-  if (context === undefined) {
-    throw new Error('useFinancial must be used within a FinancialDataProvider');
-  }
+  if (context === undefined) throw new Error('useFinancial must be used within a FinancialDataProvider');
   return context;
 }

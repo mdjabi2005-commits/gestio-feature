@@ -18,8 +18,8 @@ export function EcheanceMetrics({ transactions, allEcheances, summary }: Echeanc
     const d = new Date(t.date)
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && t.echeance_id
   })
-  const depenseCeMois = monthTransactions.filter(t => t.type === 'Dépense').reduce((s, t) => s + t.montant, 0)
-  const revenCeMois = monthTransactions.filter(t => t.type === 'Revenu').reduce((s, t) => s + t.montant, 0)
+  const depenseCeMois = monthTransactions.filter(t => t.type === 'depense').reduce((s, t) => s + t.montant, 0)
+  const revenCeMois = monthTransactions.filter(t => t.type === 'revenu').reduce((s, t) => s + t.montant, 0)
 
   // Metric 2: argent restant fin de mois
   const echeancesCeMois = allEcheances.filter(i => {
@@ -31,7 +31,7 @@ export function EcheanceMetrics({ transactions, allEcheances, summary }: Echeanc
   const resteFinMois = echeanceRevenu - echeanceDepense
 
   // Metric 3: solde cumulé
-  const soldeCumule = transactions.reduce((s, t) => t.type === 'Revenu' ? s + t.montant : s - t.montant, 0)
+  const soldeCumule = transactions.reduce((s, t) => t.type === 'revenu' ? s + t.montant : s - t.montant, 0)
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -45,7 +45,7 @@ export function EcheanceMetrics({ transactions, allEcheances, summary }: Echeanc
           <p className="text-xl font-bold tabular-nums text-rose-400 truncate">
             -{depenseCeMois.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €
           </p>
-          <p className="text-[10px] text-white/30 mt-0.5">{monthTransactions.filter(t => t.type === 'Dépense').length} transactions</p>
+          <p className="text-[10px] text-white/30 mt-0.5">{monthTransactions.filter(t => t.type === 'depense').length} transactions</p>
         </div>
       </div>
 

@@ -32,7 +32,7 @@ export function useTransactionQueue(refreshData: () => void, setEditingTransacti
             file: res.file,
             result: {
               transaction: {
-                type: 'Revenu',
+                type: 'revenu',
                 date: income.date,
                 categorie: split.categorie,
                 sous_categorie: split.sous_categorie,
@@ -52,7 +52,7 @@ export function useTransactionQueue(refreshData: () => void, setEditingTransacti
             file: res.file,
             result: {
               transaction: {
-                type: 'Revenu',
+                type: 'revenu',
                 date: income.date,
                 categorie: 'Autre',
                 montant: remainder,

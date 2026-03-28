@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 interface TransactionSummaryViewProps {
-  type: 'Dépense' | 'Revenu';
+  type: 'depense' | 'revenu';
   amount: string;
   description: string;
   category: string;
@@ -22,11 +22,11 @@ export const TransactionSummaryView: React.FC<TransactionSummaryViewProps> = ({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="text-3xl font-bold text-white font-mono">
-          {type === 'Dépense' ? '-' : '+'}{amount}€
+          {type === 'depense' ? '-' : '+'}{amount}€
         </div>
         <div className={cn(
           "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider",
-          type === 'Revenu' ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
+          type === 'revenu' ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
         )}>
           {type}
         </div>

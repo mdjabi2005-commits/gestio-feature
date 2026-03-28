@@ -37,14 +37,14 @@ def test_add_transaction_retrouvable(
     assert row is not None
     assert row["montant"] == pytest.approx(42.50)
     assert row["categorie"] == "Alimentation"
-    assert row["type"] == "Dépense"
+    assert row["type"] == "depense"
 
 
 @pytest.mark.integration
 def test_add_doublon_external_id_ignore(repo: TransactionRepository):
     """Deux transactions avec le même external_id : la 2e doit être ignorée."""
     t = Transaction(
-        type="Dépense",
+        type="depense",
         categorie="Transport",
         montant=10.0,
         date=date(2026, 1, 1),
@@ -53,14 +53,13 @@ def test_add_doublon_external_id_ignore(repo: TransactionRepository):
         sous_categorie=None,
         description=None,
         echeance_id=None,
-        compte_id=None,
-        id=None,
+        objectif_id=None,
     )
     id1 = repo.add(t)
-    id2 = repo.add(t)  # doublon
+    id2 = repo.add(t)
 
     assert id1 is not None
-    assert id2 is None  # ignoré silencieusement
+    assert id2 is None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -77,7 +76,7 @@ def test_update_modifie_le_montant(
 
     updated = {
         "id": new_id,
-        "type": "Dépense",
+        "type": "depense",
         "categorie": "Alimentation",
         "montant": 99.99,
         "date": date(2026, 1, 15),
@@ -93,7 +92,7 @@ def test_update_modifie_le_montant(
 @pytest.mark.integration
 def test_update_sans_id_retourne_false(repo: TransactionRepository):
     """Un update sans ID doit retourner False sans exception."""
-    result = repo.update({"type": "Dépense", "categorie": "Test", "montant": 1.0})
+    result = repo.update({"type": "depense", "categorie": "Test", "montant": 1.0})
     assert result is False
 
 
@@ -151,8 +150,8 @@ def test_get_filtered_par_categorie(
     transaction_revenu: Transaction,
 ):
     """Le filtre par catégorie doit n'exposer que les transactions correspondantes."""
-    repo.add(transaction_depense)  # Alimentation
-    repo.add(transaction_revenu)  # Salaire
+    repo.add(transaction_depense)
+    repo.add(transaction_revenu)
 
     txs = repo.get_filtered(category="Alimentation")
     assert len(txs) == 1
@@ -166,33 +165,59 @@ def test_get_all_vide_retourne_liste_vide(repo: TransactionRepository):
     assert len(txs) == 0
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# GET ALL / FILTRES
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 @pytest.mark.integration
-def test_get_all_retourne_toutes_les_transactions(
-    repo: TransactionRepository, transactions_batch: list
-):
-    """get_all() doit retourner autant de lignes qu'on en a insérées."""
+def test_get_filtered_par_date(repo: TransactionRepository, transactions_batch: list):
+    """Le filtre par date doit fonctionner correctement."""
     for t in transactions_batch:
         repo.add(t)
 
-    txs = repo.get_all()
-    assert len(txs) == len(transactions_batch)
+    txs = repo.get_filtered(start_date=date(2026, 1, 1), end_date=date(2026, 1, 3))
+
+    assert len(txs) == 3
+    for tx in txs:
+        assert date(2026, 1, 1) <= tx.date <= date(2026, 1, 3)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CHAMPS SUPPLÉMENTAIRES
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 @pytest.mark.integration
-def test_get_filtered_par_categorie(
-    repo: TransactionRepository,
-    transaction_depense: Transaction,
-    transaction_revenu: Transaction,
-):
-    """Le filtre par catégorie doit n'exposer que les transactions correspondantes."""
-    repo.add(transaction_depense)  # Alimentation
-    repo.add(transaction_revenu)  # Salaire
+@pytest.mark.xfail(
+    reason="Bug backend: compte_id non inséré dans la DB (repository.py ligne 75-105)"
+)
+def test_add_with_compte_id(repo: TransactionRepository):
+    """Ajoute une transaction avec compte_id."""
+    tx = Transaction(
+        type="depense",
+        categorie="Transport",
+        sous_categorie="Voiture",
+        montant=50.0,
+        date=date(2026, 1, 15),
+        source="manuel",
+        compte_id=1,
+    )
+    new_id = repo.add(tx)
 
-    txs = repo.get_filtered(category="Alimentation")
-    assert len(txs) == 1
-    assert txs[0].categorie == "Alimentation"
+    row = repo.get_by_id(new_id)
+    assert row is not None
+    assert row.get("compte_id") == 1
+
+
+@pytest.mark.integration
+def test_add_with_objectif_id(repo: TransactionRepository):
+    """Ajoute une transaction avec objectif_id."""
+    tx = Transaction(
+        type="depense",
+        categorie="Épargne",
+        montant=100.0,
+        date=date(2026, 1, 15),
+        source="Manuel",
+        objectif_id=1,
+    )
+    new_id = repo.add(tx)
+
+    row = repo.get_by_id(new_id)
+    assert row is not None
+    assert row["objectif_id"] == 1

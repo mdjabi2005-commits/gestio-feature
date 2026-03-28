@@ -7,7 +7,7 @@ import { useFinancial } from "@/context/FinancialDataContext"
 
 export interface Transaction {
   id?: number
-  type: "Dépense" | "Revenu"
+  type: "depense" | "revenu"
   description?: string
   montant: number
   categorie: string
@@ -31,13 +31,13 @@ export function TransactionTable({ transactions, categories = [] }: TransactionT
     setFilterDateRange({ start: null, end: null });
   };
 
-  const formatCurrency = (amount: number, type: "Dépense" | "Revenu") => {
+  const formatCurrency = (amount: number, type: "depense" | "revenu") => {
     const formatted = new Intl.NumberFormat("fr-FR", {
       style: "currency",
       currency: "EUR",
       minimumFractionDigits: 2,
     }).format(amount)
-    return type === "Revenu" ? `+${formatted}` : `-${formatted}`
+    return type === "revenu" ? `+${formatted}` : `-${formatted}`
   }
 
   const formatDate = (dateString: string) => {
@@ -110,7 +110,7 @@ export function TransactionTable({ transactions, categories = [] }: TransactionT
           </thead>
           <tbody className="divide-y divide-border/30">
             {transactions.map((transaction, index) => {
-              const itemType = transaction.type === "Revenu" ? "income" : "expense"
+              const itemType = transaction.type === "revenu" ? "income" : "expense"
               const meta = getCategoryMetadata(categories, transaction.categorie)
               
               return (

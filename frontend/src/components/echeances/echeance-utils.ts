@@ -35,7 +35,7 @@ export function mapTransactionToInstallment(t: Transaction, allCategories: any[]
     description: t.description,
     daysRemaining,
     amount: t.montant,
-    type: t.type === "Revenu" ? "income" : "expense",
+    type: t.type === "revenu" ? "income" : "expense",
     status,
     paymentMethod: t.source === "manual" ? "manual" : "automatic",
   }
@@ -83,7 +83,7 @@ export function mapEcheanceToInstallment(e: any, allCategories: any[] = []): Ins
     description: e.description,
     daysRemaining,
     amount: e.montant ?? e.amount ?? 0,
-    type: e.type === "Revenu" || e.type === "income" ? "income" : "expense",
+    type: e.type === "revenu" || e.type === "income" ? "income" : "expense",
     status,
     paymentMethod: e.paymentMethod || "automatic",
   }

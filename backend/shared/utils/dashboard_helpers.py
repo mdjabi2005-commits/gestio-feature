@@ -54,7 +54,7 @@ def dict_to_echeance(data: dict) -> "Echeance":
     return Echeance(
         id=data.get("id"),
         nom=data.get("nom", ""),
-        type=data.get("type", "Dépense"),
+        type=data.get("type", "depense"),
         categorie=data.get("categorie", ""),
         sous_categorie=data.get("sous_categorie"),
         montant=float(data.get("montant", 0)),
@@ -117,7 +117,7 @@ def build_type_breakdown(t_type: str, color: str, data_by_type: dict) -> dict:
         "valeur": total,
         "montant": total,
         "couleur": color,
-        "icone": "plus-circle" if t_type == "Revenu" else "minus-circle",
+        "icone": "plus-circle" if t_type == "revenu" else "minus-circle",
         "enfants": nodes,
         "pourcentage": 50,
     }
@@ -174,7 +174,7 @@ def build_budget_summary() -> dict:
     with db_transaction() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT categorie, SUM(montant) as total FROM transactions WHERE type = 'Dépense' AND date >= ? AND date < ? GROUP BY categorie",
+            "SELECT categorie, SUM(montant) as total FROM transactions WHERE type = 'depense' AND date >= ? AND date < ? GROUP BY categorie",
             (start, end),
         )
         expenses = {r[0]: r[1] for r in cursor.fetchall()}
@@ -198,7 +198,7 @@ def build_daily_history(transactions: List) -> List[dict]:
         day = str(t.date)[:10]
         if day not in daily:
             daily[day] = {"revenus": 0.0, "depenses": 0.0}
-        if t.type == "Revenu":
+        if t.type == "revenu":
             daily[day]["revenus"] += t.montant
         else:
             daily[day]["depenses"] += t.montant
@@ -220,8 +220,8 @@ def build_daily_history(transactions: List) -> List[dict]:
 def aggregate_by_type(transactions: List) -> Dict:
     """Agrège les transactions par type (Revenu/Dépense)."""
     data = {
-        "Revenu": {"total": 0, "categories": {}, "subs": {}},
-        "Dépense": {"total": 0, "categories": {}, "subs": {}},
+        "revenu": {"total": 0, "categories": {}, "subs": {}},
+        "depense": {"total": 0, "categories": {}, "subs": {}},
     }
     for t in transactions:
         if t.type not in data:

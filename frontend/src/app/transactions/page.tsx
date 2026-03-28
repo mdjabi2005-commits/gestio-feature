@@ -3,7 +3,6 @@
 import React, { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useFinancial } from '@/context/FinancialDataContext';
-import { FilterX } from "lucide-react";
 import { TransactionMetrics } from "@/components/transactions/TransactionMetrics"
 import { TransactionDialogs } from "@/components/transactions/TransactionDialogs"
 import { FinancialCalendar } from '@/components/dashboard/financial-calendar';
@@ -25,8 +24,8 @@ export default function TransactionsPage() {
     setIsViewMode,
     filterDateRange,
     setFilterDateRange,
-    filterCategory,
-    setFilterCategory
+    filterCategories,
+    filterMonths
   } = useFinancial();
 
   const balanceData = useMemo(() => {
@@ -40,36 +39,45 @@ export default function TransactionsPage() {
   }, [summary]);
 
   const calendarData = useMemo(() => {
-    const dayMap: Record<string, { revenus: number; depenses: number }> = {};
+    const dayMap: Record<string, { revenus: number; depenses: number; items: string[] }> = {};
     filteredTransactions.forEach((t) => {
       const d = typeof t.date === 'string' ? t.date.split('T')[0] : String(t.date);
-      if (!dayMap[d]) dayMap[d] = { revenus: 0, depenses: 0 };
-      if (t.type === 'Revenu') dayMap[d].revenus += t.montant;
+      if (!dayMap[d]) dayMap[d] = { revenus: 0, depenses: 0, items: [] };
+      if (t.type === 'revenu') dayMap[d].revenus += t.montant;
       else dayMap[d].depenses += t.montant;
+      
+      const desc = t.description || t.merchant || t.categorie;
+      if (desc && !dayMap[d].items.includes(desc)) dayMap[d].items.push(desc);
     });
     return Object.entries(dayMap).map(([date, v]) => ({ date, ...v }));
   }, [filteredTransactions]);
 
   const kpis = useMemo(() => {
-    const revenus = filteredTransactions.filter(t => t.type === 'Revenu').reduce((s, t) => s + t.montant, 0);
-    const depenses = filteredTransactions.filter(t => t.type === 'Dépense').reduce((s, t) => s + t.montant, 0);
+    const revenus = filteredTransactions.filter(t => t.type === 'revenu').reduce((s, t) => s + t.montant, 0);
+    const depenses = filteredTransactions.filter(t => t.type === 'depense').reduce((s, t) => s + t.montant, 0);
     return { revenus, depenses, solde: revenus - depenses, nb: filteredTransactions.length };
   }, [filteredTransactions]);
 
   const listTitle = useMemo(() => {
-    if (!filterDateRange?.start) return "Toutes les transactions";
-    const d = new Date(filterDateRange.start);
-    const month = d.toLocaleDateString("fr-FR", { month: "long" });
-    const year = d.getFullYear();
-    return `Transactions - ${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`;
-  }, [filterDateRange]);
+    if (filterMonths.length > 0) {
+      if (filterMonths.length === 1) {
+        const [year, month] = filterMonths[0].split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1);
+        const monthLabel = date.toLocaleDateString("fr-FR", { month: "long" });
+        return `Transactions - ${monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)} ${year}`;
+      }
+      return `Transactions - ${filterMonths.length} mois sélectionnés`;
+    }
+    if (filterDateRange?.start) return "Période personnalisée";
+    return "Toutes les transactions";
+  }, [filterDateRange, filterMonths]);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" /></div>
   if (!summary) return null;
 
   return (
     <div className="max-w-[1700px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12 space-y-6">
-      <TransactionMetrics kpis={kpis} contextLabel={filterCategory ? `· ${filterCategory}` : ''} />
+      <TransactionMetrics kpis={kpis} contextLabel={filterCategories.length > 0 ? `· ${filterCategories.join(', ')}` : ''} />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-stretch">
         <div className="lg:col-span-3 h-[500px]">
@@ -78,7 +86,7 @@ export default function TransactionsPage() {
           </div>
         </div>
         <div className="lg:col-span-2 h-[500px]">
-          <div className="glass-card rounded-2xl h-full overflow-hidden p-6">
+          <div className="glass-card rounded-2xl h-full p-6 relative">
             <FinancialCalendar transactions={calendarData} selectedRange={filterDateRange} onRangeSelect={setFilterDateRange} />
           </div>
         </div>
@@ -102,16 +110,6 @@ export default function TransactionsPage() {
           </div>
         </div>
       </div>
-
-      {(filterDateRange?.start || filterCategory) && (
-        <button
-          onClick={() => { setFilterDateRange({ start: null, end: null }); setFilterCategory(null); }}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 bg-card border border-border hover:bg-secondary text-foreground rounded-full shadow-2xl hover:shadow-indigo-500/20 transition-all duration-300 animate-in zoom-in-95 backdrop-blur-xl"
-          title="Effacer les filtres actifs"
-        >
-          <FilterX className="w-5 h-5 text-rose-500" /><span className="font-bold text-sm">Effacer les filtres</span>
-        </button>
-      )}
 
       <TransactionDialogs 
         deleteId={deleteId} 

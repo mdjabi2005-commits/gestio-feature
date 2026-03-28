@@ -20,7 +20,7 @@ export default function DashboardPage() {
     const now = new Date(), year = now.getFullYear(), month = now.getMonth();
     const currentMonthSpent = transactions.reduce((acc: Record<string, number>, t) => {
         const d = new Date(t.date);
-        if (t.type === 'Dépense' && d.getMonth() === month && d.getFullYear() === year) acc[t.categorie] = (acc[t.categorie] || 0) + t.montant;
+        if (t.type === 'depense' && d.getMonth() === month && d.getFullYear() === year) acc[t.categorie] = (acc[t.categorie] || 0) + t.montant;
         return acc;
     }, {});
     const plannedByCategory = calculatePlannedByTarget(echeances, transactions, year, month);

@@ -66,7 +66,7 @@ def execute_all(
     Exécute une requête SELECT et retourne toutes les lignes.
 
     Usage:
-        rows = execute_all("SELECT * FROM table WHERE type = ?", ("Dépense",))
+        rows = execute_all("SELECT * FROM table WHERE type = ?", ("depense",))
     """
     with db_transaction(db_path) as conn:
         cursor = conn.cursor()

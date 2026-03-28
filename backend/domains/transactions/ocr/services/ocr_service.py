@@ -224,7 +224,7 @@ class OCRService:
         # Catégorisation intelligente via Groq (même flux que process_ticket)
         logger.info("Soumission du texte PDF à Groq pour catégorisation...")
         semantic_data = self.llm_parser.parse(text)
-        category = semantic_data.get("category", "Revenu")
+        category = semantic_data.get("category", "revenu")
         subcategory = semantic_data.get("subcategory") or "Autre"
         description = semantic_data.get("description") or parsed_data["description"]
         if len(description) > 50:
@@ -232,7 +232,7 @@ class OCRService:
 
         try:
             transaction = Transaction(
-                type="Revenu",
+                type="revenu",
                 categorie=category,
                 montant=parsed_data["montant"],
                 date=parsed_data["date"],
@@ -300,7 +300,7 @@ class OCRService:
                 amount = 0.0
 
             transaction = Transaction(
-                type="Dépense",
+                type="depense",
                 categorie=category,
                 montant=amount,
                 date=transaction_date or date.today(),

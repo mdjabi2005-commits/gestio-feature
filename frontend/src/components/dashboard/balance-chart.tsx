@@ -2,10 +2,10 @@
 
 import React, { useMemo } from "react"
 import { useFinancial } from "@/context/FinancialDataContext"
-import { toast } from "sonner"
 import createPlotlyComponent from 'react-plotly.js/factory'
 // @ts-ignore
 import Plotly from 'plotly.js-dist-min'
+import { MousePointer2 } from "lucide-react"
 
 const Plot = createPlotlyComponent(Plotly)
 
@@ -22,19 +22,11 @@ interface BalanceChartProps {
 }
 
 export function BalanceChart({ data, title = "Évolution Mensuelle" }: BalanceChartProps) {
-  const { filteredTransactions, filterCategory, setFilterDateRange } = useFinancial()
-
-  const formatLocalDate = (date: Date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
+  const { filterMonths, toggleMonth, filterCategories } = useFinancial()
 
   // Monthly Aggregation
   const monthlyData = useMemo(() => {
-    const months: Record<string, { key: string, label: string, revenu: number, depense: number, cumulative: number, net: number, count: number }> = {}
-    
+    const months: Record<string, { key: string, label: string, revenu: number, depense: number, cumulative: number }> = {}
     const sortedDaily = [...data].sort((a,b) => a.date.localeCompare(b.date))
 
     sortedDaily.forEach(d => {
@@ -44,7 +36,7 @@ export function BalanceChart({ data, title = "Évolution Mensuelle" }: BalanceCh
         months[key] = { 
           key,
           label: date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }),
-          revenu: 0, depense: 0, cumulative: 0, net: 0, count: 0
+          revenu: 0, depense: 0, cumulative: 0
         }
       }
       months[key].revenu += d.revenu
@@ -52,47 +44,29 @@ export function BalanceChart({ data, title = "Évolution Mensuelle" }: BalanceCh
       months[key].cumulative = d.balance
     })
 
-    // Calculate Net monthly balance (Income - Expense)
-    Object.values(months).forEach(m => {
-      m.net = m.revenu - m.depense
-    })
-
-    // Count operations
-    filteredTransactions.forEach(t => {
-      const date = new Date(t.date)
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      if (months[key]) months[key].count++
-    })
-
     return Object.entries(months).sort(([a], [b]) => a.localeCompare(b)).map(([_, v]) => v)
-  }, [data, filteredTransactions])
+  }, [data])
 
   const xVals = monthlyData.map(m => m.label)
   const revenuVals = monthlyData.map(m => m.revenu)
   const depenseVals = monthlyData.map(m => m.depense)
   const soldeVals = monthlyData.map(m => m.cumulative)
   
-  const headerContext = filterCategory ? `· ${filterCategory}` : ''
-
-  const handleMonthClick = (label: string) => {
-    const targetMonth = monthlyData.find(m => m.label === label)
-    if (targetMonth) {
-      const { key } = targetMonth
-      const [year, month] = key.split('-').map(Number)
-      const firstDay = `${year}-${String(month).padStart(2, '0')}-01`
-      const lastDay = formatLocalDate(new Date(year, month, 0))
-      setFilterDateRange({ start: firstDay, end: lastDay })
-      toast.success(`Filtré sur ${label}`, {
-        description: "Les transactions et données ont été mises à jour."
-      })
-    }
-  }
+  // Highlight logic for Plotly
+  const selectedIndices = monthlyData.map((m, i) => filterMonths.includes(m.key) ? i : -1).filter(i => i !== -1)
+  
+  const headerContext = filterCategories.length > 0 ? `· ${filterCategories.join(', ')}` : ''
 
   return (
-    <div className="h-full w-full flex flex-col relative overflow-hidden bg-[#1E1E1E]/40 rounded-xl border border-border/50">
-      <div className="absolute top-4 left-6 z-10 pointer-events-none">
-         <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{title} {headerContext}</h3>
+    <div className="h-full w-full flex flex-col relative overflow-hidden bg-background/20 rounded-xl border border-border/50 group/chart">
+      <div className="absolute top-4 left-6 z-10 flex items-center justify-between w-[calc(100%-24px)]">
+         <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{title} {headerContext}</h3>
+         <div className="flex items-center gap-1.5 opacity-0 group-hover/chart:opacity-100 transition-opacity pr-8">
+            <MousePointer2 className="w-3 h-3 text-indigo-400 rotate-12" />
+            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest animate-pulse">Cliquez sur un mois pour filtrer</span>
+         </div>
       </div>
+      
       <div className="flex-1 w-full h-full min-h-0">
         <Plot
           data={[
@@ -101,22 +75,24 @@ export function BalanceChart({ data, title = "Évolution Mensuelle" }: BalanceCh
               name: 'Revenus',
               x: xVals,
               y: revenuVals,
+              customdata: monthlyData.map(m => m.key),
               marker: {
-                color: '#00D4AA',
-                line: { color: '#00A87E', width: 1.5 }
+                color: monthlyData.map(m => filterMonths.includes(m.key) ? '#10b981' : '#00D4AA40'),
+                line: { color: '#10b981', width: 1 }
               },
-              hovertemplate: '<b>%{x}</b><br>Revenus: %{y:,.0f} €<extra></extra>'
+              hovertemplate: '<b>%{x}</b><br>Revenus: %{y:,.0f} €<br><b>CLIQUEZ POUR FILTRER</b><extra></extra>'
             },
             {
               type: 'bar',
               name: 'Dépenses',
               x: xVals,
               y: depenseVals,
+              customdata: monthlyData.map(m => m.key),
               marker: {
-                color: '#FF6B6B',
-                line: { color: '#CC5555', width: 1.5 }
+                color: monthlyData.map(m => filterMonths.includes(m.key) ? '#f43f5e' : '#FF6B6B40'),
+                line: { color: '#ec4899', width: 1 }
               },
-              hovertemplate: '<b>%{x}</b><br>Dépenses: %{y:,.0f} €<extra></extra>'
+              hovertemplate: '<b>%{x}</b><br>Dépenses: %{y:,.0f} €<br><b>CLIQUEZ POUR FILTRER</b><extra></extra>'
             },
             {
               type: 'scatter',
@@ -124,57 +100,57 @@ export function BalanceChart({ data, title = "Évolution Mensuelle" }: BalanceCh
               name: 'Solde',
               x: xVals,
               y: soldeVals,
-              line: { color: '#4A90E2', width: 3 },
-              marker: { size: 8, color: '#4A90E2', line: { color: '#1E1E1E', width: 2 } },
-              hovertemplate: '<b>%{x}</b><br>Solde: %{y:+,.0f} €<extra></extra>'
+              customdata: monthlyData.map(m => m.key),
+              line: { color: '#6366f1', width: 3, shape: 'spline' },
+              marker: { 
+                size: 10, 
+                color: monthlyData.map(m => filterMonths.includes(m.key) ? '#818cf8' : '#6366f120'),
+                line: { color: '#6366f1', width: 2 } 
+              },
+              hovertemplate: '<b>%{x}</b><br>Solde: %{y:+,.0f} €<br><b>CLIQUEZ POUR FILTRER</b><extra></extra>'
             }
           ]}
           layout={{
-            font: { color: '#888888' },
+            font: { color: '#888888', family: "'Inter', sans-serif" },
             paper_bgcolor: 'transparent',
             plot_bgcolor: 'transparent',
             hovermode: 'x unified',
             barmode: 'group',
-            margin: { t: 50, b: 60, l: 50, r: 20 },
+            margin: { t: 60, b: 50, l: 40, r: 20 },
             legend: {
               orientation: "h",
               yanchor: "bottom",
-              y: -0.25,
+              y: -0.3,
               xanchor: "center",
               x: 0.5,
-              font: { size: 11, color: "#888888" },
+              font: { size: 9, color: "#888888" },
               bgcolor: "rgba(0,0,0,0)",
             },
             xaxis: {
               showgrid: false,
               color: '#888888',
-              tickangle: -30,
-              tickfont: { size: 10 },
+              tickfont: { size: 9, weight: 'bold' },
               automargin: true,
-              fixedrange: true // Prevent zooming on x if desired, or keep it true for mobile
+              fixedrange: true
             },
             yaxis: {
-              title: { text: 'Montant (€)' },
               showgrid: true,
-              gridcolor: 'rgba(128,128,128,0.1)',
+              gridcolor: 'rgba(128,128,128,0.05)',
               zeroline: true,
-              zerolinewidth: 2,
-              zerolinecolor: 'rgba(128,128,128,0.3)',
+              zerolinecolor: 'rgba(128,128,128,0.2)',
               color: '#888888',
-              tickfont: { size: 10 },
+              tickfont: { size: 9 },
+              fixedrange: true
             },
             autosize: true
           }}
           useResizeHandler={true}
           style={{ width: "100%", height: "100%" }}
-          config={{
-            displayModeBar: false,
-            responsive: true
-          }}
-          onClick={(data) => {
-            if (data.points && data.points.length > 0) {
-              const xValue = data.points[0].x as string;
-              handleMonthClick(xValue);
+          config={{ displayModeBar: false, responsive: true, scrollZoom: false }}
+          onClick={(dataPoint) => {
+            if (dataPoint.points && dataPoint.points.length > 0) {
+              const monthKey = dataPoint.points[0].customdata as string;
+              if (monthKey) toggleMonth(monthKey);
             }
           }}
         />

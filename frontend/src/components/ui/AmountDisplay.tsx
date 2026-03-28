@@ -5,7 +5,7 @@ import { formatCurrency } from "@/lib/formatters"
 
 interface AmountDisplayProps {
   amount: number;
-  type?: "Dépense" | "Revenu" | "income" | "expense";
+  type?: "depense" | "revenu" | "income" | "expense";
   className?: string;
   size?: "sm" | "md" | "lg";
   showSign?: boolean;
@@ -18,8 +18,8 @@ export function AmountDisplay({
   size = "md",
   showSign = true
 }: AmountDisplayProps) {
-  const isIncome = type === "Revenu" || type === "income"
-  const isExpense = type === "Dépense" || type === "expense"
+  const isIncome = type === "revenu" || type === "income"
+  const isExpense = type === "depense" || type === "expense"
   
   const sizeStyles = {
     sm: "text-xs font-bold",

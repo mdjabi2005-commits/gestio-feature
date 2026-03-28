@@ -58,36 +58,38 @@ def repo(db_path: str) -> TransactionRepository:
 
 @pytest.fixture
 def transaction_depense() -> Transaction:
-    """Transaction de dépense valide."""
+    """Transaction de dépense valide (type normalisé en minuscule)."""
     return Transaction(
-        type="Dépense",
+        type="depense",
         categorie="Alimentation",
         sous_categorie="Supermarché",
         description="Courses Carrefour",
         montant=42.50,
         date=date(2026, 1, 15),
-        source="Manuel",
+        source="manuel",
         external_id=None,
         echeance_id=None,
         compte_id=None,
+        objectif_id=None,
         id=None,
     )
 
 
 @pytest.fixture
 def transaction_revenu() -> Transaction:
-    """Transaction de revenu valide."""
+    """Transaction de revenu valide (type normalisé en minuscule)."""
     return Transaction(
-        type="Revenu",
+        type="revenu",
         categorie="Salaire",
         sous_categorie=None,
         description="Salaire janvier",
         montant=2500.00,
         date=date(2026, 1, 31),
-        source="Manuel",
+        source="manuel",
         external_id=None,
         echeance_id=None,
         compte_id=None,
+        objectif_id=None,
         id=None,
     )
 
@@ -97,16 +99,17 @@ def transactions_batch() -> list[Transaction]:
     """Lot de 5 transactions pour tester les opérations en masse."""
     return [
         Transaction(
-            type="Dépense",
+            type="depense",
             categorie="Transport",
             montant=25.0,
             date=date(2026, 1, i + 1),
-            source="Manuel",
+            source="manuel",
             sous_categorie=None,
             description=f"Ticket métro {i + 1}",
             external_id=None,
             echeance_id=None,
             compte_id=None,
+            objectif_id=None,
             id=None,
         )
         for i in range(5)

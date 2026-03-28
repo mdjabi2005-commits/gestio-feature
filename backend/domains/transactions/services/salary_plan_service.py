@@ -172,7 +172,7 @@ def apply_salary_split(
                 if sub_amount > 0:
                     transactions.append(
                         Transaction(
-                            type="Dépense",
+                            type="depense",
                             categorie=category,
                             sous_categorie=sub_name,
                             montant=sub_amount,
@@ -205,7 +205,7 @@ def apply_salary_split(
                     if sub_amount > 0:
                         transactions.append(
                             Transaction(
-                                type="Dépense",
+                                type="depense",
                                 categorie=category,
                                 sous_categorie=subcat,
                                 montant=sub_amount,
@@ -219,7 +219,7 @@ def apply_salary_split(
             else:
                 transactions.append(
                     Transaction(
-                        type="Dépense",
+                        type="depense",
                         categorie=category,
                         sous_categorie="Autre",
                         montant=amount,
@@ -236,7 +236,7 @@ def apply_salary_split(
     if remaining > 0:
         transactions.append(
             Transaction(
-                type="Dépense",
+                type="depense",
                 categorie=default_category,
                 sous_categorie="Divers",
                 montant=round(remaining, 2),

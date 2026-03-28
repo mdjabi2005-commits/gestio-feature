@@ -6,8 +6,8 @@ import { CategorySubcategorySelect } from "@/components/ui/CategorySubcategorySe
 import { useFinancial } from '@/context/FinancialDataContext';
 
 interface TransactionFormFieldsProps {
-  type: 'Dépense' | 'Revenu';
-  setType: (type: 'Dépense' | 'Revenu') => void;
+  type: 'depense' | 'revenu';
+  setType: (type: 'depense' | 'revenu') => void;
   date: string;
   setDate: (date: string) => void;
   amount: string;
@@ -44,7 +44,7 @@ export const TransactionFormFields: React.FC<TransactionFormFieldsProps> = ({
       <div className="space-y-2">
         <label className="text-sm font-medium text-gray-300">Type</label>
         <div className="flex gap-3">
-          {(['Revenu', 'Dépense'] as const).map(t => (
+          {(['revenu', 'depense'] as const).map(t => (
             <button
               key={t}
               type="button"
@@ -52,11 +52,11 @@ export const TransactionFormFields: React.FC<TransactionFormFieldsProps> = ({
               className={cn(
                 "flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200",
                 type === t
-                  ? (t === 'Revenu' ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-rose-500/20 text-rose-400 border border-rose-500/30")
+                  ? (t === 'revenu' ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-rose-500/20 text-rose-400 border border-rose-500/30")
                   : "bg-white/5 text-gray-400 border border-transparent hover:bg-white/10"
               )}
             >
-              {t === 'Revenu' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+              {t === 'revenu' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
               {t}
             </button>
           ))}

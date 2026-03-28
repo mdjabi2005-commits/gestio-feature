@@ -9,7 +9,7 @@ import { useFinancial } from "@/context/FinancialDataContext"
 
 interface InstallmentFormData {
   nom: string
-  type: "Dépense" | "Revenu"
+  type: "depense" | "revenu"
   categorie: string
   sous_categorie: string
   montant: string
@@ -40,7 +40,7 @@ export function InstallmentForm({
 }) {
   const [form, setForm] = useState<InstallmentFormData>({
     nom: initial?.nom ?? "",
-    type: initial?.type ?? "Dépense",
+    type: initial?.type ?? "depense",
     categorie: initial?.categorie ?? "Alimentation",
     sous_categorie: initial?.sous_categorie ?? "",
     montant: initial?.montant ?? "",
@@ -78,10 +78,10 @@ export function InstallmentForm({
         <div>
           <label className={LABEL_CLASS}>Type</label>
           <div className="flex gap-2">
-            {(["Dépense", "Revenu"] as const).map(t => (
+            {(["depense", "revenu"] as const).map(t => (
               <button key={t} onClick={() => set("type", t)}
                 className={cn("flex-1 py-2 rounded-lg text-xs font-semibold transition-all border",
-                  form.type === t ? (t === "Revenu" ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" : "bg-rose-500/20 text-rose-300 border-rose-500/40")
+                  form.type === t ? (t === "revenu" ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" : "bg-rose-500/20 text-rose-300 border-rose-500/40")
                     : "bg-white/[0.04] text-white/40 border-white/[0.08] hover:bg-white/[0.08]")}>
                 {t}
               </button>

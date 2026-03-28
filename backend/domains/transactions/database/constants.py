@@ -8,8 +8,8 @@ Toutes les clés sont en FRANÇAIS.
 # TYPES
 # =========================================================
 
-TYPE_DEPENSE = "Dépense"
-TYPE_REVENU = "Revenu"
+TYPE_DEPENSE = "depense"
+TYPE_REVENU = "revenu"
 
 
 TRANSACTION_TYPES: list[str] = [

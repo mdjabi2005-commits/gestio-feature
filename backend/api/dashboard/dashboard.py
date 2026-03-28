@@ -44,15 +44,15 @@ async def get_summary(
 
         txs = repo.get_filtered(start_date=sd, end_date=ed, category=category)
 
-        revenus = sum(t.montant for t in txs if t.type == "Revenu")
-        depenses = sum(t.montant for t in txs if t.type == "Dépense")
+        revenus = sum(t.montant for t in txs if t.type == "revenu")
+        depenses = sum(t.montant for t in txs if t.type == "depense")
 
         history = build_daily_history(txs)
         data_by_type = aggregate_by_type(txs)
 
         breakdown = [
-            build_type_breakdown("Revenu", "#10b981", data_by_type),
-            build_type_breakdown("Dépense", "#f43f5e", data_by_type),
+            build_type_breakdown("revenu", "#10b981", data_by_type),
+            build_type_breakdown("depense", "#f43f5e", data_by_type),
         ]
 
         paid_ids = get_paid_echeance_ids()

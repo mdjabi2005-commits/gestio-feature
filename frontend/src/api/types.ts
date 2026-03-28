@@ -2,26 +2,28 @@
 
 export interface Transaction {
   id?: number;
-  type: 'Dépense' | 'Revenu';
+  type: 'depense' | 'revenu';
   date: string;
   categorie: string;
   montant: number;
   sous_categorie?: string;
   description?: string;
+  merchant?: string;
   source?: 'manual' | 'ocr' | 'pdf';
   external_id?: string;
   has_attachments?: boolean;
+  echeance_id?: number;
+  compte_id?: number;
+  objectif_id?: number;
   recurrence?: string;
   date_fin?: string;
-  echeance_id?: string;
-  objectif_id?: number;
-  attachment?: string; // Optional temporary field for OCR/Income scans
+  attachment?: string;
 }
 
 export interface Attachment {
   id?: number;
   transaction_id?: number;
-  echeance_id?: string;
+  echeance_id?: number;
   objectif_id?: number;
   file_path: string;
 }
@@ -60,18 +62,19 @@ export interface BudgetSummary {
 }
 
 export interface Echeance {
-  id: string;
+  id?: number;
   nom: string;
   montant: number;
-  date_prevue: string;
+  type: 'depense' | 'revenu';
   categorie: string;
   sous_categorie?: string;
-  type: 'Dépense' | 'Revenu';
-  statut: 'active' | 'paid' | 'overdue';
   frequence: string;
   date_debut: string;
   date_fin?: string;
+  date_prevue?: string;
   description?: string;
+  statut: 'active' | 'inactive';
+  type_echeance?: 'recurrente' | 'ponctuelle';
   objectif_id?: number;
 }
 
@@ -104,8 +107,9 @@ export interface SalaryPlan {
   nom: string;
   is_active: boolean;
   reference_salary: number;
-  default_remainder_category?: string;
+  default_remainder_category: string;
   items: SalaryPlanItem[];
+  available_plans?: string[];
 }
 
 export interface Objectif {
