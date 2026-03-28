@@ -2,33 +2,20 @@
 Tests pour la configuration OCR et le salary plan.
 """
 
-import os
-import tempfile
 import pytest
-from pathlib import Path
-from unittest.mock import patch
 
-from backend.config.ocr_config import get_ocr_config, save_ocr_config, get_groq_api_key
+from backend.config.ocr_config import get_ocr_config, save_ocr_config
 
 
 class TestOCRConfig:
     """Tests de la configuration OCR."""
 
-    @pytest.fixture
-    def temp_config_dir(self, monkeypatch):
-        """Crée une config temporaire pour les tests."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config_file = Path(tmpdir) / "ocr_config.json"
-            monkeypatch.setattr("backend.config.ocr_config._CONFIG_FILE", config_file)
-            yield tmpdir
-
-    def test_save_and_get_config(self, temp_config_dir):
+    def test_save_and_get_config(self):
         """Test sauvegarde et récupération de la config."""
         result = save_ocr_config("gsk_testkey123")
-
         assert result["api_key"] == "gsk_testkey123"
 
-    def test_get_config_empty(self, temp_config_dir):
+    def test_get_config_empty(self):
         """Test récupération config vide."""
         result = get_ocr_config()
         assert "api_key" in result

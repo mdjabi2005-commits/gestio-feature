@@ -165,7 +165,21 @@ async def get_salary_plan():
 @router.post("/salary-plans", response_model=SalaryPlanResponse)
 async def save_salary_plan(plan_data: dict):
     try:
-        validate_salary_plan(plan_data)
+        # Convert items to allocations for validation (map 'montant' to 'value')
+        plan_for_validation = {
+            **plan_data,
+            "allocations": [
+                {
+                    "category": i.get("categorie"),
+                    "value": i.get("montant", 0),
+                    "type": i.get("type", "percent"),
+                    "sub_distribution_mode": i.get("sub_distribution_mode", "equal"),
+                    "sub_allocations": i.get("sub_allocations"),
+                }
+                for i in plan_data.get("items", [])
+            ],
+        }
+        validate_salary_plan(plan_for_validation)
         _generate_budgets_from_plan(plan_data)
         _save_plan_to_yaml(plan_data)
 

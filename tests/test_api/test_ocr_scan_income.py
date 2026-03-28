@@ -31,11 +31,11 @@ class TestScanIncomeEndpoint:
 
 
 class TestSalaryPlansEndpoint:
-    """Tests de l'endpoint /api/ocr/salary-plans."""
+    """Tests de l'endpoint /api/budgets/salary-plans."""
 
     def test_get_salary_plans(self):
         """Récupère la liste des salary plans."""
-        response = client.get("/api/ocr/salary-plans")
+        response = client.get("/api/budgets/salary-plans")
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -49,20 +49,20 @@ class TestSalaryPlansEndpoint:
             "default_remainder_category": "Épargne",
             "items": [
                 {
-                    "categorie": "Besoins",
+                    "categorie": "Alimentation",
                     "montant": 50,
                     "type": "percent",
                     "sub_distribution_mode": "equal",
                 },
                 {
-                    "categorie": "Loisirs",
+                    "categorie": "Voiture",
                     "montant": 20,
                     "type": "percent",
                     "sub_distribution_mode": "equal",
                 },
             ],
         }
-        response = client.post("/api/ocr/salary-plans", json=plan_data)
+        response = client.post("/api/budgets/salary-plans", json=plan_data)
         assert response.status_code == 200
         data = response.json()
         assert data["nom"] == "Plan Test"
@@ -73,11 +73,21 @@ class TestSalaryPlansEndpoint:
             "nom": "Plan Invalide",
             "reference_salary": 3000.0,
             "items": [
-                {"categorie": "Besoins", "montant": 60, "type": "percent"},
-                {"categorie": "Loisirs", "montant": 50, "type": "percent"},
+                {
+                    "categorie": "Alimentation",
+                    "montant": 60,
+                    "type": "percent",
+                    "sub_distribution_mode": "equal",
+                },
+                {
+                    "categorie": "Voiture",
+                    "montant": 50,
+                    "type": "percent",
+                    "sub_distribution_mode": "equal",
+                },
             ],
         }
-        response = client.post("/api/ocr/salary-plans", json=plan_data)
+        response = client.post("/api/budgets/salary-plans", json=plan_data)
         assert response.status_code == 400
 
 

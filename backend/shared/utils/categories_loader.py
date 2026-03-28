@@ -26,7 +26,9 @@ def _load() -> Dict:
         return _cache
 
     if not _YAML_PATH.exists():
-        logger.warning(f"categories.yaml introuvable : {_YAML_PATH}. Utilisation du fallback.")
+        logger.warning(
+            f"categories.yaml introuvable : {_YAML_PATH}. Utilisation du fallback."
+        )
         _cache = {}
         return _cache
 
@@ -34,7 +36,9 @@ def _load() -> Dict:
         with open(_YAML_PATH, encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
         _cache = data
-        logger.info(f"categories.yaml chargé ({len(data.get('categories', []))} catégories)")
+        logger.info(
+            f"categories.yaml chargé ({len(data.get('categories', []))} catégories)"
+        )
         return _cache
     except Exception as e:
         logger.error(f"Erreur lecture categories.yaml : {e}")
@@ -47,7 +51,8 @@ def get_categories() -> List[str]:
     data = _load()
     if not data.get("categories"):
         # Fallback sur les constantes Python
-        from domains.transactions.database.constants import _FALLBACK_CATEGORIES
+        from backend.domains.transactions.database.constants import _FALLBACK_CATEGORIES
+
         return _FALLBACK_CATEGORIES
     return [cat["name"] for cat in data["categories"]]
 
@@ -74,8 +79,7 @@ def get_all_subcategories() -> Dict[str, List[str]]:
     """Retourne un dict {categorie: [sous-catégories]} pour l'IA."""
     data = _load()
     return {
-        cat["name"]: cat.get("subcategories", [])
-        for cat in data.get("categories", [])
+        cat["name"]: cat.get("subcategories", []) for cat in data.get("categories", [])
     }
 
 
@@ -140,7 +144,9 @@ def _write(data: Dict) -> None:
     global _cache
     try:
         with open(_YAML_PATH, "w", encoding="utf-8") as f:
-            yaml.dump(data, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+            yaml.dump(
+                data, f, allow_unicode=True, default_flow_style=False, sort_keys=False
+            )
         _cache = None  # Invalider pour forcer rechargement
     except Exception as e:
         logger.error(f"Erreur écriture categories.yaml : {e}")
@@ -152,4 +158,3 @@ def reload() -> None:
     _cache = None
     _load()
     logger.info("categories.yaml rechargé.")
-

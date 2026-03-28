@@ -10,8 +10,8 @@ from unittest.mock import patch, MagicMock
 
 from backend.api.attachments.attachments import (
     archive_file as _archive_file,
-    archive_ticket_file,
-    archive_payroll_file,
+    archive_ticket_file as _archive_ticket_file,
+    archive_payroll_file as _archive_payroll_file,
 )
 from backend.domains.transactions.database.model import Transaction
 
