@@ -11,7 +11,8 @@ chaque partie :
 | Dossier           | Rôle                                                     | Documentation                             |
 |:------------------|:---------------------------------------------------------|:------------------------------------------|
 | **`database/`**   | **Données** (Schéma SQL, Repositories)                   | [🗄️ Lire la doc](database/README.md)     |
-| **`services/`**   | **Logique Métier** (Transaction, Attachment)             | [⚙️ Lire la doc](services/README.md)     |
+| **`services/`**   | **Logique Métier** (Transaction, Attachment, SalaryPlan)  | [⚙️ Lire la doc](services/README.md)      |
+| **`echeance/`**   | **Échéances** (Service de gestion des échéances)        | [📅 Voir](echeance/echeance_service.py)  |
 | **`ocr/`**        | **Intelligence Artificielle** (Scan tickets/PDF)         | [👁️ Lire la doc](ocr/services/README.md) |
 
 ---

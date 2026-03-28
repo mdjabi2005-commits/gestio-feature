@@ -79,9 +79,10 @@ graph TB
 
 | Méthode | Endpoint | Description |
 |---------|----------|-------------|
-| `GET` | `/api/salary-plans/` | Liste tous les plans |
-| `POST` | `/api/salary-plans/` | Créer ou mettre à jour un plan |
-| `DELETE` | `/api/salary-plans/:id` | Supprimer un plan |
+| `GET` | `/api/budgets/salary-plans` | Liste tous les plans |
+| `POST` | `/api/budgets/salary-plans` | Créer ou mettre à jour un plan |
+| `PUT` | `/api/budgets/salary-plans/{id}` | Mettre à jour un plan |
+| `DELETE` | `/api/budgets/salary-plans/{id}` | Supprimer un plan |
 
 ## Format de données
 

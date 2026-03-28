@@ -113,8 +113,8 @@ graph TD
 |---------|------|--------|---------|
 | `POST` | `/api/ocr/scan` | `UploadFile` (image) | `OCRScanResponse` |
 | `POST` | `/api/ocr/scan-income` | `UploadFile` (PDF) | `IncomeScanResponse` |
-| `GET` | `/api/ocr/salary-plans` | - | `SalaryPlanResponse` |
-| `POST` | `/api/ocr/salary-plans` | `dict` (plan) | `SalaryPlanResponse` |
+| `GET` | `/api/budgets/salary-plans` | - | `SalaryPlanResponse[]` |
+| `POST` | `/api/budgets/salary-plans` | `dict` (plan) | `SalaryPlanResponse` |
 
 ## Sortie (OCRScanResponse)
 
