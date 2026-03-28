@@ -5,30 +5,6 @@ import type { OCRScanResponse, IncomeScanResponse, SalaryPlan } from './types';
 const API_BASE_URL = 'http://localhost:8002';
 
 export const ocrApi = {
-  // ... existing methods ...
-
-  getSalaryPlans: async (): Promise<SalaryPlan[]> => {
-    const res = await fetch(`${API_BASE_URL}/api/ocr/salary-plans`);
-    if (!res.ok) throw new Error('Failed to fetch salary plans');
-    return res.json();
-  },
-
-  saveSalaryPlan: async (plan: SalaryPlan): Promise<SalaryPlan> => {
-    const method = plan.id ? 'PUT' : 'POST';
-    const url = plan.id ? `${API_BASE_URL}/api/ocr/salary-plans/${plan.id}` : `${API_BASE_URL}/api/ocr/salary-plans`;
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(plan),
-    });
-    if (!res.ok) throw new Error('Failed to save salary plan');
-    return res.json();
-  },
-
-  deleteSalaryPlan: async (id: number): Promise<void> => {
-    const res = await fetch(`${API_BASE_URL}/api/ocr/salary-plans/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Failed to delete salary plan');
-  },
   scanTicket: async (file: File): Promise<OCRScanResponse> => {
     const formData = new FormData();
     formData.append('file', file);

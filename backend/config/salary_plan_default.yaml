@@ -1,16 +1,21 @@
 salary_plan:
   allocations:
-  - category: Besoins
+  - category: Alimentation
     sub_allocations: null
     sub_distribution_mode: equal
     type: percent
-    value: 50
-  - category: Loisirs
+    value: 30
+  - category: Voiture
     sub_allocations: null
     sub_distribution_mode: equal
     type: percent
-    value: 20
+    value: 30
+  - category: Logement
+    sub_allocations: null
+    sub_distribution_mode: equal
+    type: percent
+    value: 30
   default_remainder_category: Épargne
-  is_active: true
-  name: Plan Test
-  reference_salary: 3000.0
+  is_active: false
+  name: Plan par défaut
+  reference_salary: 3000

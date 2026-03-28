@@ -3,7 +3,7 @@
 import React, { createContext, useContext, ReactNode, useState } from 'react';
 import { useFinancialData } from '@/hooks/useFinancialData';
 import { useFinancialFilters } from '@/hooks/useFinancialFilters';
-import type { Transaction, Budget, Objectif } from '@/api';
+import type { Transaction, Budget, Objectif, SalaryPlan } from '@/api';
 import { api } from '@/api';
 
 interface FinancialContextType {
@@ -66,6 +66,14 @@ interface FinancialContextType {
   setObjectif: (data: Objectif) => Promise<void>;
   deleteObjectif: (id: number) => Promise<void>;
   refreshObjectifs: () => Promise<void>;
+  
+  // Salary Plans
+  salaryPlans: SalaryPlan[];
+  loadingSalaryPlans: boolean;
+  refreshSalaryPlans: () => Promise<void>;
+  activeSalaryPlan: SalaryPlan | null;
+  setSalaryPlan: (data: SalaryPlan) => Promise<void>;
+  deleteSalaryPlan: (id: number) => Promise<void>;
 }
 
 const FinancialContext = createContext<FinancialContextType | undefined>(undefined);
@@ -104,6 +112,15 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
     finally { setObjectifsLoading(false); }
   };
   
+  // Salary Plans
+  const [salaryPlans, setSalaryPlans] = useState<SalaryPlan[]>([]);
+  const [loadingSalaryPlans, setLoadingSalaryPlans] = useState(false);
+  const fetchSalaryPlans = async () => {
+    setLoadingSalaryPlans(true);
+    try { setSalaryPlans(await api.getSalaryPlans()); } catch {}
+    finally { setLoadingSalaryPlans(false); }
+  };
+  
   // Categories Yaml
   const [categoriesYaml, setCategoriesYaml] = useState<any[]>([]);
   const fetchCategories = async () => {
@@ -115,6 +132,7 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
     fetchEcheances();
     fetchObjectifs();
     fetchCategories();
+    fetchSalaryPlans();
   }, []);
 
   const filters = useFinancialFilters(financialData.transactions, financialData.refreshData);
@@ -151,6 +169,12 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
       await Promise.all(updates.map(t => financialData.updateTransaction(t.id!, t)));
       await financialData.refreshData();
     },
+    salaryPlans,
+    loadingSalaryPlans,
+    refreshSalaryPlans: fetchSalaryPlans,
+    activeSalaryPlan: salaryPlans.find(p => p.is_active) || (salaryPlans.length > 0 ? salaryPlans[0] : null),
+    setSalaryPlan: async (d: SalaryPlan) => { await api.saveSalaryPlan(d); fetchSalaryPlans(); fetchBudgets(); },
+    deleteSalaryPlan: async (id: number) => { await api.deleteSalaryPlan(id); fetchSalaryPlans(); fetchBudgets(); },
   };
 
   return (

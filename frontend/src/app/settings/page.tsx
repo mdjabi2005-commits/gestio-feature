@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import { SalaryPlanManager } from '@/components/settings/SalaryPlanManager';
 import { OCRConfig } from '@/components/settings/OCRConfig';
 
 export default function SettingsPage() {
@@ -13,10 +12,6 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-6">
-        <div className="glass-card rounded-2xl p-8 border border-white/10 shadow-xl">
-          <SalaryPlanManager />
-        </div>
-
         <div className="glass-card rounded-2xl p-8 border border-white/10 shadow-xl bg-emerald-500/[0.02]">
           <OCRConfig />
         </div>

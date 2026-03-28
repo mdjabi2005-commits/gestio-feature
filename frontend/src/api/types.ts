@@ -73,7 +73,7 @@ export interface Echeance {
   date_fin?: string;
   date_prevue?: string;
   description?: string;
-  statut: 'active' | 'inactive';
+  statut: 'active' | 'inactive' | 'overdue';
   type_echeance?: 'recurrente' | 'ponctuelle';
   objectif_id?: number;
 }

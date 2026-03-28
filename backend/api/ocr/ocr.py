@@ -16,11 +16,9 @@ from backend.domains.transactions.ocr.core.pdfplumber_engine import pdfplumber_e
 from backend.domains.transactions.services.salary_plan_service import (
     SalaryPlanError,
     apply_salary_split,
-    get_available_plans,
-    load_salary_plan,
-    validate_salary_plan,
 )
 from backend.config.ocr_config import get_ocr_config, save_ocr_config
+from backend.api.attachments.attachments import archive_ticket_file, archive_payroll_file
 from backend.shared.utils.file_utils import (
     validate_image_format,
     validate_pdf_format,
@@ -32,8 +30,6 @@ from .models import (
     BatchScanResponse,
     IncomeSplitDTO,
     IncomeScanResponse,
-    SalaryPlanItem,
-    SalaryPlanResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -104,7 +100,7 @@ async def scan_ticket(file: UploadFile = File(...)):
         raw = ocr.ocr_engine.extract_text(path)
         tx = ocr.process_ticket(path)
 
-        archived_path = _archive_ticket_file(path, tx)
+        archived_path = archive_ticket_file(path, tx)
 
         return OCRScanResponse(
             transaction=tx.model_dump(),
@@ -170,259 +166,6 @@ async def scan_batch(files: List[UploadFile] = File(...)):
         mgr.cleanup()
 
 
-@router.get("/salary-plans", response_model=List[SalaryPlanResponse])
-async def get_salary_plan():
-    try:
-        plan = load_salary_plan()
-        items = [
-            SalaryPlanItem(
-                categorie=a.get("category", ""),
-                montant=a.get("value", 0),
-                type=a.get("type", "percent"),
-                sub_distribution_mode=a.get("sub_distribution_mode", "equal"),
-                sub_allocations=a.get("sub_allocations"),
-            )
-            for a in plan.get("allocations", [])
-        ]
-        return [
-            SalaryPlanResponse(
-                id=1,
-                nom=plan.get("name", "Plan"),
-                is_active=plan.get("is_active", True),
-                reference_salary=plan.get("reference_salary", 0),
-                default_remainder_category=plan.get(
-                    "default_remainder_category", "Épargne"
-                ),
-                items=items,
-                available_plans=get_available_plans(),
-            )
-        ]
-    except FileNotFoundError:
-        return []
-    except Exception as e:
-        logger.error(f"Error loading salary plan: {e}")
-        raise HTTPException(500, str(e))
-
-
-@router.post("/salary-plans", response_model=SalaryPlanResponse)
-async def save_salary_plan(plan_data: dict):
-    try:
-        ref = plan_data.get("reference_salary", 0.0)
-        storage = {
-            "name": plan_data.get("nom", "Plan"),
-            "is_active": plan_data.get("is_active", True),
-            "reference_salary": ref,
-            "default_remainder_category": plan_data.get(
-                "default_remainder_category", "Épargne"
-            ),
-            "allocations": [
-                {
-                    "category": i.get("categorie"),
-                    "value": i.get("montant"),
-                    "type": i.get("type"),
-                    "sub_distribution_mode": i.get("sub_distribution_mode"),
-                    "sub_allocations": i.get("sub_allocations"),
-                }
-                for i in plan_data.get("items", [])
-            ],
-        }
-        validate_salary_plan(storage)
-
-        if ref > 0:
-            from backend.domains.budgets.repository import budget_repository
-            from backend.domains.budgets.model import Budget
-            from backend.shared.utils.categories_loader import get_subcategories
-
-            for item in plan_data.get("items", []):
-                val = item.get("montant", 0)
-                category = item.get("categorie")
-                alloc_type = item.get("type")
-                sub_allocations = item.get("sub_allocations", [])
-
-                category_amount = val if alloc_type == "fixed" else (ref * (val / 100))
-                if category_amount <= 0:
-                    continue
-
-                if sub_allocations and len(sub_allocations) > 0:
-                    total_sub_pct = sum(s.get("value", 0) for s in sub_allocations)
-                    for sub in sub_allocations:
-                        sub_name = sub.get("name")
-                        sub_pct = sub.get("value", 0)
-                        sub_amount = (
-                            round(category_amount * (sub_pct / 100), 2)
-                            if total_sub_pct > 0
-                            else 0
-                        )
-                        if sub_amount > 0 and sub_name:
-                            budget_repository.upsert(
-                                Budget(categorie=sub_name, montant_max=sub_amount)
-                            )
-                else:
-                    known_subs = get_subcategories(category)
-                    if known_subs:
-                        sub_amount = round(category_amount / len(known_subs), 2)
-                        for sub_name in known_subs:
-                            if sub_amount > 0:
-                                budget_repository.upsert(
-                                    Budget(categorie=sub_name, montant_max=sub_amount)
-                                )
-                    else:
-                        budget_repository.upsert(
-                            Budget(
-                                categorie=category,
-                                montant_max=round(category_amount, 2),
-                            )
-                        )
-
-        import yaml
-        from pathlib import Path
-
-        p = Path(__file__).parent.parent.parent / "config" / "salary_plan_default.yaml"
-        with open(p, "w", encoding="utf-8") as f:
-            yaml.dump(
-                {"salary_plan": storage},
-                f,
-                allow_unicode=True,
-                default_flow_style=False,
-            )
-
-        return SalaryPlanResponse(
-            id=1,
-            nom=plan_data.get("nom", "Plan"),
-            is_active=plan_data.get("is_active", True),
-            reference_salary=ref,
-            default_remainder_category=plan_data.get(
-                "default_remainder_category", "Épargne"
-            ),
-            items=[SalaryPlanItem(**i) for i in plan_data.get("items", [])],
-            available_plans=get_available_plans(),
-        )
-    except SalaryPlanError as e:
-        raise HTTPException(400, str(e))
-    except Exception as e:
-        logger.error(f"Error saving salary plan: {e}")
-        raise HTTPException(500, str(e))
-
-
-@router.put("/salary-plans/{plan_id}", response_model=SalaryPlanResponse)
-async def update_salary_plan(plan_id: int, plan_data: dict):
-    """Met à jour un salary plan existant."""
-    plan_data["id"] = plan_id
-    return await save_salary_plan(plan_data)
-
-
-@router.delete("/salary-plans/{plan_id}")
-async def delete_salary_plan(plan_id: int):
-    """Supprime un salary plan (réinitialise à défaut)."""
-    try:
-        import yaml
-        from pathlib import Path
-
-        p = Path(__file__).parent.parent.parent / "config" / "salary_plan_default.yaml"
-        default_plan = {
-            "salary_plan": {
-                "name": "Plan par défaut",
-                "is_active": False,
-                "reference_salary": 0,
-                "default_remainder_category": "Épargne",
-                "allocations": [],
-            }
-        }
-        with open(p, "w", encoding="utf-8") as f:
-            yaml.dump(default_plan, f, allow_unicode=True, default_flow_style=False)
-
-        return {"status": "success", "message": "Salary plan supprimé"}
-    except Exception as e:
-        logger.error(f"Error deleting salary plan: {e}")
-        raise HTTPException(500, str(e))
-
-
-def _archive_file(
-    source_path: str,
-    category: str,
-    sub_category: str = None,
-    target_base_dir: str = None,
-    is_ticket: bool = True,
-) -> str | None:
-    """
-    Archive un fichier (ticket ou revenu) vers le dossier structuré.
-
-    Args:
-        source_path: Chemin du fichier source
-        category: Catégorie de la transaction
-        sub_category: Sous-catégorie (optionnel)
-        target_base_dir: Dossier cible (SORTED_DIR pour tickets, REVENUS_TRAITES pour revenus)
-        is_ticket: True pour tickets (images), False pour revenus (PDF)
-
-    Returns:
-        Chemin d'archivage ou None en cas d'échec
-    """
-    import shutil
-
-    if target_base_dir is None:
-        from backend.config.paths import SORTED_DIR, REVENUS_TRAITES
-
-        target_base_dir = SORTED_DIR if is_ticket else REVENUS_TRAITES
-
-    try:
-        sub_cat = sub_category or "Divers"
-        cat = category or "Autre"
-
-        target_dir = os.path.join(target_base_dir, cat, sub_cat)
-        os.makedirs(target_dir, exist_ok=True)
-
-        original_name = os.path.basename(source_path)
-        prefixes = ["ocr_", "income_", "batch_"]
-        for prefix in prefixes:
-            if original_name.startswith(prefix):
-                original_name = original_name[len(prefix) :]
-                break
-
-        target_path = os.path.join(target_dir, original_name)
-        counter = 1
-        while os.path.exists(target_path):
-            name, ext = os.path.splitext(original_name)
-            target_path = os.path.join(target_dir, f"{name}_{counter}{ext}")
-            counter += 1
-
-        shutil.copy2(source_path, target_path)
-        logger.info(f"Fichier archivé: {target_path}")
-        return target_path
-
-    except Exception as e:
-        logger.error(f"Erreur archivage fichier: {e}")
-        return None
-
-
-def _archive_payroll_file(
-    temp_path: str, transactions: List[Transaction]
-) -> str | None:
-    """Archive le fichier PDF de fiche de paie."""
-    if not transactions:
-        return None
-
-    dominant_tx = max(transactions, key=lambda t: t.montant)
-    return _archive_file(
-        temp_path,
-        category=dominant_tx.categorie or "Épargne",
-        sub_category=dominant_tx.sous_categorie,
-        target_base_dir=None,
-        is_ticket=False,
-    )
-
-
-def _archive_ticket_file(temp_path: str, transaction: Transaction = None) -> str | None:
-    """Archive le fichier de ticket image."""
-    if transaction is None:
-        return None
-
-    return _archive_file(
-        temp_path,
-        category=transaction.categorie or "Autre",
-        sub_category=transaction.sous_categorie,
-        target_base_dir=None,
-        is_ticket=True,
-    )
 
 
 @router.post("/scan-income", response_model=IncomeScanResponse)
@@ -442,9 +185,9 @@ async def scan_income(file: UploadFile = File(...)):
             raise HTTPException(400, "Montant net non trouvé")
         date_str = pay_date.isoformat() if pay_date else date_type.today().isoformat()
 
-        archived_path = _archive_payroll_file(
-            path, txs=[]
-        )  # Mock tx list just for target path derivation if needed, but better call it AFTER txs creation
+        archived_path = archive_payroll_file(
+            path, transactions=[]
+        )  # Mock tx list just for target path derivation if needed
 
         try:
             txs = apply_salary_split(
@@ -466,8 +209,8 @@ async def scan_income(file: UploadFile = File(...)):
                 )
             ]
 
-        # Actual archiving with real txs if needed (though dominant category logic might prefer the txs)
-        final_archived_path = _archive_payroll_file(path, txs)
+        # Actual archiving with real txs if needed
+        final_archived_path = archive_payroll_file(path, txs)
 
         splits = [
             IncomeSplitDTO(

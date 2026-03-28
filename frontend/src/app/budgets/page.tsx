@@ -1,17 +1,24 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Plus, Wallet, TrendingDown, Target, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { Plus, Wallet, TrendingDown, Target, AlertTriangle, CheckCircle2, PiggyBank } from "lucide-react"
 import { useFinancial } from "@/context/FinancialDataContext"
 import { CATEGORY_STYLES } from "@/lib/categories"
 import { BudgetCard } from "@/components/budgets/BudgetCard"
 import { BudgetForm } from "@/components/budgets/BudgetForm"
+import { PlanningSummary } from "@/components/budgets/PlanningSummary"
+import { StrategyCard } from "@/components/budgets/StrategyCard"
+import { SalaryPlanSetup } from "@/components/budgets/SalaryPlanSetup"
 import { calculatePlannedExpenses, calculatePlannedIncomes } from "@/lib/budget-utils"
-import type { Budget } from "@/api"
+import type { Budget, Echeance, SalaryPlan } from "@/api"
 
 export default function BudgetsPage() {
-  const { budgets, transactions, setBudget, deleteBudget, budgetsLoading, summary, echeances } = useFinancial()
+  const { 
+    budgets, transactions, setBudget, deleteBudget, budgetsLoading, 
+    summary, echeances, activeSalaryPlan, setSalaryPlan 
+  } = useFinancial()
   const [showForm, setShowForm] = useState(false)
+  const [showPlanSetup, setShowPlanSetup] = useState(false)
   const [editTarget, setEditTarget] = useState<Budget | null>(null)
 
   // Dépenses et Revenus réels du mois par catégorie
@@ -24,7 +31,13 @@ export default function BudgetsPage() {
     transactions.forEach(t => {
       const d = new Date(t.date)
       if (t.type === "depense" && d.getMonth() === month && d.getFullYear() === year) {
-        map[t.categorie] = (map[t.categorie] ?? 0) + t.montant
+        const parentKey = t.categorie;
+        const subKey = t.sous_categorie ? `${t.categorie} > ${t.sous_categorie}` : null;
+        
+        map[parentKey] = (map[parentKey] ?? 0) + t.montant;
+        if (subKey) {
+          map[subKey] = (map[subKey] ?? 0) + t.montant;
+        }
       }
     })
     return map
@@ -35,7 +48,13 @@ export default function BudgetsPage() {
     transactions.forEach(t => {
       const d = new Date(t.date)
       if (t.type === "revenu" && d.getMonth() === month && d.getFullYear() === year) {
-        map[t.categorie] = (map[t.categorie] ?? 0) + t.montant
+        const parentKey = t.categorie;
+        const subKey = t.sous_categorie ? `${t.categorie} > ${t.sous_categorie}` : null;
+        
+        map[parentKey] = (map[parentKey] ?? 0) + t.montant;
+        if (subKey) {
+          map[subKey] = (map[subKey] ?? 0) + t.montant;
+        }
       }
     })
     return map
@@ -101,41 +120,65 @@ export default function BudgetsPage() {
         </button>
       </div>
 
-      {/* Global Summary Cards */}
-      {budgets.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
-              <Wallet className="w-6 h-6 text-indigo-400" />
+      {/* Synergy Planning Section */}
+      <div className="space-y-6 mb-10">
+        {!activeSalaryPlan ? (
+          <div className="glass-card rounded-3xl p-8 border border-white/5 bg-indigo-500/[0.02] flex flex-col md:flex-row items-center justify-between gap-6 group">
+            <div className="flex items-center gap-6">
+              <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                <PiggyBank className="w-8 h-8 text-indigo-400" />
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-xl font-black text-white uppercase tracking-tighter">Initialiser votre Plan</h2>
+                <p className="text-sm text-white/40 font-medium leading-relaxed max-w-md">
+                  Définissez votre revenu de référence et vos règles d'allocation pour générer vos budgets automatiquement.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-400/60">Budget total</p>
-              <p className="text-xl font-bold tabular-nums text-indigo-400">{totalBudget.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €</p>
-            </div>
+            <button 
+              onClick={() => setShowPlanSetup(true)}
+              className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-black uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-indigo-500/20"
+            >
+              C'est parti !
+            </button>
           </div>
-          <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
-              <Plus className="w-6 h-6 text-indigo-400" />
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-400/60">Épargne Prévisionnelle</p>
-              <p className="text-xl font-bold tabular-nums text-indigo-400">{totalForecastedSavings.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €</p>
-              <p className="text-[10px] text-white/30">Total revenus - Total dépenses</p>
-            </div>
+        ) : (
+          <div className="relative group">
+            <PlanningSummary 
+              referenceSalary={activeSalaryPlan?.reference_salary || 0}
+              planName={activeSalaryPlan?.nom}
+              fixedCosts={echeances.filter((e: Echeance) => e.type === 'depense').reduce((s: number, e: Echeance) => s + e.montant, 0)}
+              variableBudgets={budgets.reduce((s, b) => {
+                const hasEcheance = echeances.some((e: Echeance) => e.categorie === b.categorie && e.type === 'depense');
+                return hasEcheance ? s : s + b.montant_max;
+              }, 0)}
+            />
+            <button 
+              onClick={() => setShowPlanSetup(true)}
+              className="absolute top-4 right-4 p-2 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
+              title="Modifier le plan"
+            >
+              <TrendingDown className="w-4 h-4 rotate-180" />
+            </button>
           </div>
-          <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${overBudget.length > 0 || potentiallyOver.length > 0 ? "bg-rose-500/15" : "bg-emerald-500/15"}`}>
-              {overBudget.length > 0 ? <AlertTriangle className="w-6 h-6 text-rose-400" /> : potentiallyOver.length > 0 ? <AlertTriangle className="w-6 h-6 text-orange-400" /> : <CheckCircle2 className="w-6 h-6 text-emerald-400" />}
-            </div>
-            <div>
-              <p className={`text-[10px] font-semibold uppercase tracking-wider ${overBudget.length > 0 ? "text-rose-400/60" : potentiallyOver.length > 0 ? "text-orange-400/60" : "text-emerald-400/60"}`}>Statut Budget</p>
-              <p className={`text-xl font-bold tabular-nums ${overBudget.length > 0 ? "text-rose-400" : potentiallyOver.length > 0 ? "text-orange-400" : "text-emerald-400"}`}>
-                {overBudget.length > 0 ? `${overBudget.length} Dépassé(s)` : potentiallyOver.length > 0 ? `${potentiallyOver.length} Menacé(s)` : "Favorable"}
-              </p>
-              <p className="text-[10px] text-white/30">{forecastPct.toFixed(0)}% du budget auto-réservé</p>
-            </div>
-          </div>
-        </div>
+        )}
+        
+        {/* Uber Strategy Card (if deficit) */}
+        {(() => {
+          const refSalary = activeSalaryPlan?.reference_salary || 0;
+          const totalOutflow = budgets.reduce((s, b) => s + b.montant_max, 0);
+          const deficit = refSalary - totalOutflow;
+          return deficit < 0 ? <StrategyCard deficit={deficit} className="animate-in fade-in slide-in-from-top-4 duration-700" /> : null;
+        })()}
+      </div>
+
+      {/* Plan Setup Drawer/Modal */}
+      {showPlanSetup && (
+        <SalaryPlanSetup 
+          plan={activeSalaryPlan} 
+          onSave={setSalaryPlan} 
+          onClose={() => setShowPlanSetup(false)} 
+        />
       )}
 
       {/* Budget Cards Grid */}

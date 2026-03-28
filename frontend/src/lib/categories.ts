@@ -1,4 +1,4 @@
-import { getCategoryIcon } from "./icons"
+export { getCategoryIcon } from "./icons"
 
 export interface CategoryMetadata {
   nom: string

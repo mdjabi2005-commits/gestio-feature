@@ -32,21 +32,3 @@ class IncomeScanResponse(BaseModel):
     suggested_splits: List[IncomeSplitDTO]
     archived_path: Optional[str] = None
     raw_text: Optional[str] = None
-
-
-class SalaryPlanItem(BaseModel):
-    categorie: str
-    montant: float
-    type: str
-    sub_distribution_mode: str
-    sub_allocations: Optional[List[dict]] = None
-
-
-class SalaryPlanResponse(BaseModel):
-    id: Optional[int] = None
-    nom: str
-    is_active: bool
-    reference_salary: float = 0.0
-    default_remainder_category: str
-    items: List[SalaryPlanItem]
-    available_plans: List[str] = []

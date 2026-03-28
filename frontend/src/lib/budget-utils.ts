@@ -84,7 +84,13 @@ function calculatePlannedByType(
     } else {
       const totalAmount = occurrences.length * ech.montant;
       if (totalAmount > 0) {
-        plannedMap[ech.categorie] = (plannedMap[ech.categorie] ?? 0) + totalAmount;
+        const parentKey = ech.categorie;
+        const subKey = ech.sous_categorie ? `${ech.categorie} > ${ech.sous_categorie}` : null;
+        
+        plannedMap[parentKey] = (plannedMap[parentKey] ?? 0) + totalAmount;
+        if (subKey) {
+          plannedMap[subKey] = (plannedMap[subKey] ?? 0) + totalAmount;
+        }
       }
     }
   });
