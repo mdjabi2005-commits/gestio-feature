@@ -99,11 +99,12 @@ class AttachmentRepository:
         try:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO transaction_attachments (transaction_id, echeance_id, file_path) "
-                "VALUES (?, ?, ?)",
+                "INSERT INTO transaction_attachments (transaction_id, echeance_id, objectif_id, file_path) "
+                "VALUES (?, ?, ?, ?)",
                 (
                     attachment.transaction_id,
                     attachment.echeance_id,
+                    attachment.objectif_id,
                     attachment.file_path,
                 ),
             )

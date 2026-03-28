@@ -7,23 +7,28 @@ src/app/transactions/
 └── page.tsx                    # Page principale
 
 src/context/
-├── FinancialDataContext.tsx    # Context provider
-└── useFinancial.ts             # (réexport)
+└── FinancialDataContext.tsx    # Context provider (et useFinancial)
 
 src/hooks/
 └── useFinancialData.ts         # Hook de fetching des données
 
-src/api.ts                      # Client API
+src/api/
+├── types.ts                  # Définitions des types
+└── (autres basés sur api.ts)
+
+src/components/transactions/
+├── TransactionMetrics.tsx      # KPIs filtrés
+└── TransactionDialogs.tsx      # Modales d'ajout/edit/suppr
 
 src/components/dashboard/
 ├── balance-chart.tsx           # Graphique d'évolution
 ├── financial-calendar.tsx      # Calendrier financier
 ├── sunburst-chart.tsx          # Graphique sunburst
-└── transaction-list.tsx        # Liste des transactions
+└── transaction-list.tsx        # Liste des transactions (utilisée ici)
 
 src/lib/
 ├── utils.ts                    # Utilitaires (cn)
-└── categories.ts               # Catégories
+└── categories.ts               # Catégories (icons, colors)
 ```
 
 ## Arbre des dépendances complet
@@ -32,26 +37,16 @@ src/lib/
 page.tsx
 ├── @/context/FinancialDataContext
 │   └── useFinancialData.ts
-│       └── @/api
-│           └── api.ts (appelle /api/dashboard/ et /api/transactions/)
+│       └── @/api.ts (Agrégateur)
+│           └── @/api/ (Services modulaires)
+│
+├── @/components/transactions/TransactionMetrics
+├── @/components/transactions/TransactionDialogs
 │
 ├── @/components/dashboard/balance-chart.tsx
-│   └── recharts
-│
 ├── @/components/dashboard/financial-calendar.tsx
-│   └── react-day-picker
-│   └── date-fns
-│
 ├── @/components/dashboard/sunburst-chart.tsx
-│   └── recharts
-│   └── @/lib/categories.ts
-│
-├── @/components/dashboard/transaction-list.tsx
-│   └── @/lib/utils.ts
-│   └── lucide-react
-│
-└── @/lib/utils.ts
-    └── tailwind-merge
+└── @/components/dashboard/transaction-list.tsx
 ```
 
 ## Data Flow

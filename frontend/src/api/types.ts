@@ -14,6 +14,7 @@ export interface Transaction {
   recurrence?: string;
   date_fin?: string;
   echeance_id?: string;
+  objectif_id?: number;
   attachment?: string; // Optional temporary field for OCR/Income scans
 }
 
@@ -21,6 +22,7 @@ export interface Attachment {
   id?: number;
   transaction_id?: number;
   echeance_id?: string;
+  objectif_id?: number;
   file_path: string;
 }
 
@@ -70,6 +72,7 @@ export interface Echeance {
   date_debut: string;
   date_fin?: string;
   description?: string;
+  objectif_id?: number;
 }
 
 export interface IncomeSplit {

@@ -57,13 +57,13 @@ class EcheanceRepository:
             )
             return [dict(row) for row in cursor.fetchall()]
 
-    def add(self, echeance: Echeance) -> bool:
-        """Ajoute une nouvelle échéance."""
+    def add(self, echeance: Echeance) -> int:
+        """Ajoute une nouvelle échéance et retourne son ID."""
         logger.info(f"Ajout d'une échéance : {echeance.nom} ({echeance.montant}€)")
         query = """
             INSERT INTO echeances (nom, type, categorie, sous_categorie, montant,
-                frequence, date_debut, date_fin, description, statut, type_echeance, date_creation)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, Datetime('now'))
+                frequence, date_debut, date_fin, description, statut, type_echeance, objectif_id, date_creation)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, Datetime('now'))
         """
 
         try:
@@ -83,15 +83,17 @@ class EcheanceRepository:
                         echeance.description,
                         echeance.statut,
                         echeance.type_echeance,
+                        echeance.objectif_id,
                     ),
                 )
-            logger.info("Échéance ajoutée avec succès")
-            return True
+                echeance_id = cursor.lastrowid
+            logger.info(f"Échéance ajoutée avec succès (ID: {echeance_id})")
+            return echeance_id
         except sqlite3.Error as e:
             from backend.config.logging_config import log_error
 
             log_error(e, "Erreur lors de l'ajout de l'échéance")
-            return False
+            return 0
 
     def update(self, echeance: Echeance) -> bool:
         """Met à jour une échéance existante."""
@@ -104,7 +106,7 @@ class EcheanceRepository:
             UPDATE echeances
             SET nom=?, type=?, categorie=?, sous_categorie=?, montant=?,
                 frequence=?, date_debut=?, date_fin=?, description=?,
-                statut=?, type_echeance=?, date_modification=Datetime('now')
+                statut=?, type_echeance=?, objectif_id=?, date_modification=Datetime('now')
             WHERE id=?
         """
 
@@ -125,6 +127,7 @@ class EcheanceRepository:
                         echeance.description,
                         echeance.statut,
                         echeance.type_echeance,
+                        echeance.objectif_id,
                         echeance.id,
                     ),
                 )

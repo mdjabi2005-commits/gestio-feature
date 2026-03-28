@@ -13,7 +13,7 @@ graph TD
     Context --> Page[BudgetsPage]
     
     subgraph Calculs Budgétaires
-        Page --> Utils[budget-utils.ts]
+        Page --> Utils["@/lib/budget-utils.ts"]
         Utils --> Planned[Dépenses Planifiées]
         Page --> Actual[Dépenses Réelles]
     end

@@ -1,9 +1,9 @@
 # 🧱 Shared (Bibliothèque Partagée)
 
-Bienvenue dans la **boîte à outils** de FinBoard.
-Ce dossier contient tout le code qui est utilisé par **plusieurs domaines** (Transactions & Portfolio).
+Bienvenue dans la **boîte à outils** de Gestio.
+Ce dossier contient tout le code qui est utilisé par **plusieurs domaines** (Transactions, Budgets, Goals).
 
-> **Règle d'Or** : Si une fonction est utilisée dans `domains/transactions` ET `domains/portfolio`, elle doit venir ici.
+> **Règle d'Or** : Si une fonction est utilisée dans plusieurs domaines, elle doit venir ici.
 > Si elle n'est utilisée que dans un seul domaine, elle doit rester dans ce domaine.
 
 ## 🗺️ Carte du Module
@@ -24,7 +24,8 @@ Ce dossier contient tout le code qui est utilisé par **plusieurs domaines** (Tr
 graph TD
     subgraph "Domaines Métier"
         Trans[Transactions]
-        Port[Portfolio]
+        Budg[Budgets]
+        Goals[Goals]
     end
     
     subgraph "Shared (Fondation)"
@@ -37,11 +38,12 @@ graph TD
     Trans -->|Utilise| UI
     Trans -->|Utilise| File
     
-    Port -->|Utilise| DB
-    Port -->|Utilise| UI
+    Budg -->|Utilise| DB
+    Goals -->|Utilise| DB
     
     style Trans fill:#e3f2fd,stroke:#1565c0
-    style Port fill:#e8f5e9,stroke:#2e7d32
+    style Budg fill:#e8f5e9,stroke:#2e7d32
+    style Goals fill:#fff3e0,stroke:#ef6c00
     style Shared fill:#fff,stroke:#333,stroke-dasharray: 5 5
 ```
 

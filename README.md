@@ -78,6 +78,22 @@ npm run dev         # http://localhost:3000
 
 ---
 
+## Base de données
+
+**La base SQLite N'est PAS dans ce dépôt.**
+
+| Variable | Emplacement par défaut |
+|----------|------------------------|
+| Normal | `~/analyse/finances.db` |
+| Test (TEST_MODE=true) | `~/test/finances.db` |
+
+- **Linux** : `/home/<user>/analyse/finances.db`
+- **Windows** : `C:\Users\<user>\analyse\finances.db`
+
+Voir : `backend/config/paths.py`
+
+---
+
 ## Règles de développement
 
 ### Taille des fichiers

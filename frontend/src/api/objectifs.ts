@@ -36,4 +36,14 @@ export const objectifsApi = {
     });
     if (!res.ok) throw new Error('Failed to delete goal');
   },
+  
+  uploadGoalAttachment: async (id: number, file: File): Promise<void> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE_URL}/api/attachments/objectif/${id}`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) throw new Error('Failed to upload goal attachment');
+  },
 };

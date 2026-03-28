@@ -37,6 +37,7 @@ def init_echeance_table(db_path: str = None) -> None:
                 description TEXT,
                 statut TEXT DEFAULT 'active',
                 type_echeance TEXT DEFAULT 'recurrente',
+                objectif_id INTEGER,
                 date_creation TEXT,
                 date_modification TEXT
             )
@@ -49,6 +50,7 @@ def init_echeance_table(db_path: str = None) -> None:
             "date_prevue": "TEXT",
             "date_debut": "TEXT",
             "date_fin": "TEXT",
+            "objectif_id": "INTEGER",
         }
 
         cursor.execute("PRAGMA table_info(echeances)")

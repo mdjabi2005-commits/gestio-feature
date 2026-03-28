@@ -11,12 +11,15 @@ src/
 │   ├── transactions/       # Page transactions
 │   ├── recurrences/        # Page récurrences
 │   ├── budgets/            # Page budgets
+│   ├── objectifs/          # Page objectifs
 │   └── settings/           # Page paramètres
 │
 ├── components/             # Composants réutilisables
-│   └── dashboard/          # Composants spécifiques dashboard
+│   ├── dashboard/          # Composants spécifiques dashboard
+│   └── objectifs/          # Composants spécifiques objectifs
 │
-├── api.ts                  # Client API (types + appels HTTP)
+├── api/                    # Client API modulaire (types + services)
+├── api.ts                  # Agrégateur API (point d'entrée principal)
 ├── context/                # React Context (FinancialDataContext)
 ├── hooks/                  # Custom hooks (useFinancialData)
 └── lib/                    # Utilitaires (utils, categories)
@@ -34,19 +37,20 @@ npm run lint         # Vérifier le code
 ## API
 
 Le client API communique avec le backend FastAPI sur `http://localhost:8002`.
+Il est structuré de manière modulaire dans `src/api/`.
 
 ```typescript
 import { api } from '@/api';
 
 const transactions = await api.getTransactions();
-await api.addTransaction(data);
+const objectifs = await api.getObjectifs(); // Nouveau
 ```
 
 ### Types TypeScript
 
-Les types sont définis dans `src/api.ts` et doivent correspondre aux modèles Pydantic du backend.
+Les types sont définis dans `src/api/types.ts` et doivent correspondre aux modèles Pydantic du backend.
 
-**Important** : Si tu modifies un modèle Pydantic dans le backend, tu DOIS aussi modifier les types correspondants dans `src/api.ts`.
+**Important** : Si tu modifies un modèle Pydantic dans le backend, tu DOIS aussi modifier les types correspondants dans `src/api/types.ts`.
 
 ## Data Flow
 
@@ -60,6 +64,8 @@ Voir les fichiers `LOGIC_FLOW.md` pour chaque page :
 
 - `src/app/dashboard/LOGIC_FLOW.md`
 - `src/app/transactions/LOGIC_FLOW.md`
+- `src/app/budgets/LOGIC_FLOW.md`
+- `src/app/objectifs/LOGIC_FLOW.md`
 - `src/app/recurrences/LOGIC_FLOW.md`
 - `src/app/settings/LOGIC_FLOW.md`
 

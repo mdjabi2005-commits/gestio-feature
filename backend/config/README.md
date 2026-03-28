@@ -41,7 +41,6 @@ from config import DB_PATH
 ```python
 DATA_DIR = str(Path.home() / "analyse")
 # Emplacement : C:\Users\<user>\analyse (ou /home/<user>/analyse sur Linux)
-# Si TEST_MODE=true : C:\Users\<user>\test
 ```
 
 **Base de données** :
@@ -86,6 +85,6 @@ Tous les dossiers sont créés automatiquement au démarrage.
 
 ## ⚠️ NotesImportantes
 
-- La configuration **OCR** et **Database** (catégories) n'est plus gérée ici mais directement dans les domaines
-  respectifs ou via la base de données.
+- La configuration **OCR** (GROQ_API_KEY) est gérée via variables d'environnement (`.env`).
+- La configuration **Database** (catégories) est gérée directement dans les domaines ou via la base de données.
 - `ui_config.py` a été supprimé car obsolète.

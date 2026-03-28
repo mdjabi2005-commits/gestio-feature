@@ -1,5 +1,4 @@
 import os
-import sys
 from pathlib import Path
 
 # Racine du projet
@@ -8,21 +7,8 @@ APP_ROOT = Path(__file__).parent.parent
 # Base directory
 _home = Path.home()
 
-# TEST MODE — actif si :
-#   1. Variable d'env TEST_MODE=true (manuel ou CI)
-#   2. Lancé via pytest (détection automatique)
-_pytest_running = "pytest" in sys.modules or any("pytest" in arg for arg in sys.argv)
-TEST_MODE = os.getenv('TEST_MODE', 'false').lower() == 'true' or _pytest_running
-
-# Folder paths - Switches based on TEST_MODE
-if TEST_MODE:
-    DATA_DIR = str(_home / "test")
-    if _pytest_running:
-        print("[TEST] MODE TEST ACTIVE (pytest detecte) - Utilisation de ~/test")
-    else:
-        print("[TEST] MODE TEST ACTIVE - Utilisation de ~/test")
-else:
-    DATA_DIR = str(_home / "analyse")
+# Folder paths - Production
+DATA_DIR = str(_home / "test")
 
 # Database
 DB_PATH = os.path.join(DATA_DIR, "finances.db")
@@ -41,12 +27,25 @@ APP_LOG_PATH = os.path.join(APP_LOG_DIR, "gestio_app.log")
 
 # CSV Export
 CSV_EXPORT_DIR = os.path.join(DATA_DIR, "exports")
-CSV_TRANSACTIONS_SANS_TICKETS = os.path.join(CSV_EXPORT_DIR, "transactions_sans_tickets.csv")
+CSV_TRANSACTIONS_SANS_TICKETS = os.path.join(
+    CSV_EXPORT_DIR, "transactions_sans_tickets.csv"
+)
+
+# Objectifs attachments
+OBJECTIFS_DIR = os.path.join(DATA_DIR, "objectifs")
 
 # Fichier .env utilisateur (hors dossier d'installation, accessible en écriture)
 ENV_PATH = Path(DATA_DIR) / ".env"
 
 # Create directories
-for directory in [DATA_DIR, TO_SCAN_DIR, SORTED_DIR,
-                  REVENUS_A_TRAITER, REVENUS_TRAITES, APP_LOG_DIR, CSV_EXPORT_DIR]:
+for directory in [
+    DATA_DIR,
+    TO_SCAN_DIR,
+    SORTED_DIR,
+    REVENUS_A_TRAITER,
+    REVENUS_TRAITES,
+    APP_LOG_DIR,
+    CSV_EXPORT_DIR,
+    OBJECTIFS_DIR,
+]:
     os.makedirs(directory, exist_ok=True)

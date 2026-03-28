@@ -8,25 +8,29 @@ API FastAPI avec architecture Domain-Driven Design (DDD).
 backend/
 ├── main.py                    # Point d'entrée FastAPI
 ├── api/                       # Endpoints REST
-│   ├── transactions.py         # CRUD transactions
-│   ├── dashboard.py           # Résumé financier
-│   └── attachments.py         # Pièces jointes
+│   ├── dashboard/            # Résumé financier
+│   ├── transactions/          # CRUD transactions
+│   ├── attachments/          # Pièces jointes
+│   ├── ocr/                  # Scan tickets/PDF
+│   ├── echeances/            # Échéances
+│   └── budgets/              # Budgets mensuels
 │
 ├── domains/                   # Logique métier (DDD)
-│   ├── home/                  # (réservé)
-│   └── transactions/          # Transactions, récurrences, pièces jointes
-│       ├── database/          # Modèles, repositories, schéma
-│       │   ├── model.py       # Transaction (Pydantic)
-│       │   ├── repository.py  # CRUD
-│       │   └── schema.py     # Schéma DB
-│       └── services/          # Logique métier
+│   ├── home/                 # Landing page
+│   ├── transactions/         # Transactions, OCR
+│   │   ├── database/         # Modèles, repositories
+│   │   ├── ocr/              # Moteurs OCR (RapidOCR, Groq)
+│   │   └── services/         # Logique métier
+│   ├── budgets/              # Gestion budgets
+│   └── goals/                # Objectifs financiers
 │
 ├── shared/                    # Composants partagés
 │   ├── database/              # Connexion SQLite
-│   └── utils/                # Helpers (categories_loader)
+│   ├── services/             # File service
+│   └── ui/                   # Composants UI
 │
-├── config/                    # Configuration
-└── resources/                # Assets (attachments, icons)
+├── config/                    # Configuration (paths, logging)
+└── resources/                # Assets (icons)
 ```
 
 ## Ajouter un nouveau domain
@@ -100,6 +104,17 @@ Créer `backend/api/mon_nouveau_domaine/LOGIC_FLOW.md`
 | `GET` | `/api/attachments/transaction/:id` | Liste pièces jointes |
 | `POST` | `/api/attachments/transaction/:id` | Upload pièce jointe |
 | `DELETE` | `/api/attachments/:id` | Supprimer pièce jointe |
+| `GET` | `/api/ocr/config` | Récupère la clé API Groq |
+| `POST` | `/api/ocr/config` | Sauvegarde la clé API Groq |
+| `POST` | `/api/ocr/scan` | Scan un ticket (image) |
+| `POST` | `/api/ocr/scan-income` | Scan une fiche de paie (PDF) |
+| `GET` | `/api/ocr/salary-plans` | Liste les plans de salaire |
+| `POST` | `/api/ocr/salary-plans` | Sauvegarde un plan de salaire |
+| `GET` | `/api/echeances/` | Liste des échéances |
+| `POST` | `/api/echeances/` | Créer une échéance |
+| `GET` | `/api/budgets/` | Liste des budgets |
+| `POST` | `/api/budgets/` | Créer/mettre à jour un budget |
+| `DELETE` | `/api/budgets/:id` | Supprimer un budget |
 
 ---
 
@@ -128,3 +143,6 @@ Voir les fichiers `LOGIC_FLOW.md` dans :
 - `backend/api/transactions/LOGIC_FLOW.md`
 - `backend/api/dashboard/LOGIC_FLOW.md`
 - `backend/api/attachments/LOGIC_FLOW.md`
+- `backend/api/ocr/LOGIC_FLOW.md`
+- `backend/api/echeances/LOGIC_FLOW.md`
+- `backend/api/budgets/LOGIC_FLOW.md`

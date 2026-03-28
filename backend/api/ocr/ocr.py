@@ -20,7 +20,7 @@ from backend.domains.transactions.services.salary_plan_service import (
     load_salary_plan,
     validate_salary_plan,
 )
-from backend.config.ocr_config import save_ocr_config
+from backend.config.ocr_config import get_ocr_config, save_ocr_config
 from backend.shared.utils.file_utils import (
     validate_image_format,
     validate_pdf_format,
@@ -53,10 +53,6 @@ def _tx_warnings(t: Transaction) -> List[str]:
     if not t.sous_categorie:
         w.append("sous-catégorie non identifiée")
     return w
-
-
-from backend.config.ocr_config import get_ocr_config, save_ocr_config
-from pydantic import BaseModel
 
 
 class OCRConfigResponse(BaseModel):

@@ -94,6 +94,31 @@ async def upload_attachment(transaction_id: int, file: UploadFile = File(...)):
     return {"message": "Fichier téléchargé avec succès"}
 
 
+@router.post("/objectif/{objectif_id}")
+async def upload_goal_attachment(objectif_id: int, file: UploadFile = File(...)):
+    """Upload une pièce jointe pour un objectif spécifique."""
+    from backend.domains.goals.database.repository_goal import goal_repository
+
+    goal = goal_repository.get_by_id(objectif_id)
+    if not goal:
+        raise HTTPException(status_code=404, detail="Objectif non trouvé")
+
+    content = await file.read()
+    success = attachment_service.add_attachment_to_objectif(
+        objectif_id=objectif_id,
+        nom_objectif=goal.nom,
+        file_content=content,
+        filename=file.filename,
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=500, detail="Erreur lors de la sauvegarde du fichier"
+        )
+
+    return {"message": "Fichier téléchargé avec succès"}
+
+
 @router.get("/{attachment_id}")
 async def view_attachment(attachment_id: int):
     """Visualise ou télécharge une pièce jointe."""

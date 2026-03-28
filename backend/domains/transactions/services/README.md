@@ -16,7 +16,6 @@ Les Services encapsulent la **logique métier** :
 | Fichier                      | Responsabilité                                      |
 |------------------------------|-----------------------------------------------------|
 | **`transaction_service.py`** | Lecture/filtrage des transactions, mapping DB↔Model |
-| **`virement_service.py`**    | Gestion des virements (transferts entre comptes)    |
 | **`attachment_service.py`**  | Gestion des fichiers joints (tickets, PDF)          |
 
 ## 🔄 Flux de données
@@ -29,13 +28,11 @@ graph LR
 
     subgraph "Services"
         TxS[TransactionService]
-        VirmS[VirementService]
         AttS[AttachmentService]
     end
 
     subgraph "Repositories"
         TxR[TransactionRepository]
-        VirmR[VirementRepository]
         AttR[AttachmentRepository]
     end
 ```

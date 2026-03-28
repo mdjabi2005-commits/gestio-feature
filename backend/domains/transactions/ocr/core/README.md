@@ -22,7 +22,12 @@ fournir une abstraction propre au reste de l'application.
     - Pas de conversion image nécessaire (plus rapide et précis que l'OCR sur PDF).
 - **Fichier** : `pdf_engine.py`
 
-### 3. OpenCV (`opencv-python-headless`)
+### 3. PDFPlumber (`pdfplumber`)
+
+- **Rôle** : Alternative pour les PDF avec tableaux complexes (fiches de paie).
+- **Fichier** : `pdfplumber_engine.py`
+
+### 4. OpenCV (`opencv-python-headless`)
 
 - **Rôle** : Prétraitement d'image.
 - **Opérations** :
@@ -30,10 +35,18 @@ fournir une abstraction propre au reste de l'application.
     - Binarisation / Seuillage (pour nettoyer le bruit de fond).
     - Désinclinaison (Deskewing).
 
-### 4. Regex & Parsing
+### 5. Regex & Parsing
 
 - **Rôle** : Extraction structurée depuis le texte brut.
-- **Fichiers** : `parser.py`, `llm_parser.py` (expérimental).
+- **Fichiers** : `parser.py`, `groq_parser.py` (LLM-based pour parsing complexe).
+
+### 6. Groq Parser (`groq_parser.py`)
+
+- **Rôle** : Utilise l'API Groq pour parser les documents complexes via LLM.
+- **Pourquoi ?** :
+    - Meilleure compréhension du contexte pour les tickets malformés.
+    - Rapidité grâce à l'inférence Groq.
+- **Variable d'environnement** : `GROQ_API_KEY`
 
 ## 🧩 Diagramme de Classe Simplifié
 

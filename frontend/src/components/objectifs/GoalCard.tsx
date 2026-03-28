@@ -1,8 +1,10 @@
 "use client"
-import { Target, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Clock } from "lucide-react"
+import { Target, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Clock, Paperclip } from "lucide-react"
 import { cn } from "@/lib/utils"
+// ... (imports remain the same)
 import { getGoalCategoryMetadata } from "@/lib/goal-categories"
 import type { Objectif } from "@/api"
+import { GoalDropZone } from "./GoalDropZone"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +30,7 @@ export function GoalCard({ goal, onDelete, onEdit }: GoalCardProps) {
     : null
 
   return (
-    <div className="group relative p-6 rounded-3xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] transition-all overflow-hidden flex flex-col justify-between h-[280px]">
+    <div className="group relative p-6 rounded-3xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] transition-all overflow-hidden flex flex-col justify-between h-[380px]">
       {/* Background Decorative Element */}
       <div 
         className="absolute -right-8 -top-8 w-32 h-32 rounded-full opacity-[0.03] blur-2xl pointer-events-none transition-all duration-500 group-hover:opacity-[0.06]" 
@@ -101,7 +103,6 @@ export function GoalCard({ goal, onDelete, onEdit }: GoalCardProps) {
             />
           </div>
 
-          {/* Metrics labels */}
           <div className="flex items-center justify-between pt-1">
              <div className="flex items-center gap-1.5 overflow-hidden">
                 <TrendingUp className="w-3 h-3 text-emerald-400 opacity-50 shrink-0" />
@@ -121,7 +122,12 @@ export function GoalCard({ goal, onDelete, onEdit }: GoalCardProps) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-6 border-t border-white/[0.05]">
+      {/* Goal Attachments Zone */}
+      <div className="py-2">
+        {goal.id && <GoalDropZone goalId={goal.id} />}
+      </div>
+
+      <div className="flex items-center justify-between pt-4 border-t border-white/[0.05]">
         <div className="flex items-center gap-2 text-white/40">
           <Calendar className="w-3.5 h-3.5" />
           <span className="text-[10px] font-bold uppercase tracking-wider">
@@ -130,16 +136,18 @@ export function GoalCard({ goal, onDelete, onEdit }: GoalCardProps) {
               : "Pas d'échéance"}
           </span>
         </div>
-        {daysRemaining !== null && daysRemaining > 0 && !isReached && (
-          <div className="px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.05]">
-             <span className="text-[9px] font-bold text-white/60">J-{daysRemaining}</span>
-          </div>
-        )}
-        {isReached && (
-          <div className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
-             <span className="text-[9px] font-black text-emerald-400 uppercase">Atteint</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {daysRemaining !== null && daysRemaining > 0 && !isReached && (
+            <div className="px-2 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.05]">
+               <span className="text-[9px] font-bold text-white/60">J-{daysRemaining}</span>
+            </div>
+          )}
+          {isReached && (
+            <div className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+               <span className="text-[9px] font-black text-emerald-400 uppercase">Atteint</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

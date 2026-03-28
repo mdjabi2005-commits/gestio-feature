@@ -3,6 +3,7 @@ import React from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CategorySubcategorySelect } from "@/components/ui/CategorySubcategorySelect";
+import { useFinancial } from '@/context/FinancialDataContext';
 
 interface TransactionFormFieldsProps {
   type: 'Dépense' | 'Revenu';
@@ -17,6 +18,8 @@ interface TransactionFormFieldsProps {
   setSubcategory: (subcategory: string) => void;
   description: string;
   setDescription: (description: string) => void;
+  objectifId?: number | null;
+  setObjectifId?: (id: number | null) => void;
 }
 
 export const TransactionFormFields: React.FC<TransactionFormFieldsProps> = ({
@@ -26,7 +29,15 @@ export const TransactionFormFields: React.FC<TransactionFormFieldsProps> = ({
   category, setCategory,
   subcategory, setSubcategory,
   description, setDescription,
+  objectifId, setObjectifId
 }) => {
+  const { objectifs, showFinishedGoals } = useFinancial();
+
+  const visibleObjectifs = React.useMemo(() => {
+    if (showFinishedGoals) return objectifs;
+    return objectifs.filter(o => (o.montant_actuel || 0) < (o.montant_cible || 0));
+  }, [objectifs, showFinishedGoals]);
+
   return (
     <div className="space-y-6 text-left">
       {/* Type Toggle */}
@@ -86,6 +97,25 @@ export const TransactionFormFields: React.FC<TransactionFormFieldsProps> = ({
         subcategory={subcategory} 
         setSubcategory={setSubcategory} 
       />
+
+      {/* Goal Selector */}
+      {setObjectifId && (
+        <div className="space-y-2 text-left">
+          <label className="text-sm font-medium text-gray-300">Objectif lié (optionnel)</label>
+          <select
+            value={objectifId || ""}
+            onChange={(e) => setObjectifId(e.target.value ? parseInt(e.target.value) : null)}
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none"
+          >
+            <option value="" className="bg-slate-900 text-gray-400">Aucun objectif</option>
+            {visibleObjectifs.map(goal => (
+              <option key={goal.id} value={goal.id} className="bg-slate-900">
+                {goal.nom} ({Math.round(goal.progression_pourcentage || 0)}%)
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Description */}
       <div className="space-y-2 text-left">

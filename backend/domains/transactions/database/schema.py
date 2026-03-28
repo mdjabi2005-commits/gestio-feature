@@ -90,12 +90,16 @@ def init_transaction_table(db_path: str = None) -> None:
             add_column_if_missing(cursor, "transactions", "source", "'Manuel'")
             add_column_if_missing(cursor, "transactions", "compte_id")
             add_column_if_missing(cursor, "transactions", "echeance_id")
+            add_column_if_missing(cursor, "transactions", "objectif_id")
 
             create_index_if_not_exists(
                 cursor, "idx_transactions_external_id", "transactions", "external_id"
             )
             create_index_if_not_exists(
                 cursor, "idx_transactions_echeance_id", "transactions", "echeance_id"
+            )
+            create_index_if_not_exists(
+                cursor, "idx_transactions_objectif_id", "transactions", "objectif_id"
             )
 
         logger.info("Transaction table initialized successfully")
@@ -117,10 +121,13 @@ def init_attachments_table(db_path: str = None) -> None:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     transaction_id INTEGER,
                     echeance_id INTEGER,
+                    objectif_id INTEGER,
                     file_path TEXT NOT NULL,
                     FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
                 )
             """)
+
+            add_column_if_missing(cursor, "transaction_attachments", "objectif_id")
 
             # Migration check: if file_name or upload_date exists, we need to migrate to new structure
             cursor.execute("PRAGMA table_info(transaction_attachments)")

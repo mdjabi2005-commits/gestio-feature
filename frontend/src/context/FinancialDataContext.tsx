@@ -46,6 +46,8 @@ interface FinancialContextType {
   filteredTransactions: Transaction[];
 
   // Objectifs State
+  showFinishedGoals: boolean;
+  setShowFinishedGoals: (show: boolean) => void;
   objectifs: Objectif[];
   objectifsLoading: boolean;
   setObjectif: (data: Objectif) => Promise<void>;
@@ -84,6 +86,7 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
   // Objectifs
   const [objectifs, setObjectifs] = useState<Objectif[]>([]);
   const [objectifsLoading, setObjectifsLoading] = useState(false);
+  const [showFinishedGoals, setShowFinishedGoals] = useState(false);
 
   const fetchObjectifs = async () => {
     setObjectifsLoading(true);
@@ -182,6 +185,8 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
     echeances,
     echeancesLoading,
     refreshEcheances: fetchEcheances,
+    showFinishedGoals,
+    setShowFinishedGoals,
     objectifs,
     objectifsLoading,
     setObjectif: handleSetObjectif,

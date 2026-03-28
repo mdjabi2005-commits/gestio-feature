@@ -38,6 +38,7 @@ const AddTransactionModal: React.FC<Props> = ({
   const [category, setCategory] = useState(initialData?.categorie || 'Alimentation');
   const [subcategory, setSubcategory] = useState(initialData?.sous_categorie || '');
   const [description, setDescription] = useState(initialData?.description || '');
+  const [objectifId, setObjectifId] = useState<number | null>(initialData?.objectif_id || null);
   const [isRawTextOpen, setIsRawTextOpen] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDeletingAttachment, setIsDeletingAttachment] = useState<number | null>(null);
@@ -69,6 +70,7 @@ const AddTransactionModal: React.FC<Props> = ({
         id: initialData?.id, type, date, montant: parseFloat(amount),
         categorie: category, sous_categorie: subcategory || undefined,
         description: description || undefined, source: initialData?.source || 'manual',
+        objectif_id: objectifId || undefined,
         attachment: (initialData as any)?.attachment // Preservation of archived path
       };
       if (initialData?.id) {
@@ -146,7 +148,15 @@ const AddTransactionModal: React.FC<Props> = ({
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
-              <TransactionFormFields type={type} setType={setType} date={date} setDate={setDate} amount={amount} setAmount={setAmount} category={category} setCategory={setCategory} subcategory={subcategory} setSubcategory={setSubcategory} description={description} setDescription={setDescription} />
+              <TransactionFormFields 
+                type={type} setType={setType} 
+                date={date} setDate={setDate} 
+                amount={amount} setAmount={setAmount} 
+                category={category} setCategory={setCategory} 
+                subcategory={subcategory} setSubcategory={setSubcategory} 
+                description={description} setDescription={setDescription} 
+                objectifId={objectifId} setObjectifId={setObjectifId}
+              />
               {initialData?.id && <AttachmentSection attachments={attachments} onDelete={handleDeleteAttachment} isDeletingId={isDeletingAttachment} />}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={onClose} className="flex-1 px-4 py-3 rounded-xl font-medium text-sm text-gray-400 bg-white/5 hover:bg-white/10 transition-colors">Annuler</button>

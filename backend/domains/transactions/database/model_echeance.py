@@ -28,6 +28,7 @@ class Echeance(BaseModel):
     description: Optional[str] = Field(None, description="Description ou notes")
     statut: str = Field("active", description="Statut (active, inactive)")
     type_echeance: str = Field("recurrente", description="Type (recurrente, ponctuelle)")
+    objectif_id: Optional[int] = Field(None, description="ID de l'objectif lié")
 
     # ── Validators ──────────────────────────────────────────
 

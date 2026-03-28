@@ -7,13 +7,14 @@ src/app/dashboard/
 └── page.tsx                    # Page principale
 
 src/context/
-├── FinancialDataContext.tsx    # Context provider
-└── useFinancial.ts             # (réexport)
+└── FinancialDataContext.tsx    # Context provider (et useFinancial)
 
 src/hooks/
 └── useFinancialData.ts         # Hook de fetching des données
 
-src/api.ts                      # Client API
+src/api/
+├── types.ts                  # Définitions des types
+└── (autres basés sur api.ts)
 
 src/components/dashboard/
 ├── kpi-cards.tsx               # Cartes KPI
@@ -22,7 +23,7 @@ src/components/dashboard/
 
 src/lib/
 ├── utils.ts                    # Utilitaires (cn)
-└── categories.ts               # Catégories
+└── categories.ts               # Catégories (icons, colors)
 ```
 
 ## Arbre des dépendances complet
@@ -31,8 +32,8 @@ src/lib/
 page.tsx
 ├── @/context/FinancialDataContext
 │   └── useFinancialData.ts
-│       └── @/api
-│           └── api.ts (appelle /api/dashboard/ et /api/transactions/)
+│       └── @/api.ts (Agrégateur)
+│           └── @/api/ (Services modulaires)
 │
 ├── @/components/dashboard/kpi-cards.tsx
 │   └── @/lib/utils.ts

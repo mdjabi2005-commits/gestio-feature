@@ -1,10 +1,11 @@
-"use client"
-import { useState, useRef } from "react"
-import { X, Save, Calendar, Repeat, Paperclip, Loader2 } from "lucide-react"
+import React, { useState, useRef } from "react"
+import { X, Save, Calendar, Repeat, Paperclip, Loader2, Target } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AttachmentSection } from "../transactions/AttachmentSection"
 import { CategorySubcategorySelect } from "@/components/ui/CategorySubcategorySelect"
 import type { Attachment } from "@/api"
+
+import { useFinancial } from "@/context/FinancialDataContext"
 
 interface InstallmentFormData {
   nom: string
@@ -16,6 +17,7 @@ interface InstallmentFormData {
   date_debut: string
   date_fin: string
   description: string
+  objectif_id?: number | null
 }
 
 const FREQUENCIES = ["mensuelle", "hebdomadaire", "annuelle", "trimestrielle", "bimensuelle"]
@@ -46,10 +48,17 @@ export function InstallmentForm({
     date_debut: initial?.date_debut ?? "",
     date_fin: initial?.date_fin ?? "",
     description: initial?.description ?? "",
+    objectif_id: initial?.objectif_id ?? null,
   })
 
+  const { objectifs, showFinishedGoals } = useFinancial();
+  const visibleObjectifs = React.useMemo(() => {
+    if (showFinishedGoals) return objectifs;
+    return objectifs.filter(o => (o.montant_actuel || 0) < (o.montant_cible || 0));
+  }, [objectifs, showFinishedGoals]);
+
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const set = (k: keyof InstallmentFormData, v: string) => setForm(f => ({ ...f, [k]: v }))
+  const set = (k: keyof InstallmentFormData, v: any) => setForm(f => ({ ...f, [k]: v }))
 
   const isValid = form.nom.trim() && form.montant && Number(form.montant) > 0 && form.categorie && form.sous_categorie
 
@@ -116,6 +125,19 @@ export function InstallmentForm({
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30 pointer-events-none" />
             <input type="date" className={cn(FIELD_CLASS, "pl-9")} value={form.date_fin} onChange={e => set("date_fin", e.target.value)} />
+          </div>
+        </div>
+
+        <div className="col-span-2">
+          <label className={LABEL_CLASS}>Objectif lié (optionnel)</label>
+          <div className="relative">
+            <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30 pointer-events-none" />
+            <select className={cn(FIELD_CLASS, "pl-9")} value={form.objectif_id || ""} onChange={e => set("objectif_id", e.target.value ? parseInt(e.target.value) : null)}>
+              <option value="" className="bg-[#0f0f13]">Aucun objectif</option>
+              {visibleObjectifs.map(goal => (
+                <option key={goal.id} value={goal.id} className="bg-[#0f0f13]">{goal.nom} ({Math.round(goal.progression_pourcentage || 0)}%)</option>
+              ))}
+            </select>
           </div>
         </div>
 

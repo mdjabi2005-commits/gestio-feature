@@ -17,7 +17,7 @@ export const CATEGORY_STYLES: Record<string, { couleur: string; icone: string; s
   "Voiture": { 
     couleur: "#3b82f6", 
     icone: "car",
-    subcategories: ['Essence', 'Péage', 'Parking', 'Entretien', 'Réparation', 'Contrôle technique', 'Assurance auto', 'Lavage']
+    subcategories: ['Essence', 'Péage', 'Parking', 'Entretien', 'Réparation', 'Contrôle technique', 'Assurance auto', 'Lavage', 'Feu Vert abonnement']
   },
   "Uber": { 
     couleur: "#3b82f6", 
@@ -50,9 +50,7 @@ export const CATEGORY_STYLES: Record<string, { couleur: string; icone: string; s
     subcategories: ['Abonnement', 'Banque / Frais', 'Impôts / Taxes', 'Assurance', 'Courrier / Colis', 'Administratif']
   },
   "Bourse": { couleur: "#10b981", icone: "trending-up", subcategories: [] },
-  "Épargne": { couleur: "#059669", icone: "piggy-bank", subcategories: [] },
-  "Revenu": { couleur: "#10b981", icone: "plus-circle", subcategories: [] },
-  "Dépense": { couleur: "#f43f5e", icone: "minus-circle", subcategories: [] },
+  "Épargne": { couleur: "#059669", icone: "piggy-bank", subcategories: ['Livret A', 'PEL', 'Assurance Vie', 'Cryptos', 'Divers'] },
   "Autre": { couleur: "#6b7280", icone: "shopping-cart", subcategories: ['Divers'] },
 }
 

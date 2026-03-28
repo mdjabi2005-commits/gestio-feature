@@ -174,8 +174,14 @@ async def add_echeance(echeance: Echeance):
     """Créer une nouvelle échéance."""
     try:
         echeance_id = repo.add(echeance)
+        if echeance_id == 0:
+            raise HTTPException(
+                status_code=400, detail="Échec de l'ajout de l'échéance"
+            )
         backfill_echeances(months_back=1)
         return echeance_id
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

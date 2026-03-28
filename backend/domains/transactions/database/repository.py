@@ -75,8 +75,8 @@ class TransactionRepository:
             query = """
                 INSERT INTO transactions
                 (type, categorie, sous_categorie, description, montant, date,
-                 source, external_id, echeance_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 source, external_id, echeance_id, objectif_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
 
             # Handle attachment if provided in the input (as a temporary field)
@@ -100,6 +100,7 @@ class TransactionRepository:
                         data["source"],
                         data["external_id"],
                         data["echeance_id"],
+                        data["objectif_id"],
                     ),
                 )
                 new_id = cursor.lastrowid
@@ -139,7 +140,8 @@ class TransactionRepository:
             query = """
                 UPDATE transactions
                 SET type=?, categorie=?, sous_categorie=?, description=?,
-                    montant=?, date=?, source=?, external_id=?, echeance_id=?
+                    montant=?, date=?, source=?, external_id=?, echeance_id=?,
+                    objectif_id=?
                 WHERE id=?
             """
 
@@ -157,6 +159,7 @@ class TransactionRepository:
                         data["source"],
                         data["external_id"],
                         data["echeance_id"],
+                        data["objectif_id"],
                         tx_id,
                     ),
                 )

@@ -80,3 +80,5 @@ categories:
 - name: Uber
   subcategories:
   - Livraison
+- name: Bourse
+  subcategories: []

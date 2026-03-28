@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Any
 
-from backend.config.paths import SORTED_DIR, REVENUS_TRAITES
+from backend.config.paths import SORTED_DIR, REVENUS_TRAITES, OBJECTIFS_DIR
 from backend.domains.transactions.database.model_attachment import TransactionAttachment
 from backend.domains.transactions.database.repository_attachment import (
     attachment_repository,
@@ -109,6 +109,44 @@ class AttachmentService:
 
         except Exception as e:
             logger.error(f"Erreur add_attachment_to_echeance: {e}")
+            return False
+
+    def add_attachment_to_objectif(
+        self, objectif_id: int, nom_objectif: str, file_content: bytes, filename: str
+    ) -> bool:
+        """
+        Sauvegarde un fichier pour un objectif spécifique.
+        Chemin : DATA_DIR/objectifs/{nom_objectif}/
+        """
+        try:
+            # Nettoyage du nom d'objectif pour le dossier
+            safe_goal_name = self._sanitize(nom_objectif)
+            target_dir = Path(OBJECTIFS_DIR) / safe_goal_name
+            target_dir.mkdir(parents=True, exist_ok=True)
+
+            unique_name = f"{int(datetime.now().timestamp())}_{self._sanitize_filename(filename)}"
+            target_path = target_dir / unique_name
+
+            target_path.write_bytes(file_content)
+
+            attachment = TransactionAttachment(
+                objectif_id=objectif_id,
+                file_path=str(target_path),
+            )
+            new_id = attachment_repository.add_attachment(attachment)
+            if new_id:
+                logger.info(
+                    f"Attachment objectif ajouté: {unique_name} (ID: {new_id}, Objectif: {nom_objectif})"
+                )
+                return True
+
+            logger.error("Echec DB, fichier sauvegardé mais orphelin")
+            if target_path.exists():
+                target_path.unlink()
+            return False
+
+        except Exception as e:
+            logger.error(f"Erreur add_attachment_to_objectif: {e}")
             return False
 
     @staticmethod
