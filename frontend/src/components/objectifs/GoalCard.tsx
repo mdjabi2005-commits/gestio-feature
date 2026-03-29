@@ -23,6 +23,8 @@ interface GoalCardProps {
 export function GoalCard({ goal, onDelete, onEdit, onClick }: GoalCardProps) {
   const montantActuelTh = goal.montant_actuel_temporel ?? 0
   const montantActuelReel = goal.montant_actuel_reel ?? 0
+  const montantMensuelTh = goal.montant_mensuel_calc ?? 0
+  const montantMensuelReel = goal.montant_mensuel_reel ?? 0
   const progressTh = goal.progress_pct ?? 0
   const progressReel = goal.progress_pct_reel ?? 0
   
@@ -115,6 +117,16 @@ export function GoalCard({ goal, onDelete, onEdit, onClick }: GoalCardProps) {
                  style={{ width: `${Math.min(progressTh, 100)}%` }}
                />
             </div>
+            {(montantMensuelTh > 0 || montantMensuelReel > 0) && (
+              <div className="flex justify-between text-[9px] pt-0.5">
+                <span className="text-indigo-400/50">
+                  {montantMensuelTh > 0 ? `Objectif: ${Math.round(montantMensuelTh).toLocaleString("fr-FR")}€/mois` : 'Objectif: -'}
+                </span>
+                <span className="text-emerald-400/70">
+                  {montantMensuelReel > 0 ? `Réel: ${Math.round(montantMensuelReel).toLocaleString("fr-FR")}€/mois` : 'Réel: -'}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Real Progress (Reality) */}

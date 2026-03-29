@@ -23,6 +23,23 @@ async def list_attachments(transaction_id: int):
     return attachment_service.get_attachments(transaction_id)
 
 
+@router.get("/objectif/{objectif_id}", response_model=List[TransactionAttachment])
+async def list_objectif_attachments(objectif_id: int):
+    """Liste les pièces jointes d'un objectif."""
+    from backend.domains.goals.database.repository_goal import goal_repository
+
+    goal = goal_repository.get_by_id(objectif_id)
+    if not goal:
+        raise HTTPException(status_code=404, detail="Objectif non trouvé")
+
+    from backend.domains.transactions.database.repository_attachment import (
+        AttachmentRepository,
+    )
+
+    repo = AttachmentRepository()
+    return repo.get_attachments_by_objectif(objectif_id)
+
+
 @router.get("/echeance/{echeance_id}", response_model=List[TransactionAttachment])
 async def list_echeance_attachments(echeance_id: int):
     """Liste les pièces jointes d'une échéance."""
@@ -211,7 +228,9 @@ def archive_payroll_file(
     )
 
 
-def archive_ticket_file(temp_path: str, transaction: Transaction = None) -> Optional[str]:
+def archive_ticket_file(
+    temp_path: str, transaction: Transaction = None
+) -> Optional[str]:
     """Archive le fichier de ticket image."""
     if transaction is None:
         return None

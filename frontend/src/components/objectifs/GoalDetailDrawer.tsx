@@ -13,6 +13,7 @@ interface GoalMetrics {
     montant_actuel_temporel: number
     montant_actuel_reel: number
     montant_mensuel_calc: number
+    montant_mensuel_reel: number
     projection_date_calc: string | null
     projection_date_reel: string | null
     months_remaining: number
@@ -98,6 +99,7 @@ export function GoalDetailDrawer({ goal, transactions, open, onOpenChange }: Goa
             projectionDateReel={goal.projection_date_reel || null}
             montantRetard={goal.montant_retard ?? 0}
             monantMensuelCalc={goal.montant_mensuel_calc ?? 0}
+            montantMensuelReel={goal.montant_mensuel_reel ?? 0}
           />
 
           <GoalProgressComparison 

@@ -10,6 +10,7 @@ interface GoalPredictiveAnalysisProps {
   projectionDateReel: string | null
   montantRetard: number
   monantMensuelCalc: number
+  montantMensuelReel: number
 }
 
 export function GoalPredictiveAnalysis({ 
@@ -17,7 +18,8 @@ export function GoalPredictiveAnalysis({
   delayMonths, 
   projectionDateReel,
   montantRetard,
-  monantMensuelCalc
+  monantMensuelCalc,
+  montantMensuelReel
 }: GoalPredictiveAnalysisProps) {
   if (impactStatus === 'neutral' || !projectionDateReel) return null
 
@@ -50,10 +52,16 @@ export function GoalPredictiveAnalysis({
           </div>
         </div>
         
-        <div className="text-right">
-           <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400/60 mb-1 text-balance">Cible Plan (Théorie)</p>
-           <p className="text-lg font-black text-white italic">{Math.round(monantMensuelCalc).toLocaleString("fr-FR")}€<span className="text-[10px] opacity-20 ml-1">/mois</span></p>
-        </div>
+        <div className="text-right space-y-2">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400/60 mb-1 text-balance">Cible Plan (Théorie)</p>
+              <p className="text-lg font-black text-white italic">{Math.round(monantMensuelCalc).toLocaleString("fr-FR")}€<span className="text-[10px] opacity-20 ml-1">/mois</span></p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400/60 mb-1 text-balance">Épargne Réelle</p>
+              <p className="text-lg font-black text-emerald-400 italic">{Math.round(montantMensuelReel).toLocaleString("fr-FR")}€<span className="text-[10px] opacity-20 ml-1">/mois</span></p>
+            </div>
+         </div>
       </div>
 
       {/* Insight Text */}

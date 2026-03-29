@@ -7,6 +7,7 @@ export interface GoalMetrics extends Objectif {
   montant_actuel_temporel: number
   montant_actuel_reel: number
   montant_mensuel_calc: number
+  montant_mensuel_reel: number
   projection_date_calc: string | null
   projection_date_reel: string | null
   months_remaining: number
@@ -128,6 +129,7 @@ export function useGoalCalculations(
         montant_actuel_temporel: actualAmountTheoretical,
         montant_actuel_reel: actualAmountReal,
         montant_mensuel_calc: goalMonthlyAllocation,
+        montant_mensuel_reel: avgMonthlySurplus,
         projection_date_calc: projectionDateTh,
         projection_date_reel: projectionDateReal,
         months_remaining: monthsRemainingTh === Infinity ? 0 : monthsRemainingTh,

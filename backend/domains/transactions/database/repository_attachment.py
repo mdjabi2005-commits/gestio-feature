@@ -56,6 +56,26 @@ class AttachmentRepository:
         finally:
             close_connection(conn)
 
+    def get_attachments_by_objectif(
+        self, objectif_id: int
+    ) -> List[TransactionAttachment]:
+        conn = None
+        try:
+            conn = get_db_connection(db_path=self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM transaction_attachments WHERE objectif_id = ?",
+                (objectif_id,),
+            )
+            rows = cursor.fetchall()
+            return [TransactionAttachment(**dict(row)) for row in rows]
+        except sqlite3.Error as e:
+            logger.error(f"Erreur get_attachments_by_objectif: {e}")
+            return []
+        finally:
+            close_connection(conn)
+
     def get_attachment_by_id(
         self, attachment_id: int
     ) -> Optional[TransactionAttachment]:
