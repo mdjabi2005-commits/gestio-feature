@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from 'react'
 import { Plus, PiggyBank, Save, X, AlertCircle, Percent, Euro, TrendingDown, Search } from 'lucide-react'
 import { SalaryPlan, SalaryPlanItem } from '@/api'
-import { CATEGORIES } from '@/lib/categories'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -35,7 +34,7 @@ export function SalaryPlanSetup({ plan, onSave, onClose }: SalaryPlanSetupProps)
     const planToSave = { ...editingPlan, items: filteredItems };
     try {
       await onSave(planToSave)
-      toast.success("Plan d'allocation appliqué ! ✨")
+      toast.success("Budget mensuel appliqué ! ✨")
       onClose()
     } catch (e) {
       toast.error("Erreur lors de la sauvegarde")

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Plus, TrendingDown, PiggyBank } from "lucide-react"
 import { useFinancial } from "@/context/FinancialDataContext"
 import { BudgetCard } from "@/components/budgets/BudgetCard"
@@ -11,6 +11,8 @@ import { SalaryPlanSetup } from "@/components/budgets/SalaryPlanSetup"
 import { BudgetCategoryFilter } from "@/components/budgets/BudgetCategoryFilter"
 import { BudgetGrid } from "@/components/budgets/BudgetGrid"
 import { BudgetFocusView } from "@/components/budgets/BudgetFocusView"
+import { BudgetTransactionsDrawer } from "@/components/budgets/BudgetTransactionsDrawer"
+import { MonthSelector } from "@/components/budgets/MonthSelector"
 import { useBudgetCalculations, useStrategicBalance, useBudgetFilters } from "@/hooks/useBudgetCalculations"
 import { cn } from "@/lib/utils"
 import type { Budget } from "@/api"
@@ -24,15 +26,33 @@ export default function BudgetsPage() {
   const [showPlanSetup, setShowPlanSetup] = useState(false)
   const [editTarget, setEditTarget] = useState<Budget | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedBudgetForTransactions, setSelectedBudgetForTransactions] = useState<Budget | null>(null)
+  
+  const now = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth())
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
 
   const {
     spentByCategory,
     incomeByCategory,
     plannedExpensesByCategory,
     plannedIncomeByCategory,
-  } = useBudgetCalculations(budgets, transactions, echeances)
+  } = useBudgetCalculations(budgets, transactions, echeances, selectedMonth, selectedYear)
 
-  const { fixedChargesBalance, totalVariableBudgets } = useStrategicBalance(echeances, budgets)
+  const filteredBudgetTransactions = useMemo(() => {
+    if (!selectedBudgetForTransactions) return []
+    const cat = selectedBudgetForTransactions.categorie
+    return transactions.filter(t => {
+      const d = new Date(t.date)
+      if (d.getMonth() !== selectedMonth || d.getFullYear() !== selectedYear) return false
+      
+      if (t.categorie === cat) return true
+      if (cat.includes(' > ')) return false
+      return t.categorie.startsWith(`${cat} > `)
+    })
+  }, [selectedBudgetForTransactions, transactions, selectedMonth, selectedYear])
+
+  const { fixedChargesBalance, totalVariableBudgets } = useStrategicBalance(echeances, budgets, selectedMonth, selectedYear)
   const { parentCategories, filteredBudgets } = useBudgetFilters(budgets, selectedCategory)
 
   const allCategories = summary?.repartition_categories ?? []
@@ -87,6 +107,12 @@ export default function BudgetsPage() {
         />
       )}
 
+      <MonthSelector 
+        selectedMonth={selectedMonth} 
+        selectedYear={selectedYear} 
+        onChange={(m, y) => { setSelectedMonth(m); setSelectedYear(y) }} 
+      />
+
       <BudgetCategoryFilter
         parentCategories={parentCategories}
         selectedCategory={selectedCategory}
@@ -100,6 +126,7 @@ export default function BudgetsPage() {
           spentByCategory={spentByCategory}
           activeSalaryPlan={activeSalaryPlan}
           onAddSub={handleAddSub}
+          onShowTransactions={setSelectedBudgetForTransactions}
         />
       )}
 
@@ -114,6 +141,16 @@ export default function BudgetsPage() {
         selectedCategory={selectedCategory}
         onEdit={handleEdit}
         onDelete={deleteBudget}
+        onShowTransactions={setSelectedBudgetForTransactions}
+      />
+
+      <BudgetTransactionsDrawer
+        budget={selectedBudgetForTransactions}
+        transactions={filteredBudgetTransactions}
+        open={!!selectedBudgetForTransactions}
+        onOpenChange={(open) => !open && setSelectedBudgetForTransactions(null)}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
       />
 
       {showForm && (

@@ -100,6 +100,7 @@ def _build_echeance_response(echeance: Echeance, is_paid: bool = False) -> dict:
         "date_prevue": next_date.isoformat() if next_date else "",
         "statut": status,
         "paymentMethod": _get_payment_method(echeance.frequence),
+        "statut_base": echeance.statut,
     }
 
 
@@ -131,6 +132,7 @@ def _build_calendar_occurrence(o: dict, today: date, paid_map: dict) -> dict:
         "statut": status,
         "frequence": o["frequence"],
         "paymentMethod": _get_payment_method(o["frequence"]),
+        "statut_base": o.get("statut", "active"),
     }
 
 

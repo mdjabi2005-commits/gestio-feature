@@ -127,4 +127,5 @@ export interface Objectif {
   montant_mensuel?: number;
   progression_pourcentage?: number;
   projection_date?: string;
+  poids_allocation?: number;
 }

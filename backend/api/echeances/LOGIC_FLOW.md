@@ -90,20 +90,21 @@ graph TD
 ```typescript
 interface EcheanceResponse {
   id: string                    // ID de l'échéance
-  name: string                  // description ou nom
-  category: string              // categorie
-  sous_categorie?: string       // sous_categorie (optionnel)
-  categoryType: string          // sous_categorie (alias pour compatibilité)
-  date: string                  // date_prevue formatée "DD Mmm."
-  daysRemaining: number         // jours jusqu'à l'échéance
-  amount: number                // montant
-  type: "expense" | "income"    // "Dépense" → expense, "Revenu" → income
-  status: "paid" | "pending" | "overdue"  // basé sur date_prevue et transactions
-  frequence: string             // fréquence (mensuel, hebdomadaire, etc.)
-  date_debut: string            // date de début (ISO)
-  date_fin?: string             // date de fin (ISO)
-  date_prevue: string           // prochaine date prévue (ISO)
+  nom: string                   // description ou nom
+  categorie: string             // categorie
+  sous_categorie?: string      // sous_categorie (optionnel)
+  categoryType: string         // sous_categorie (alias pour compatibilité)
+  date: string                 // date_prevue formatée "DD Mmm."
+  daysRemaining: number        // jours jusqu'à l'échéance
+  montant: number              // montant
+  type: "depense" | "revenu"   // type de l'échéance
+  statut: "paid" | "pending" | "overdue"  // basé sur date_prevue et transactions
+  frequence: string            // fréquence (mensuel, hebdomadaire, etc.)
+  date_debut: string           // date de début (ISO)
+  date_fin?: string            // date de fin (ISO)
+  date_prevue: string          // prochaine date prévue (ISO)
   paymentMethod: "automatic" | "manual"  // basé sur frequence
+  statut_base: "active" | "inactive"     // statut réel en BDD
 }
 ```
 
@@ -112,16 +113,20 @@ interface EcheanceResponse {
 Le statut est calculé dans `echeances.py` (EcheanceResponse) :
 
 ```python
-def __init__(self, echeance: Echeance, is_paid: bool = False):
+def _build_echeance_response(echeance: Echeance, is_paid: bool = False):
     if is_paid:
-        self.status = "paid"  # Transaction liée ce mois
+        statut = "paid"  # Transaction liée ce mois
     elif echeance.statut == "active":
-        self.status = "overdue" if (next_date and next_date < today) else "pending"
+        statut = "overdue" if (next_date and next_date < today) else "pending"
     else:
-        self.status = "paid"  # statut inactive traité comme paid
+        statut = "paid"  # statut inactive traité comme paid
+    return {
+        "statut": statut,
+        # ...
+    }
 ```
 
-**Important** : Le frontend doit **inclure** les échéances `status === 'paid'` dans les calculs car elles représentent des charges/revenus du mois en cours.
+**Important** : Le frontend doit **inclure** les échéances `statut === 'paid'` dans les calculs car elles représentent des charges/revenus du mois en cours.
 
 ## Logique de projection
 
@@ -167,7 +172,7 @@ La méthode `get_occurrences_for_month(year, month)` calcule les occurrences :
 
 ### Statut des échéances
 
-| Status | Signification |
+| Statut | Signification |
 |--------|---------------|
 | `paid` | Échéance liée à une transaction ce mois |
 | `pending` | Échéance active, pas encore payée |
@@ -177,15 +182,15 @@ La méthode `get_occurrences_for_month(year, month)` calcule les occurrences :
 
 | Erreur | Cause | Solution |
 |--------|-------|----------|
-| `Solde échéance = 0` | Filtré par `status === 'paid'` | **Inclure** 'paid' dans le calcul |
+| `Solde échéance = 0` | Filtré par `statut === 'paid'` | **Inclure** 'paid' dans le calcul |
 
 ### Statut calcul (echeances.py)
 
 ```python
 if is_paid:
-    status = "paid"
+    statut = "paid"
 elif echeance.statut == "active":
-    status = "overdue" if next_date < today else "pending"
+    statut = "overdue" if next_date < today else "pending"
 else:
-    status = "paid"  # inactive traité comme paid
+    statut = "paid"  # inactive traité comme paid
 ```

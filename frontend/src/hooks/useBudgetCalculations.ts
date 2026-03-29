@@ -35,11 +35,13 @@ export interface StrategicBalanceResult {
 export function useBudgetCalculations(
   budgets: Budget[],
   transactions: Transaction[],
-  echeances: Echeance[]
+  echeances: Echeance[],
+  selectedMonth?: number,
+  selectedYear?: number
 ): BudgetCalculations {
   const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth()
+  const year = selectedYear ?? now.getFullYear()
+  const month = selectedMonth ?? now.getMonth()
 
   const spentByCategory = useMemo(() => {
     const map: Record<string, number> = {}
@@ -132,11 +134,13 @@ export function useBudgetCalculations(
 
 export function useStrategicBalance(
   echeances: Echeance[],
-  budgets: Budget[]
+  budgets: Budget[],
+  selectedMonth?: number,
+  selectedYear?: number
 ): StrategicBalanceResult {
   const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth()
+  const year = selectedYear ?? now.getFullYear()
+  const month = selectedMonth ?? now.getMonth()
 
   return useMemo(() => {
     let totalStrategicIncome = 0

@@ -8,6 +8,7 @@ interface BudgetFocusViewProps {
   spentByCategory: Record<string, number>
   activeSalaryPlan: SalaryPlan | null
   onAddSub: (name: string) => void
+  onShowTransactions: (budget: Budget) => void
 }
 
 export function BudgetFocusView({
@@ -16,6 +17,7 @@ export function BudgetFocusView({
   spentByCategory,
   activeSalaryPlan,
   onAddSub,
+  onShowTransactions,
 }: BudgetFocusViewProps) {
   const budgetObj = budgets.find(b => b.categorie === selectedCategory)
   const planItem = activeSalaryPlan?.items.find((c: any) => c.categorie === selectedCategory)
@@ -42,7 +44,13 @@ export function BudgetFocusView({
       </div>
 
       <AllocationBar subBudgets={subBudgets} capacity={capacity} parentStyle={parentStyle} />
-      <SpentBar totalSpent={totalSpent} spentPct={spentPct} />
+      <AllocationBar subBudgets={subBudgets} capacity={capacity} parentStyle={parentStyle} />
+      <div 
+        className="cursor-pointer group/spent"
+        onClick={() => budgetObj && onShowTransactions(budgetObj)}
+      >
+        <SpentBar totalSpent={totalSpent} spentPct={spentPct} />
+      </div>
       <SubcategorySelector selectedCategory={selectedCategory} budgets={budgets} subcategories={subcategories} onAddSub={onAddSub} />
     </div>
   )

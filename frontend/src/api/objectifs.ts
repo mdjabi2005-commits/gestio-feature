@@ -15,7 +15,11 @@ export const objectifsApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to add goal');
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Erreur API addObjectif:', { status: res.status, error: errorData });
+        throw new Error(errorData.detail?.[0]?.msg || 'Failed to add goal');
+    }
     const id = await res.json();
     return { ...data, id };
   },
@@ -26,7 +30,11 @@ export const objectifsApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to update goal');
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Erreur API updateObjectif:', { status: res.status, error: errorData });
+        throw new Error(errorData.detail?.[0]?.msg || 'Failed to update goal');
+    }
     return res.json();
   },
 

@@ -1,4 +1,4 @@
-import { Trash2, AlertTriangle, CheckCircle2, Check, X } from "lucide-react"
+import { Trash2, AlertTriangle, CheckCircle2, Check, X, Pencil } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { LucideIcon } from "lucide-react"
 
@@ -16,6 +16,7 @@ interface BudgetCardHeaderProps {
   onCancel: (e: React.MouseEvent) => void
   onValidate: (e: React.MouseEvent) => void
   onDelete: () => void
+  onEdit: () => void
 }
 
 export function BudgetCardHeader({
@@ -32,6 +33,7 @@ export function BudgetCardHeader({
   onCancel,
   onValidate,
   onDelete,
+  onEdit,
 }: BudgetCardHeaderProps) {
   return (
     <div className="flex items-center justify-between mb-4">
@@ -81,6 +83,12 @@ export function BudgetCardHeader({
             ) : budget.montant_max > 0 ? (
               <CheckCircle2 className="w-4 h-4 text-emerald-400 opacity-60" />
             ) : null}
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit() }}
+              className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-white/30 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all ml-1"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete() }}
               className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-white/30 hover:text-rose-400 hover:bg-rose-500/10 transition-all"

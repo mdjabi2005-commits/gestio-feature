@@ -14,6 +14,7 @@ interface BudgetGridProps {
   selectedCategory: string | null
   onEdit: (budget: Budget) => void
   onDelete: (id: number) => void
+  onShowTransactions: (budget: Budget) => void
 }
 
 export function BudgetGrid({
@@ -27,6 +28,7 @@ export function BudgetGrid({
   selectedCategory,
   onEdit,
   onDelete,
+  onShowTransactions,
 }: BudgetGridProps) {
   if (budgets.length === 0) {
     return (
@@ -68,6 +70,7 @@ export function BudgetGrid({
             allCategories={allCategories}
             onDelete={onDelete}
             onEdit={onEdit}
+            onShowTransactions={onShowTransactions}
             isFiltered={!!selectedCategory}
             parentBudget={parentBudget}
           />

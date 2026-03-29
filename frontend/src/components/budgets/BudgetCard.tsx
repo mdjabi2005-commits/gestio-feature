@@ -20,13 +20,14 @@ interface BudgetCardProps {
   allCategories: any[]
   onDelete: (id: number) => void
   onEdit: (budget: Budget) => void
+  onShowTransactions: (budget: Budget) => void
   isFiltered?: boolean
   parentBudget?: Budget | null
 }
 
 export function BudgetCard({ 
   budget, spent, planned, income, plannedIncome, allCategories, onDelete, onEdit,
-  isFiltered, parentBudget 
+  onShowTransactions, isFiltered, parentBudget 
 }: BudgetCardProps) {
   const { setBudget } = useFinancial()
   const [localAmount, setLocalAmount] = useState(budget.montant_max)
@@ -80,15 +81,13 @@ export function BudgetCard({
   return (
     <div
       className={cn(
-        "group relative p-5 rounded-2xl transition-all border",
-        isFiltered 
-          ? "bg-white/[0.04] border-white/[0.08] cursor-default" 
-          : isSub 
-            ? "bg-white/[0.02] border-white/[0.04] hover:bg-white/[0.04] ml-6 scale-[0.98] cursor-pointer" 
-            : "bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.05] cursor-pointer",
+        "group relative p-5 rounded-2xl transition-all border cursor-pointer",
+        isSub 
+          ? "bg-white/[0.02] border-white/[0.04] hover:bg-white/[0.04] ml-6 scale-[0.98]" 
+          : "bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.05]",
         hasChanged && "border-indigo-500/40 ring-1 ring-indigo-500/10"
       )}
-      onClick={() => { if (!isFiltered) onEdit(budget) }}
+      onClick={() => onShowTransactions(budget)}
     >
       <BudgetCardHeader
         budget={budget}
@@ -104,6 +103,7 @@ export function BudgetCard({
         onCancel={handleCancel}
         onValidate={handleValidate}
         onDelete={() => budget.id && onDelete(budget.id)}
+        onEdit={() => onEdit(budget)}
       />
 
       {isFiltered && isSub && parentBudget && (

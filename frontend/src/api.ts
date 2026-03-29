@@ -1,6 +1,7 @@
 // api.ts — Thin aggregator. Keep under 200 lines (AGENTS.md rule).
 // Types are in api/types.ts. Domain methods in api/*.ts
 
+import type { Transaction, Attachment, OCRScanResponse, ScannedTicket, Budget, BudgetSummaryItem, BudgetSummary, Echeance, IncomeScanResponse, IncomeSplit, SalaryPlan, SalaryPlanItem, Objectif } from './api/types';
 export type { Transaction, Attachment, OCRScanResponse, ScannedTicket, Budget, BudgetSummaryItem, BudgetSummary, Echeance, IncomeScanResponse, IncomeSplit, SalaryPlan, SalaryPlanItem, Objectif } from './api/types';
 import { budgetsApi } from './api/budgets';
 import { ocrApi } from './api/ocr';
@@ -128,6 +129,12 @@ export const api = {
   },
 
   getAttachmentUrl: (id: number) => `${API_BASE_URL}/api/attachments/${id}`,
+
+  getGoalAttachments: async (goalId: number): Promise<Attachment[]> => {
+    const res = await fetch(`${API_BASE_URL}/api/attachments/objectif/${goalId}`);
+    if (!res.ok) throw new Error('Failed to fetch goal attachments');
+    return res.json();
+  },
 
   getOCRConfig: async (): Promise<{ api_key?: string }> => {
     try {
