@@ -28,10 +28,18 @@ def init_goal_table(db_path: str = None) -> None:
                 categorie TEXT NOT NULL,
                 description TEXT,
                 statut TEXT DEFAULT 'active',
+                poids_allocation REAL DEFAULT 1.0,
                 date_creation TEXT,
                 date_modification TEXT
             )
         """)
+
+        cursor.execute("PRAGMA table_info(goals)")
+        columns = [col[1] for col in cursor.fetchall()]
+        if "poids_allocation" not in columns:
+            cursor.execute(
+                "ALTER TABLE goals ADD COLUMN poids_allocation REAL DEFAULT 1.0"
+            )
 
         conn.commit()
         logger.info("Goals table initialized successfully")

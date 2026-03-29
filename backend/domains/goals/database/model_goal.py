@@ -13,13 +13,16 @@ class Goal(BaseModel):
 
     id: Optional[int] = Field(None, description="ID unique")
     nom: str = Field(..., description="Nom de l'objectif")
-    montant_cible: float = Field(..., gt=0, description="Montant cible à atteindre")
+    montant_cible: float = Field(..., ge=0, description="Montant cible à atteindre")
     date_echeance: Optional[date] = Field(
         None, description="Date limite pour atteindre l'objectif"
     )
     categorie: str = Field(..., description="Catégorie liée (depuis goals.yaml)")
     description: Optional[str] = Field(None, description="Description")
     statut: str = Field("active", description="Statut (active, completed, archived)")
+    poids_allocation: float = Field(
+        1.0, ge=0, description="Poids pour la répartition pondérée de l'épargne"
+    )
     date_creation: Optional[date] = Field(None, description="Date de création")
 
     model_config = ConfigDict(
@@ -32,6 +35,7 @@ class Goal(BaseModel):
                 "categorie": "ÉpargneVacances",
                 "description": "Pour les vacances d'été 2026",
                 "statut": "active",
+                "poids_allocation": 2.0,
             }
         },
     )

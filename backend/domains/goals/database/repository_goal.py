@@ -58,8 +58,8 @@ class GoalRepository:
     def add(self, goal: Goal) -> Optional[int]:
         """Ajoute un nouvel objectif."""
         query = """
-            INSERT INTO goals (nom, montant_cible, date_echeance, categorie, description, statut, date_creation)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO goals (nom, montant_cible, date_echeance, categorie, description, statut, poids_allocation, date_creation)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """
 
         try:
@@ -74,6 +74,7 @@ class GoalRepository:
                         goal.categorie,
                         goal.description,
                         goal.statut,
+                        goal.poids_allocation,
                         datetime.now().date().isoformat(),
                     ),
                 )
@@ -91,7 +92,7 @@ class GoalRepository:
 
         query = """
             UPDATE goals
-            SET nom = ?, montant_cible = ?, date_echeance = ?, categorie = ?, description = ?, statut = ?, date_modification = ?
+            SET nom = ?, montant_cible = ?, date_echeance = ?, categorie = ?, description = ?, statut = ?, poids_allocation = ?, date_modification = ?
             WHERE id = ?
         """
 
@@ -109,6 +110,7 @@ class GoalRepository:
                         goal_data.get("categorie"),
                         goal_data.get("description"),
                         goal_data.get("statut"),
+                        goal_data.get("poids_allocation"),
                         datetime.now().isoformat(),
                         goal_id,
                     ),
