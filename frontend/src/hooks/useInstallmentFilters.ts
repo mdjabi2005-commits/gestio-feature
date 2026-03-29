@@ -21,10 +21,10 @@ export function useInstallmentFilters(
     r = r.filter(i => {
       if (search) {
         const q = search.toLowerCase()
-        if (!i.name.toLowerCase().includes(q) && !i.category.toLowerCase().includes(q)) return false
+        if (!i.nom.toLowerCase().includes(q) && !i.categorie.toLowerCase().includes(q)) return false
       }
-      if (statusF.length && !statusF.includes(i.status)) return false
-      if (catF.length && !catF.includes(i.category)) return false
+      if (statusF.length && !statusF.includes(i.statut)) return false
+      if (catF.length && !catF.includes(i.categorie)) return false
       if (typeF.length && !typeF.includes(i.type)) return false
       return true
     })
@@ -45,9 +45,9 @@ export function useInstallmentFilters(
       const aDate = new Date(a.date_prevue), bDate = new Date(b.date_prevue)
       let cmp = 0
       if (sortField === "date") cmp = aDate.getTime() - bDate.getTime()
-      else if (sortField === "amount") cmp = a.amount - b.amount
-      else if (sortField === "name") cmp = a.name.localeCompare(b.name)
-      else cmp = ord[a.status] - ord[b.status]
+      else if (sortField === "montant") cmp = a.montant - b.montant
+      else if (sortField === "nom") cmp = a.nom.localeCompare(b.nom)
+      else cmp = ord[a.statut] - ord[b.statut]
       return sortDir === "asc" ? cmp : -cmp
     })
     return r

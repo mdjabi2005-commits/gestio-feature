@@ -182,21 +182,13 @@ function SalaryPlanSection({
   onEdit: () => void
 }) {
   return (
-    <div className="relative group">
-      <PlanningSummary 
-        referenceSalary={referenceSalary}
-        fixedChargesBalance={fixedChargesBalance}
-        variableBudgets={totalVariableBudgets}
-        planName={planName}
-      />
-      <button 
-        onClick={onEdit}
-        className="absolute top-4 right-4 p-2 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white/80 hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100 z-10"
-        title="Modifier le plan"
-      >
-        <TrendingDown className="w-4 h-4 rotate-180" />
-      </button>
-    </div>
+    <PlanningSummary 
+      referenceSalary={referenceSalary}
+      fixedChargesBalance={fixedChargesBalance}
+      variableBudgets={totalVariableBudgets}
+      planName={planName}
+      onEdit={onEdit}
+    />
   )
 }
 

@@ -26,8 +26,8 @@ export function EcheanceMetrics({ transactions, allEcheances, summary }: Echeanc
     const d = new Date(i.date_prevue)
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
   })
-  const echeanceRevenu = echeancesCeMois.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0)
-  const echeanceDepense = echeancesCeMois.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0)
+  const echeanceRevenu = echeancesCeMois.filter(i => i.type === 'revenu').reduce((s, i) => s + i.montant, 0)
+  const echeanceDepense = echeancesCeMois.filter(i => i.type === 'depense').reduce((s, i) => s + i.montant, 0)
   const resteFinMois = echeanceRevenu - echeanceDepense
 
   // Metric 3: solde cumulé

@@ -55,9 +55,9 @@ export function FilterDropdown({ label, options, selected, onSelect, onClear }: 
 // --- SortDropdown ---
 const SORT_OPTIONS: { value: SortField; label: string }[] = [
   { value: "date", label: "Date" },
-  { value: "amount", label: "Montant" },
-  { value: "name", label: "Nom" },
-  { value: "status", label: "Statut" },
+  { value: "montant", label: "Montant" },
+  { value: "nom", label: "Nom" },
+  { value: "statut", label: "Statut" },
 ]
 
 export function SortDropdown({ sortField, sortDirection, onSort }: {

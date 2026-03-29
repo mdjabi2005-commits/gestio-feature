@@ -4,7 +4,15 @@ import { Echeance, Transaction } from "@/api";
  * Calcule les dates d'occurrence d'une échéance pour un mois spécifique.
  */
 export function getMonthOccurrences(echeance: Echeance, year: number, month: number): Date[] {
+  if (!echeance.date_debut || !echeance.frequence) {
+    return [];
+  }
+  
   const start = new Date(echeance.date_debut);
+  if (isNaN(start.getTime())) {
+    return [];
+  }
+  
   const end = echeance.date_fin ? new Date(echeance.date_fin) : null;
   const targetMonthStart = new Date(year, month, 1);
   const targetMonthEnd = new Date(year, month + 1, 0, 23, 59, 59);
@@ -46,7 +54,7 @@ export function getMonthOccurrences(echeance: Echeance, year: number, month: num
  * en excluant les échéances déjà payées.
  */
 function calculatePlannedByType(
-  type: 'expense' | 'income',
+  type: 'depense' | 'revenu',
   echeances: any[],
   transactions: Transaction[],
   year: number,
@@ -58,19 +66,20 @@ function calculatePlannedByType(
     transactions
       .filter(t => {
         const d = new Date(t.date);
-        return t.echeance_id && d.getFullYear() === year && d.getMonth() === month && 
-               (type === 'expense' ? t.type === 'depense' : t.type === 'revenu');
+        return t.echeance_id && d.getFullYear() === year && d.getMonth() === month && t.type === type;
       })
       .map(t => t.echeance_id)
   );
 
   echeances.forEach(ech => {
-    // Les statuts activés incluent active, pending, overdue
-    if (ech.status === 'paid' || ech.status === 'inactive') return;
-    if (ech.type !== type) return;
+    const statut = ech.statut || ech.status || 'active';
+    if (statut === 'inactive') return;
+    
+    const echType = ech.type || (type === 'revenu' ? 'revenu' : 'depense');
+    if (echType !== type) return;
 
     const occurrences = getMonthOccurrences(ech, year, month);
-    const amount = Number(ech.amount) || 0;
+    const amount = Number(ech.montant || ech.amount) || 0;
     
     if (paidEcheanceIds.has(ech.id)) {
       const freq = (ech.frequence || "").toLowerCase();
@@ -78,22 +87,22 @@ function calculatePlannedByType(
         return;
       }
       
-      const paidCount = transactions.filter(t => t.echeance_id === ech.id && (type === 'expense' ? t.type === 'depense' : t.type === 'revenu')).length;
+      const paidCount = transactions.filter(t => t.echeance_id === ech.id && t.type === type).length;
       const totalOccurrences = occurrences.length;
       const remainingOccurrences = Math.max(0, totalOccurrences - paidCount);
       
       if (remainingOccurrences > 0) {
-        const cat = ech.category.trim();
-        plannedMap[cat] = (plannedMap[cat] ?? 0) + (remainingOccurrences * amount);
+        const cat = (ech.categorie || ech.category || '').trim();
+        if (cat) plannedMap[cat] = (plannedMap[cat] ?? 0) + (remainingOccurrences * amount);
       }
     } else {
       const totalAmount = occurrences.length * amount;
       if (totalAmount > 0) {
-        const parentKey = ech.category.trim();
-        const subKey = ech.sous_categorie ? `${parentKey} > ${ech.sous_categorie.trim()}` : null;
+        const parentKey = (ech.categorie || ech.category || '').trim();
+        const subKey = ech.sous_categorie ? `${parentKey} > ${(ech.sous_categorie || '').trim()}` : null;
         
-        plannedMap[parentKey] = (plannedMap[parentKey] ?? 0) + totalAmount;
-        if (subKey) {
+        if (parentKey) plannedMap[parentKey] = (plannedMap[parentKey] ?? 0) + totalAmount;
+        if (subKey && parentKey) {
           plannedMap[subKey] = (plannedMap[subKey] ?? 0) + totalAmount;
         }
       }
@@ -109,7 +118,7 @@ export function calculatePlannedExpenses(
   year: number,
   month: number
 ): Record<string, number> {
-  return calculatePlannedByType('expense', echeances, transactions, year, month);
+  return calculatePlannedByType('depense', echeances, transactions, year, month);
 }
 
 export function calculatePlannedIncomes(
@@ -118,7 +127,7 @@ export function calculatePlannedIncomes(
   year: number,
   month: number
 ): Record<string, number> {
-  return calculatePlannedByType('income', echeances, transactions, year, month);
+  return calculatePlannedByType('revenu', echeances, transactions, year, month);
 }
 
 // Keep backward compatibility for now if needed, but we should update callers

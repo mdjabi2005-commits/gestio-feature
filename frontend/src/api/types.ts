@@ -26,6 +26,8 @@ export interface Attachment {
   echeance_id?: number;
   objectif_id?: number;
   file_path: string;
+  file_name?: string;
+  upload_date?: string;
 }
 
 export interface OCRScanResponse {
@@ -73,7 +75,7 @@ export interface Echeance {
   date_fin?: string;
   date_prevue?: string;
   description?: string;
-  statut: 'active' | 'inactive' | 'overdue';
+  statut: 'active' | 'inactive' | 'overdue' | 'paid';
   type_echeance?: 'recurrente' | 'ponctuelle';
   objectif_id?: number;
 }

@@ -101,6 +101,20 @@ Chercher s'il existe un fichier `LOGIC_FLOW.md` ou une documentation dans le REA
 **Exemple** :
 > Tu ajoutes un champ `description` au modèle Transaction → Tu DOIS ajouter `description?: string` à l'interface Transaction dans `frontend/src/api.ts`
 
+### 🌍 Règle绝对 : Français uniquement pour les noms de champs API
+
+**TOUJOURS utiliser des noms de champs en français** dans les réponses API. Ne jamais angliciser les noms de champs.
+
+| Type错误 à éviter ✅ | Correct ✅ |
+|---------------------|-----------|
+| `amount` | `montant` |
+| `type: "income" / "expense"` | `type: "revenu" / "depense"` |
+| `status: "paid" / "pending"` | `statut: "active" / "inactive"` |
+| `category` | `categorie` |
+| `name` | `nom` |
+
+Cette règle s'applique au **Backend** (réponses API) et au **Frontend** (utilisation des données). Plus de mappingFR↔EN !
+
 ---
 
 ## 📁 Structure

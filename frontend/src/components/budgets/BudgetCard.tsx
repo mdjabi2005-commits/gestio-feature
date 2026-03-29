@@ -1,14 +1,15 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Trash2, AlertTriangle, CheckCircle2, Check, X } from "lucide-react"
+import { Trash2, AlertTriangle, CheckCircle2, Check, X, HelpCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getCategoryIcon } from "@/lib/icons"
+import { getCategoryIcon, getCategoryMetadata } from "@/lib/categories"
 import type { Budget } from "@/api"
 import { useFinancial } from "@/context/FinancialDataContext"
 import { useBudgetCardCalculations } from "@/hooks/useBudgetCalculations"
 import { BudgetCardHeader } from "./BudgetCardHeader"
 import { BudgetCardProgress } from "./BudgetCardProgress"
 import { BudgetCardFooter } from "./BudgetCardFooter"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 interface BudgetCardProps {
   budget: Budget
@@ -147,37 +148,38 @@ function BudgetCardSlider({
   onChange: (pct: number) => void
 }) {
   return (
-    <div className="mb-6 space-y-2 px-1" onClick={(e) => e.stopPropagation()}>
-      <div className="flex justify-between items-center">
-        <span className="text-[9px] font-black uppercase tracking-widest text-white/30">Allocation</span>
-        <span className={cn("text-xs font-black tabular-nums transition-colors", 
-          localPct > 100 ? "text-rose-400" : hasChanged ? "text-indigo-400" : "text-white/60"
-        )}>
-          {localPct}%
-        </span>
-      </div>
-      <input 
-        type="range"
-        min="0"
-        max="120"
-        value={localPct}
-        onChange={(e) => onChange(parseInt(e.target.value))}
-        className="w-full h-1.5 bg-white/5 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400 transition-all"
-      />
-      {localPct > 100 && (
-        <p className="text-[8px] font-bold text-rose-400 uppercase tracking-tighter flex items-center gap-1">
-          <AlertTriangle className="w-2.5 h-2.5" /> Dépasse l'enveloppe
-        </p>
-      )}
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="mb-6 space-y-2 px-1 cursor-help" onClick={(e) => e.stopPropagation()}>
+          <div className="flex justify-between items-center">
+            <span className="text-[9px] font-black uppercase tracking-widest text-white/30 flex items-center gap-1">
+              Part
+              <HelpCircle className="w-3 h-3 text-white/20" />
+            </span>
+            <span className={cn("text-xs font-black tabular-nums transition-colors", 
+              localPct > 100 ? "text-rose-400" : hasChanged ? "text-indigo-400" : "text-white/60"
+            )}>
+              {localPct}%
+            </span>
+          </div>
+          <input 
+            type="range"
+            min="0"
+            max="120"
+            value={localPct}
+            onChange={(e) => onChange(parseInt(e.target.value))}
+            className="w-full h-1.5 bg-white/5 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400 transition-all"
+          />
+          {localPct > 100 && (
+            <p className="text-[8px] font-bold text-rose-400 uppercase tracking-tighter flex items-center gap-1">
+              <AlertTriangle className="w-2.5 h-2.5" /> Dépasse le budget
+            </p>
+          )}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-48">
+        <p>Part du budget parent.allouée à cette sous-catégorie. Ajustez avec le curseur.</p>
+      </TooltipContent>
+    </Tooltip>
   )
-}
-
-function getCategoryMetadata(allCategories: any[], categorie: string) {
-  for (const cat of allCategories || []) {
-    if (cat.nom === categorie) return cat
-    const sub = (cat.sous_categories || []).find((s: any) => s.nom === categorie)
-    if (sub) return sub
-  }
-  return { icone: 'help-circle', couleur: '#666' }
 }

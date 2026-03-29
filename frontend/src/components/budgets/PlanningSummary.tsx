@@ -10,9 +10,10 @@ interface PlanningSummaryProps {
   variableBudgets: number
   planName?: string
   className?: string
+  onEdit?: () => void
 }
 
-export function PlanningSummary({ referenceSalary, fixedChargesBalance, variableBudgets, planName, className }: PlanningSummaryProps) {
+export function PlanningSummary({ referenceSalary, fixedChargesBalance, variableBudgets, planName, className, onEdit }: PlanningSummaryProps) {
   const disposableIncome = referenceSalary + fixedChargesBalance
   const theoreticalSavings = disposableIncome - variableBudgets
   const isDeficit = theoreticalSavings < 0
@@ -64,7 +65,14 @@ export function PlanningSummary({ referenceSalary, fixedChargesBalance, variable
   const maxVal = Math.max(barTotal, totalCapacity)
 
   return (
-    <div className={cn("glass-card rounded-3xl p-6 border-white/5 bg-white/[0.01]", className)}>
+    <div 
+      className={cn(
+        "glass-card rounded-3xl p-6 border-white/5 bg-white/[0.01] transition-all",
+        onEdit ? "cursor-pointer hover:bg-white/[0.03] active:scale-[0.99]" : "",
+        className
+      )}
+      onClick={onEdit}
+    >
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">

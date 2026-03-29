@@ -12,7 +12,7 @@ export interface Echeance {
   date_prevue: string;
   categorie: string;
   type: 'depense' | 'revenu';
-  status: 'pending' | 'paid' | 'overdue';
+  statut: 'pending' | 'paid' | 'overdue';
 }
 
 interface EcheanceTableProps {
@@ -87,9 +87,9 @@ export function EcheanceTable({ echeances, loading }: EcheanceTableProps) {
             </p>
             <div className={cn(
               "inline-flex items-center px-1.5 py-0.5 rounded-md border text-[9px] font-bold uppercase tracking-widest mt-1",
-              getStatusStyle(e.status)
+              getStatusStyle(e.statut)
             )}>
-              {e.status === 'paid' ? 'Payé' : e.status === 'overdue' ? 'Retard' : 'À venir'}
+              {e.statut === 'paid' ? 'Payé' : e.statut === 'overdue' ? 'Retard' : 'À venir'}
             </div>
           </div>
         </div>

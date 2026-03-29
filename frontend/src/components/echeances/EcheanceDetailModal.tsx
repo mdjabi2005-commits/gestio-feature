@@ -12,18 +12,18 @@ interface EcheanceDetailModalProps {
 
 export function EcheanceDetailModal({ installment, onClose, totalSpent }: EcheanceDetailModalProps) {
   const Icon = installment.icon
-  const isIncome = installment.type === "income"
-  const stat = statusConfig[installment.status]
+  const isIncome = installment.type === "revenu"
+  const stat = statusConfig[installment.statut]
 
   // Calculate monthly equivalent
   const calculateMonthly = () => {
     const freq = (installment.frequence || "").toLowerCase()
-    if (freq.includes("mensuel") || freq.includes("mensuelle")) return installment.amount
-    if (freq.includes("annuel") || freq.includes("annuelle")) return installment.amount / 12
-    if (freq.includes("hebdo")) return installment.amount * 4.33
-    if (freq.includes("trimestriel")) return installment.amount / 3
-    if (freq.includes("semestriel")) return installment.amount / 6
-    return installment.amount
+    if (freq.includes("mensuel") || freq.includes("mensuelle")) return installment.montant
+    if (freq.includes("annuel") || freq.includes("annuelle")) return installment.montant / 12
+    if (freq.includes("hebdo")) return installment.montant * 4.33
+    if (freq.includes("trimestriel")) return installment.montant / 3
+    if (freq.includes("semestriel")) return installment.montant / 6
+    return installment.montant
   }
 
   const monthlyAmount = calculateMonthly()
@@ -59,8 +59,8 @@ export function EcheanceDetailModal({ installment, onClose, totalSpent }: Echean
               {Icon && <Icon className="w-6 h-6" style={{ color: installment.color }} strokeWidth={2} />}
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">{installment.name}</h2>
-              <p className="text-sm text-white/40">{installment.category}</p>
+              <h2 className="text-xl font-bold text-white tracking-tight">{installment.nom}</h2>
+              <p className="text-sm text-white/40">{installment.categorie}</p>
             </div>
           </div>
           <button 
@@ -78,7 +78,7 @@ export function EcheanceDetailModal({ installment, onClose, totalSpent }: Echean
               <span className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Montant Actuel</span>
               <div className="flex items-baseline gap-2">
                 <span className={cn("text-2xl font-bold tabular-nums", isIncome ? "text-emerald-400" : "text-rose-400")}>
-                  {isIncome ? "+" : "-"}{installment.amount.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €
+                  {isIncome ? "+" : "-"}{installment.montant.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €
                 </span>
                 <span className="text-xs text-white/20">/ {installment.frequence}</span>
               </div>

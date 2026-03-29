@@ -144,21 +144,25 @@ export function useStrategicBalance(
     const fixedExpenseCategories = new Set<string>()
 
     echeances.forEach(ech => {
-      if (ech.status === 'inactive') return
+      // Skip inactive echeances (we include 'paid' for strategic planning)
+      const echAny = ech as any
+      const statut = echAny.statut || echAny.status || 'active'
+      if (statut === 'inactive') return
       
-      const occurrences = getMonthOccurrences(ech as any, year, month)
-      const amount = Number(ech.amount) || 0
+      const occurrences = getMonthOccurrences(echAny, year, month)
+      const amount = Number(echAny.montant || echAny.amount) || 0
       const totalAmount = occurrences.length * amount
       
       if (totalAmount > 0) {
-        if (ech.type === 'income') {
+        const type = echAny.type || 'depense'
+        if (type === 'revenu' || type === 'income') {
           totalStrategicIncome += totalAmount
         } else {
           totalStrategicExpense += totalAmount
-          const cat = (ech.category || '').trim().toLowerCase()
-          fixedExpenseCategories.add(cat)
-          if (ech.sous_categorie) {
-            fixedExpenseCategories.add(`${cat} > ${(ech.sous_categorie || '').trim().toLowerCase()}`)
+          const cat = (echAny.categorie || echAny.category || '').trim().toLowerCase()
+          if (cat) fixedExpenseCategories.add(cat)
+          if (echAny.sous_categorie) {
+            fixedExpenseCategories.add(`${cat} > ${(echAny.sous_categorie || '').trim().toLowerCase()}`)
           }
         }
       }

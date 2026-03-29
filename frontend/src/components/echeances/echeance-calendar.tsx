@@ -32,8 +32,8 @@ export function EcheanceCalendar({ items, onSelectDate, selectedDate }: Echeance
   const getDayStatus = (dateStr: string) => {
     const dayItems = itemsByDate[dateStr] || []
     if (dayItems.length === 0) return null
-    if (dayItems.some(i => i.status === "overdue")) return "overdue"
-    if (dayItems.some(i => i.status === "pending")) return "pending"
+    if (dayItems.some(i => i.statut === "overdue")) return "overdue"
+    if (dayItems.some(i => i.statut === "pending")) return "pending"
     return "paid"
   }
 
@@ -90,8 +90,8 @@ export function EcheanceCalendar({ items, onSelectDate, selectedDate }: Echeance
                     <p className="text-[10px] font-black text-white/40 mb-2 uppercase tracking-widest">{new Date(dateStr).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} · {dayItems.length} ÉCHÉANCE(S)</p>
                     {dayItems.slice(0, 5).map(item => (
                       <div key={item.id} className="flex items-center justify-between text-[11px] mb-1">
-                        <span className="text-white/80 truncate max-w-[150px]">{item.name}</span>
-                        <span className={item.type === "income" ? "text-emerald-400" : "text-rose-400"}>{item.amount.toLocaleString()}€</span>
+                        <span className="text-white/80 truncate max-w-[150px]">{item.nom}</span>
+                        <span className={item.type === "revenu" ? "text-emerald-400" : "text-rose-400"}>{item.montant.toLocaleString()}€</span>
                       </div>
                     ))}
                     {dayItems.length > 5 && <p className="text-[9px] text-indigo-400 text-center mt-1">+{dayItems.length - 5} AUTRES</p>}

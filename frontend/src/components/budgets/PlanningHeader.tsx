@@ -20,7 +20,7 @@ export function PlanningHeader({ referenceSalary, onUpdateSalary, onClose, remai
             <PiggyBank className="w-7 h-7 text-indigo-400" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Plan de Synergie</h2>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Répartition du salaire</h2>
             <p className="text-xs text-white/40 font-medium">Répartissez votre salaire entre vos catégories de vie.</p>
           </div>
         </div>

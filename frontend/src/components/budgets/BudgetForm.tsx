@@ -4,6 +4,8 @@ import { X, Save } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CATEGORIES } from "@/lib/categories"
 import type { Budget } from "@/api"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { HelpCircle } from "lucide-react"
 
 interface BudgetFormProps {
   initial?: Budget | null
@@ -38,7 +40,15 @@ export function BudgetForm({ initial, onSave, onClose }: BudgetFormProps) {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Catégorie</label>
+            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2 flex items-center gap-1">
+              Catégorie
+              <Tooltip>
+                <TooltipTrigger><HelpCircle className="w-3 h-3 text-white/30" /></TooltipTrigger>
+                <TooltipContent className="max-w-48">
+                  <p>Choisissez une catégorie pour suivre vos dépenses. Vous pouvez créer un budget par catégorie.</p>
+                </TooltipContent>
+              </Tooltip>
+            </label>
             <select
               value={categorie}
               onChange={e => setCategorie(e.target.value)}
@@ -54,7 +64,15 @@ export function BudgetForm({ initial, onSave, onClose }: BudgetFormProps) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Limite mensuelle (€)</label>
+            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2 flex items-center gap-1">
+              Budget mensuel (€)
+              <Tooltip>
+                <TooltipTrigger><HelpCircle className="w-3 h-3 text-white/30" /></TooltipTrigger>
+                <TooltipContent className="max-w-48">
+                  <p>Montant maximum que vous souhaitez dépenser par mois dans cette catégorie.</p>
+                </TooltipContent>
+              </Tooltip>
+            </label>
             <input
               type="number" min="1" step="0.01"
               value={montant}

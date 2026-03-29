@@ -31,13 +31,13 @@ export function EcheanceDetails({ selectedDate, items }: EcheanceDetailsProps) {
           {displayItems.map(item => (
             <div key={item.id} className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-all duration-200">
               <div className="flex items-center gap-3">
-                <StatusBadge status={item.status} className="w-1.5 h-1.5 p-0 overflow-hidden text-[0px] border-none shadow-[0_0_8px_currentColor]" />
+                <StatusBadge statut={item.statut} className="w-1.5 h-1.5 p-0 overflow-hidden text-[0px] border-none shadow-[0_0_8px_currentColor]" />
                 <div>
-                  <p className="text-xs font-bold text-white">{item.name}</p>
-                  <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.1em]">{item.category}</p>
+                  <p className="text-xs font-bold text-white">{item.nom}</p>
+                  <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.1em]">{item.categorie}</p>
                 </div>
               </div>
-              <AmountDisplay amount={item.amount} type={item.type === "income" ? "income" : "expense"} size="sm" />
+              <AmountDisplay amount={item.montant} type={item.type} size="sm" />
             </div>
           ))}
         </div>

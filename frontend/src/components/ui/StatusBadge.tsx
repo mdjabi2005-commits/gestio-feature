@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 export type StatusType = "paid" | "pending" | "overdue" | "failed" | "completed" | string
 
 interface StatusBadgeProps {
-  status: StatusType;
+  statut: StatusType;
   className?: string;
 }
 
@@ -18,8 +18,8 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   failed: { label: "Échoué", className: "bg-rose-500/10 text-rose-400 border-rose-500/20" },
 }
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const config = STATUS_CONFIG[status.toLowerCase()] || { label: status, className: "bg-secondary/50 text-muted-foreground" }
+export function StatusBadge({ statut, className }: StatusBadgeProps) {
+  const config = STATUS_CONFIG[statut.toLowerCase()] || { label: statut, className: "bg-secondary/50 text-muted-foreground" }
   
   return (
     <Badge 

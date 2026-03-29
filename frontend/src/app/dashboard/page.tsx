@@ -54,7 +54,7 @@ export default function DashboardPage() {
   if (loading || !summary) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" /></div>;
 
   const realEcheances: Echeance[] = (summary?.prochaines_echeances || []).map((e: any) => ({
-    id: e.id, nom: e.nom || e.description || "Échéance", montant: e.montant, date_prevue: e.date_prevue, categorie: e.categorie, type: e.type, status: e.statut || "pending"
+    id: e.id, nom: e.nom || e.description || "Échéance", montant: e.montant, date_prevue: e.date_prevue, categorie: e.categorie, type: e.type, statut: e.statut || "pending"
   }));
 
   const monthlyBalance = (summary?.total_revenus || 0) - (summary?.total_depenses || 0);

@@ -81,8 +81,8 @@ export const AttachmentList: React.FC<Props> = ({ transactionId, onClose }) => {
                 <div key={att.id} className="attachment-card">
                   <div className="att-icon">📄</div>
                   <div className="att-info">
-                    <span className="att-name">{att.file_name}</span>
-                    <span className="att-date">{new Date(att.upload_date).toLocaleDateString()}</span>
+                    <span className="att-name">{att.file_name || "Fichier"}</span>
+                    <span className="att-date">{att.upload_date ? new Date(att.upload_date).toLocaleDateString() : "-"}</span>
                   </div>
                   <div className="att-actions">
                     <a 

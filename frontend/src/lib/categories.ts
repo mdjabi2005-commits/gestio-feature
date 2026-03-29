@@ -52,7 +52,7 @@ export const CATEGORY_STYLES: Record<string, { couleur: string; icone: string; s
     icone: "briefcase",
     subcategories: ['Abonnement', 'Banque / Frais', 'Impôts / Taxes', 'Assurance', 'Courrier / Colis', 'Administratif']
   },
-  "Bourse": { couleur: "#10b981", icone: "trending-up", subcategories: [] },
+
   "Épargne": { couleur: "#059669", icone: "piggy-bank", subcategories: ['Livret A', 'PEL', 'Assurance Vie', 'Cryptos', 'Divers'] },
   "Autre": { couleur: "#6b7280", icone: "shopping-cart", subcategories: ['Divers'] },
 }

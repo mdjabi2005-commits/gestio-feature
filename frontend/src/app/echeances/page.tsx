@@ -29,7 +29,7 @@ export default function EcheancesPage() {
 
   const handleSave = async (f: any) => {
     try {
-        const p = { ...f, montant: parseFloat(f.montant), date_prevue: editTarget?.date_prevue || f.date_debut, date_debut: f.date_debut, date_fin: f.date_fin || null, description: f.description || "" }
+        const p = { ...f, montant: parseFloat(f.montant), date_prevue: editTarget?.date_prevue || f.date_debut, date_debut: f.date_debut, date_fin: f.date_fin || null, description: f.description || "", statut: f.statut }
         editTarget ? await api.updateEcheance(editTarget.id, p) : await addEcheance(p)
         setLocalItems(null); setAllEcheances((await api.getCalendarEcheances()).map(i => mapEcheanceToInstallment(i, realCategories))); toast.success("Succès")
     } catch { toast.error("Erreur") }
@@ -56,7 +56,7 @@ export default function EcheancesPage() {
           <div className="rounded-3xl bg-white/[0.02] border border-white/5 overflow-hidden">
             <div className="divide-y divide-white/[0.03]">
               {filtered.length > 0 ? filtered.map(item => (
-                <InstallmentRow key={`${item.id}-${item.date_prevue}`} installment={item} onMarkPaid={(id) => setLocalItems((localItems || []).map(i => i.id === id ? { ...i, status: "paid" as InstallmentStatus } : i))} onEdit={(item) => { setEditTarget(item); setShowForm(true) }} onDelete={setDeleteId} onViewDetail={setSelectedDetail} isSelected={selected.includes(item.id)} onSelect={toggleSel} selectionMode={false} />
+                <InstallmentRow key={`${item.id}-${item.date_prevue}`} installment={item} onMarkPaid={(id) => setLocalItems((localItems || []).map(i => i.id === id ? { ...i, statut: "paid" as InstallmentStatus } : i))} onEdit={(item) => { setEditTarget(item); setShowForm(true) }} onDelete={setDeleteId} onViewDetail={setSelectedDetail} isSelected={selected.includes(item.id)} onSelect={toggleSel} selectionMode={false} />
               )) : <div className="py-20 text-center text-[10px] font-black uppercase text-white/20 tracking-[0.2em]">Aucune échéance trouvée</div>}
             </div>
           </div>
@@ -64,7 +64,7 @@ export default function EcheancesPage() {
 
         <aside className="w-80 space-y-6">
           <EcheanceCalendar items={allEcheances} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
-          <div className="p-6 rounded-3xl bg-indigo-500/5 border border-indigo-500/10"><h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">Légende</h3><div className="space-y-3">{[["Total", allEcheances.length], ["Payés", allEcheances.filter(i => i.status === "paid").length], ["En retard", allEcheances.filter(i => i.status === "overdue").length]].map(([l, v]) => (<div key={l as string} className="flex justify-between items-center"><span className="text-[10px] font-bold text-white/40 uppercase">{l}</span><span className="text-xs font-black text-white">{v}</span></div>))}</div></div>
+          <div className="p-6 rounded-3xl bg-indigo-500/5 border border-indigo-500/10"><h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">Légende</h3><div className="space-y-3">{[["Total", allEcheances.length], ["Payés", allEcheances.filter(i => i.statut === "paid").length], ["En retard", allEcheances.filter(i => i.statut === "overdue").length]].map(([l, v]) => (<div key={l as string} className="flex justify-between items-center"><span className="text-[10px] font-bold text-white/40 uppercase">{l}</span><span className="text-xs font-black text-white">{v}</span></div>))}</div></div>
         </aside>
       </div>
 
@@ -72,12 +72,12 @@ export default function EcheancesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => { setShowForm(false); setEditTarget(null) }}>
           <div className="w-full max-w-lg p-6 rounded-3xl bg-slate-900 border border-white/10 shadow-2xl animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6"><h2 className="text-xs font-black text-white uppercase tracking-widest">{editTarget ? "Modifier" : "Nouvelle"} Échéance</h2><button onClick={() => setShowForm(false)}><X className="w-4 h-4 text-white/40" /></button></div>
-            <InstallmentForm initial={editTarget ? { nom: editTarget.name, type: editTarget.type === "income" ? "revenu" : "depense", categorie: editTarget.category, sous_categorie: editTarget.sous_categorie || "", montant: String(editTarget.amount), frequence: editTarget.frequence, date_debut: editTarget.date_debut, date_fin: editTarget.date_fin, description: editTarget.description } : undefined} onSave={handleSave} onCancel={() => setShowForm(false)} attachments={attachments} onUpload={async f => { try { await api.uploadEcheanceAttachment(editTarget!.id, f); setAttachments(await api.getEcheanceAttachments(editTarget!.id)) } catch {} }} onDelete={async id => { if (confirm("Supprimer ?")) { try { await api.deleteAttachment(id); setAttachments(p => p.filter(a => a.id !== id)) } catch {} } }} isUploading={isUploading} isDeletingId={deletingDocId} />
+            <InstallmentForm initial={editTarget ? { nom: editTarget.nom, type: editTarget.type, categorie: editTarget.categorie, sous_categorie: editTarget.sous_categorie || "", montant: String(editTarget.montant), frequence: editTarget.frequence, date_debut: editTarget.date_debut, date_fin: editTarget.date_fin, description: editTarget.description, statut: (editTarget as any).statut_base || "active" } : undefined} onSave={handleSave} onCancel={() => setShowForm(false)} attachments={attachments} onUpload={async (f: File) => { try { await api.uploadEcheanceAttachment(editTarget!.id, f); setAttachments(await api.getEcheanceAttachments(editTarget!.id)) } catch {} }} onDelete={async (id: number) => { if (confirm("Supprimer ?")) { try { await api.deleteAttachment(id); setAttachments(p => p.filter(a => a.id !== id)) } catch {} } }} isUploading={isUploading} isDeletingId={deletingDocId} />
           </div>
         </div>
       )}
 
-      <ConfirmDialog open={deleteId !== null} onOpenChange={o => !o && setDeleteId(null)} title="Supprimer ?" description="Irréversible." confirmText="Supprimer" onConfirm={async () => { if (deleteId) { try { await deleteEcheance(deleteId); setLocalItems((localItems || []).filter(i => i.id !== deleteId)); setAllEcheances((await api.getCalendarEcheances()).map(i => mapEcheanceToInstallment(i, realCategories))); toast.success("Supprimé") } catch {} } setDeleteId(null) }} variant="destructive" />
+      <ConfirmDialog open={deleteId !== null} onOpenChange={o => !o && setDeleteId(null)} title="Supprimer ?" description="Irréversible." confirmText="Supprimer" onConfirm={async () => { if (deleteId) { try { await deleteEcheance(deleteId); setLocalItems(null); setAllEcheances((await api.getCalendarEcheances()).map(i => mapEcheanceToInstallment(i, realCategories))); toast.success("Supprimé") } catch {} } setDeleteId(null) }} variant="destructive" />
       {selectedDetail && <EcheanceDetailModal installment={selectedDetail} onClose={() => setSelectedDetail(null)} totalSpent={transactions.filter(t => String(t.echeance_id) === String(selectedDetail.echeance_base_id ?? selectedDetail.id)).reduce((sum, t) => sum + t.montant, 0)} />}
     </div>
   )

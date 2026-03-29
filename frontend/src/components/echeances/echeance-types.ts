@@ -1,29 +1,30 @@
 import type { LucideIcon } from "lucide-react"
 
 export type InstallmentStatus = "paid" | "pending" | "overdue"
-export type InstallmentType = "expense" | "income"
+export type InstallmentType = "depense" | "revenu"
 export type PaymentMethod = "automatic" | "manual"
-export type SortField = "date" | "amount" | "name" | "status"
+export type SortField = "date" | "montant" | "nom" | "statut"
 export type SortDirection = "asc" | "desc"
 
 export interface Installment {
   id: string
-  echeance_base_id?: string | number  // real DB echeance ID (for total spent lookup)
+  echeance_base_id?: string | number
   icon: any
   color: string
-  name: string
-  category: string
+  nom: string
+  categorie: string
   sous_categorie?: string
-  date: string // Display string (ex: "26 mars")
-  date_prevue: string // ISO string (ex: "2024-03-26")
-  date_debut: string // ISO
-  date_fin?: string // ISO
+  date: string
+  date_prevue: string
+  date_debut: string
+  date_fin?: string
   frequence: string
   description?: string
   daysRemaining: number
-  amount: number
+  montant: number
   type: InstallmentType
-  status: InstallmentStatus
+  statut: InstallmentStatus
+  statut_base?: string
   paymentMethod: PaymentMethod
 }
 

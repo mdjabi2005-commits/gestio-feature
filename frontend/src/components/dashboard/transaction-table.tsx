@@ -21,13 +21,13 @@ interface TransactionTableProps {
 }
 
 export function TransactionTable({ transactions, categories = [] }: TransactionTableProps) {
-  const { searchQuery, setSearchQuery, filterCategory, setFilterCategory, filterDateRange, setFilterDateRange } = useFinancial();
+  const { searchQuery, setSearchQuery, filterCategories, setFilterCategories, filterDateRange, setFilterDateRange } = useFinancial();
   
-  const hasActiveFilters = !!(searchQuery || filterCategory || filterDateRange.start || filterDateRange.end);
+  const hasActiveFilters = !!(searchQuery || filterCategories.length > 0 || filterDateRange.start || filterDateRange.end);
 
   const clearAllFilters = () => {
     setSearchQuery("");
-    setFilterCategory(null);
+    setFilterCategories([]);
     setFilterDateRange({ start: null, end: null });
   };
 

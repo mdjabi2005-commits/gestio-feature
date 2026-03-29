@@ -45,9 +45,9 @@ export const AttachmentSection: React.FC<AttachmentSectionProps> = ({
                 <FileText className="w-4 h-4" />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-medium text-white truncate">{file.file_name}</span>
+                <span className="text-sm font-medium text-white truncate">{file.file_name || "Fichier"}</span>
                 <span className="text-[10px] text-gray-400">
-                  Ajouté le {new Date(file.upload_date).toLocaleDateString()}
+                  {file.upload_date ? `Ajouté le ${new Date(file.upload_date).toLocaleDateString()}` : ""}
                 </span>
               </div>
             </div>

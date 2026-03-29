@@ -17,9 +17,9 @@ export function InstallmentRow({ installment, onMarkPaid, onEdit, onDelete, onVi
 }) {
   const [hovered, setHovered] = useState(false)
   const Icon = installment.icon
-  const isIncome = installment.type === "income"
-  const isPaid = installment.status === "paid"
-  const stat = statusConfig[installment.status]
+  const isIncome = installment.type === "revenu"
+  const isPaid = installment.statut === "paid"
+  const stat = statusConfig[installment.statut]
 
   // Use hex color with 15% opacity (decimal 0.15 * 255 = ~38 = 26 in hex)
   const bgStyle = { backgroundColor: `${installment.color}26` }
@@ -57,7 +57,7 @@ export function InstallmentRow({ installment, onMarkPaid, onEdit, onDelete, onVi
       {/* Name & Category */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-white truncate">{installment.name}</span>
+          <span className="text-sm font-medium text-white truncate">{installment.nom}</span>
           <span className={cn(
             "text-[9px] font-medium px-1.5 py-0.5 rounded flex items-center gap-0.5 flex-shrink-0",
             installment.paymentMethod === "automatic" ? "bg-sky-500/10 text-sky-400/80" : "bg-orange-500/10 text-orange-400/80"
@@ -66,7 +66,7 @@ export function InstallmentRow({ installment, onMarkPaid, onEdit, onDelete, onVi
             {installment.paymentMethod === "automatic" ? "Auto" : "Manuel"}
           </span>
         </div>
-        <span className="text-xs text-white/40">{installment.category}</span>
+        <span className="text-xs text-white/40">{installment.categorie}</span>
       </div>
 
       {/* Date */}
@@ -85,7 +85,7 @@ export function InstallmentRow({ installment, onMarkPaid, onEdit, onDelete, onVi
       {/* Amount */}
       <div className="w-24 text-right flex-shrink-0">
         <span className={cn("font-bold text-base tabular-nums", isIncome ? "text-emerald-400" : "text-rose-400")}>
-          {isIncome ? "+" : "-"}{installment.amount.toLocaleString("fr-FR", { minimumFractionDigits: 2 })}
+          {isIncome ? "+" : "-"}{installment.montant.toLocaleString("fr-FR", { minimumFractionDigits: 2 })}
           <span className="text-xs ml-0.5 opacity-50">€</span>
         </span>
       </div>
