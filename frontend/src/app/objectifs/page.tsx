@@ -1,5 +1,5 @@
 "use client"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Target } from "lucide-react"
 import { useFinancial } from "@/context/FinancialDataContext"
 import { GoalCard } from "@/components/objectifs/GoalCard"
@@ -9,8 +9,9 @@ import { GoalDetailDrawer } from "@/components/objectifs/GoalDetailDrawer"
 import { GoalSavingsConfig } from "@/components/objectifs/GoalSavingsConfig"
 import { GoalPageHeader } from "@/components/objectifs/GoalPageHeader"
 import { GoalStatsSummary } from "@/components/objectifs/GoalStatsSummary"
+import { GoalEvolutionChart } from "@/components/objectifs/GoalEvolutionChart"
 import { useGoalCalculations } from "@/hooks/useGoalCalculations"
-import type { Objectif } from "@/api"
+import { api, type Objectif, type GoalMonthlyProgress } from "@/api"
 
 export default function ObjectifsPage() {
   const { 
@@ -22,10 +23,41 @@ export default function ObjectifsPage() {
   const [editTarget, setEditTarget] = useState<Objectif | null>(null)
   const [selectedGoal, setSelectedGoal] = useState<Objectif | null>(null)
   const [showSavingsConfig, setShowSavingsConfig] = useState(false)
+  const [globalMonthlyProgress, setGlobalMonthlyProgress] = useState<GoalMonthlyProgress[]>([])
+  const [loadingGlobalProgress, setLoadingGlobalProgress] = useState(false)
 
   const {
     enrichedGoals, totalTarget, totalCurrent, totalReal, totalMonthlySavings, completedCount
-  } = useGoalCalculations(objectifs, activeSalaryPlan, transactions)
+  } = useGoalCalculations(objectifs, activeSalaryPlan)
+
+  useEffect(() => {
+    if (enrichedGoals.length > 0) fetchGlobalMonthlyProgress()
+  }, [enrichedGoals.length])
+
+  const fetchGlobalMonthlyProgress = async () => {
+    setLoadingGlobalProgress(true)
+    try {
+      const allProgress = await Promise.all(
+        enrichedGoals.map(g => api.getGoalMonthlyProgress(g.id!))
+      )
+      const monthMap = new Map<string, { theoretical: number; real: number }>()
+      allProgress.flat().forEach(item => {
+        const existing = monthMap.get(item.month) || { theoretical: 0, real: 0 }
+        monthMap.set(item.month, {
+          theoretical: existing.theoretical + item.theoretical,
+          real: existing.real + item.real
+        })
+      })
+      const aggregated = Array.from(monthMap.entries())
+        .map(([month, data]) => ({ month, ...data }))
+        .sort((a, b) => a.month.localeCompare(b.month))
+      setGlobalMonthlyProgress(aggregated)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingGlobalProgress(false)
+    }
+  }
 
   const filteredGoals = useMemo(() => {
     if (showFinishedGoals) return enrichedGoals;
@@ -49,6 +81,15 @@ export default function ObjectifsPage() {
         totalTarget={totalTarget} totalReal={totalReal} totalCurrent={totalCurrent} 
         completedCount={completedCount} totalCount={objectifs.length}
       />
+
+      {globalMonthlyProgress.length > 0 && (
+        <div className="glass-card rounded-[40px] p-8 border border-white/10">
+          <GoalEvolutionChart 
+            data={globalMonthlyProgress} 
+            title="Évolution globale (Tous objectifs)"
+          />
+        </div>
+      )}
 
       {filteredGoals.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-80 gap-6 glass-card rounded-[40px] border border-dashed border-white/10">

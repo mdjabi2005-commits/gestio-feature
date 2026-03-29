@@ -9,7 +9,7 @@ interface GoalPredictiveAnalysisProps {
   delayMonths: number
   projectionDateReel: string | null
   montantRetard: number
-  monantMensuelCalc: number
+  montantMensuelCalc: number
   montantMensuelReel: number
 }
 
@@ -18,7 +18,7 @@ export function GoalPredictiveAnalysis({
   delayMonths, 
   projectionDateReel,
   montantRetard,
-  monantMensuelCalc,
+  montantMensuelCalc,
   montantMensuelReel
 }: GoalPredictiveAnalysisProps) {
   if (impactStatus === 'neutral' || !projectionDateReel) return null
@@ -55,7 +55,7 @@ export function GoalPredictiveAnalysis({
         <div className="text-right space-y-2">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400/60 mb-1 text-balance">Cible Plan (Théorie)</p>
-              <p className="text-lg font-black text-white italic">{Math.round(monantMensuelCalc).toLocaleString("fr-FR")}€<span className="text-[10px] opacity-20 ml-1">/mois</span></p>
+              <p className="text-lg font-black text-white italic">{Math.round(montantMensuelCalc).toLocaleString("fr-FR")}€<span className="text-[10px] opacity-20 ml-1">/mois</span></p>
             </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400/60 mb-1 text-balance">Épargne Réelle</p>

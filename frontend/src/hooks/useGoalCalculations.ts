@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import type { Objectif, SalaryPlan, Transaction } from "@/api"
+import type { Objectif, SalaryPlan } from "@/api"
 
 export interface GoalMetrics extends Objectif {
   montant_actuel_temporel: number
@@ -20,126 +20,87 @@ export interface GoalMetrics extends Objectif {
   montant_retard: number
 }
 
+function calculateEpargneMensuelle(salaryPlan: SalaryPlan | null): number {
+  if (!salaryPlan || !salaryPlan.reference_salary || salaryPlan.reference_salary <= 0) {
+    return 0
+  }
+
+  const totalAllocatedPercent = salaryPlan.items
+    .filter(item => item.type === 'percent')
+    .reduce((sum, item) => sum + item.montant, 0)
+
+  const epargnePercent = Math.max(0, 100 - totalAllocatedPercent)
+  return Math.round(salaryPlan.reference_salary * epargnePercent / 100 * 100) / 100
+}
+
 export function useGoalCalculations(
   objectifs: Objectif[],
   salaryPlan: SalaryPlan | null,
-  transactions: Transaction[]
 ) {
   return useMemo(() => {
-    // 1. Capacité d'épargne théorique (Salary Plan)
-    let totalMonthlySavings = 0
-    if (salaryPlan) {
-      const totalAllocated = salaryPlan.items.reduce((acc, item) => {
-        if (item.type === 'fixed') return acc + item.montant
-        return acc + (salaryPlan.reference_salary * (item.montant / 100))
-      }, 0)
-      totalMonthlySavings = Math.max(0, salaryPlan.reference_salary - totalAllocated)
-    }
-
+    const now = new Date()
     const activeGoals = objectifs.filter(o => o.statut !== 'archived')
-    
-    // 2. Calcul des poids pour la répartition pondérée
-    const totalWeights = activeGoals.reduce((sum, g) => sum + (g.poids_allocation ?? 1), 0)
-    
-    const getGoalWeight = (goal: Objectif) => {
-       return (goal.poids_allocation ?? 1) / (totalWeights || 1)
-    }
 
-    // 3. Surplus mensuel REEL par mois
-    const monthlySurplusMap: Record<string, number> = {}
-    transactions.forEach(t => {
-      const monthKey = t.date.substring(0, 7)
-      if (!monthlySurplusMap[monthKey]) monthlySurplusMap[monthKey] = 0
-      if (t.type === 'revenu') monthlySurplusMap[monthKey] += t.montant
-      else monthlySurplusMap[monthKey] -= t.montant
-    })
+    const epargneMensuelle = calculateEpargneMensuelle(salaryPlan)
 
-    // 4. Répartition REELLE Pondérée
-    const realContributionPerGoal: Record<number, number> = {}
-    const months = Object.keys(monthlySurplusMap).sort()
-    if (months.length === 0) {
-       const now = new Date();
-       months.push(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
-    }
-
-    months.forEach(monthKey => {
-       const surplus = monthlySurplusMap[monthKey] || 0
-       const goalsActiveThisMonth = activeGoals.filter(goal => {
-          if (!goal.date_creation) return true;
-          return goal.date_creation.substring(0, 7) <= monthKey
-       })
-       
-       if (goalsActiveThisMonth.length > 0) {
-          const totalWeightsThisMonth = goalsActiveThisMonth.reduce((s, g) => s + (g.poids_allocation ?? 1), 0)
-          const surplusNorm = Math.max(0, surplus)
-          
-          goalsActiveThisMonth.forEach(g => {
-             if (g.id) {
-                const weight = (g.poids_allocation ?? 1) / (totalWeightsThisMonth || 1)
-                const slice = surplusNorm * weight
-                realContributionPerGoal[g.id] = (realContributionPerGoal[g.id] || 0) + slice
-             }
-          })
-       }
-    })
-
-    // 5. Enrichir les objectifs
     const enrichedGoals: GoalMetrics[] = objectifs.map(goal => {
       const target = goal.montant_cible || 1
-      const now = new Date()
-      const creationDate = goal.date_creation ? new Date(goal.date_creation) : now
-      const diffMonths = (now.getFullYear() - creationDate.getFullYear()) * 12 + (now.getMonth() - creationDate.getMonth())
-      const monthsSinceCreation = Math.max(0, diffMonths) + 1
-      
-      // Théorique Pondérée
-      const goalMonthlyAllocation = totalMonthlySavings * getGoalWeight(goal)
-      const currentTheoretical = monthsSinceCreation * goalMonthlyAllocation
-      const actualAmountTheoretical = Math.min(target, currentTheoretical)
+
+      const startDate = goal.date_debut ? new Date(goal.date_debut) : (goal.date_creation ? new Date(goal.date_creation) : now)
+      const monthsSinceCreation = Math.max(1, (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth()))
+
+      const goalMonthlyTheoretical = goal.montant_mensuel_calcule ?? 0
+      const actualAmountTheoretical = goalMonthlyTheoretical * monthsSinceCreation
+
+      const actualAmountReal = goal.montant_actuel ?? 0
+      const avgMonthlyReal = actualAmountReal / monthsSinceCreation
+
       const remainingTheoretical = Math.max(0, target - actualAmountTheoretical)
-      const monthsRemainingTh = goalMonthlyAllocation > 0 ? Math.ceil(remainingTheoretical / goalMonthlyAllocation) : Infinity
-      
-      // Réel
-      const actualAmountReal = goal.id ? Math.min(target, realContributionPerGoal[goal.id] || 0) : 0
-      const avgMonthlySurplus = actualAmountReal / monthsSinceCreation
+      const monthsRemainingTh = goalMonthlyTheoretical > 0 ? Math.ceil(remainingTheoretical / goalMonthlyTheoretical) : 0
+
       const remainingReal = Math.max(0, target - actualAmountReal)
-      const monthsRemainingReel = avgMonthlySurplus > 0 ? Math.ceil(remainingReal / avgMonthlySurplus) : Infinity
-      
-      // Projections
-      const projectionDateTh = monthsRemainingTh !== Infinity ? new Date(now.setMonth(now.getMonth() + monthsRemainingTh)).toISOString() : null
-      const now2 = new Date() 
-      const projectionDateReal = monthsRemainingReel !== Infinity ? new Date(now2.setMonth(now2.getMonth() + monthsRemainingReel)).toISOString() : null
-      
-      // Analyse d'Impact vs Cible (Échéance ou Plan)
+      const monthsRemainingReel = avgMonthlyReal > 0 ? Math.ceil(remainingReal / avgMonthlyReal) : 0
+
+      const projectionDateTh = monthsRemainingTh > 0 
+        ? new Date(now.getFullYear(), now.getMonth() + monthsRemainingTh).toISOString() 
+        : null
+      const projectionDateReal = monthsRemainingReel > 0
+        ? new Date(now.getFullYear(), now.getMonth() + monthsRemainingReel).toISOString()
+        : null
+
       let delayMonths: number | null = null
       let impactStatus: 'ahead' | 'on_time' | 'delayed' | 'neutral' = 'neutral'
       
-      const referenceDateStr = goal.date_echeance || projectionDateTh
+      const referenceDateStr = goal.date_fin || projectionDateTh
       if (referenceDateStr && projectionDateReal) {
-         const refDate = new Date(referenceDateStr)
-         const projDate = new Date(projectionDateReal)
-         delayMonths = (projDate.getFullYear() - refDate.getFullYear()) * 12 + (projDate.getMonth() - refDate.getMonth())
-         
-         if (delayMonths > 0) impactStatus = 'delayed'
-         else if (delayMonths < 0) impactStatus = 'ahead'
-         else if (delayMonths === 0) impactStatus = 'on_time'
+        const refDate = new Date(referenceDateStr)
+        const projDate = new Date(projectionDateReal)
+        delayMonths = (projDate.getFullYear() - refDate.getFullYear()) * 12 + (projDate.getMonth() - refDate.getMonth())
+        
+        if (delayMonths > 0) impactStatus = 'delayed'
+        else if (delayMonths < 0) impactStatus = 'ahead'
+        else if (delayMonths === 0) impactStatus = 'on_time'
       }
+
+      const montantRetard = actualAmountTheoretical - actualAmountReal
+      const monthlyDelayFromPlan = goalMonthlyTheoretical > 0 ? Math.ceil(montantRetard / goalMonthlyTheoretical) : 0
 
       return {
         ...goal,
         montant_actuel_temporel: actualAmountTheoretical,
         montant_actuel_reel: actualAmountReal,
-        montant_mensuel_calc: goalMonthlyAllocation,
-        montant_mensuel_reel: avgMonthlySurplus,
+        montant_mensuel_calc: goalMonthlyTheoretical,
+        montant_mensuel_reel: avgMonthlyReal,
         projection_date_calc: projectionDateTh,
         projection_date_reel: projectionDateReal,
-        months_remaining: monthsRemainingTh === Infinity ? 0 : monthsRemainingTh,
-        months_remaining_reel: monthsRemainingReel === Infinity ? 0 : monthsRemainingReel,
+        months_remaining: monthsRemainingTh,
+        months_remaining_reel: monthsRemainingReel,
         progress_pct: (actualAmountTheoretical / target) * 100,
         progress_pct_reel: (actualAmountReal / target) * 100,
         is_ahead: actualAmountReal > actualAmountTheoretical,
-        delay_months: delayMonths,
+        delay_months: monthlyDelayFromPlan > 0 ? monthlyDelayFromPlan : (delayMonths || 0),
         impact_status: impactStatus,
-        montant_retard: actualAmountTheoretical - actualAmountReal
+        montant_retard: montantRetard
       }
     })
 
@@ -150,7 +111,8 @@ export function useGoalCalculations(
 
     return {
       enrichedGoals,
-      totalMonthlySavings,
+      epargneMensuelle,
+      totalMonthlySavings: epargneMensuelle,
       totalTarget,
       totalCurrent,
       totalReal,
@@ -158,5 +120,5 @@ export function useGoalCalculations(
       activeGoalsCount: activeGoals.length,
       completedCount
     }
-  }, [objectifs, salaryPlan, transactions])
+  }, [objectifs, salaryPlan])
 }

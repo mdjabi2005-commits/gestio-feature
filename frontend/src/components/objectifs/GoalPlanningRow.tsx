@@ -33,12 +33,12 @@ export function GoalPlanningRow({
 
   // 2. Calcul de la durée en mois pour les nouveaux objectifs
   const monthsRemaining = useMemo(() => {
-    if (!goal.date_echeance) return 0
-    const end = new Date(goal.date_echeance)
+    if (!goal.date_fin) return 0
+    const end = new Date(goal.date_fin)
     const now = new Date()
     const diff = (end.getFullYear() - now.getFullYear()) * 12 + (end.getMonth() - now.getMonth())
     return Math.max(0, diff)
-  }, [goal.date_echeance])
+  }, [goal.date_fin])
 
   // 3. Calcul de la cible pour les nouveaux objectifs
   const calculatedTarget = monthlyAllocation * monthsRemaining
@@ -72,15 +72,28 @@ export function GoalPlanningRow({
           <div className="flex items-center gap-2 mt-0.5">
              <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: catMeta.color }}>{goal.categorie}</span>
              {isNew && (
-                <div className="flex items-center gap-2 ml-4">
-                   <Calendar className="w-3 h-3 text-white/20" />
-                   <input 
-                     type="month"
-                     value={goal.date_echeance?.substring(0, 7)}
-                     onChange={e => onUpdateMetadata?.({ date_echeance: `${e.target.value}-01` })}
-                     className="bg-transparent border-none text-[10px] font-bold text-indigo-400 p-0 focus:ring-0 cursor-pointer uppercase"
-                   />
-                </div>
+                <>
+                   <div className="flex items-center gap-1 ml-4">
+                      <span className="text-[8px] text-white/20">Du</span>
+                      <Calendar className="w-3 h-3 text-white/20" />
+                       <input 
+                         type="month"
+                         value={goal.date_debut?.substring(0, 7)}
+                         onChange={e => onUpdateMetadata?.({ date_debut: `${e.target.value}-01` })}
+                         className="bg-transparent border-none text-[10px] font-bold text-emerald-400 p-0 focus:ring-0 cursor-pointer uppercase"
+                       />
+                   </div>
+                   <div className="flex items-center gap-1">
+                      <span className="text-[8px] text-white/20">Au</span>
+                      <Calendar className="w-3 h-3 text-white/20" />
+                       <input 
+                         type="month"
+                         value={goal.date_fin?.substring(0, 7)}
+                         onChange={e => onUpdateMetadata?.({ date_fin: `${e.target.value}-01` })}
+                         className="bg-transparent border-none text-[10px] font-bold text-indigo-400 p-0 focus:ring-0 cursor-pointer uppercase"
+                       />
+                   </div>
+                </>
              )}
           </div>
         </div>

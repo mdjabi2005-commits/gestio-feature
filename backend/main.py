@@ -3,6 +3,9 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+import os
 from backend.api.transactions.transactions import router as transactions_router
 from backend.api.dashboard.dashboard import router as dashboard_router
 from backend.api.attachments.attachments import router as attachments_router
@@ -102,6 +105,15 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+
+
+# Serve Static Files (Frontend)
+frontend_path = os.path.join(os.getcwd(), "frontend", "out")
+if os.path.exists(frontend_path):
+    # Important: Mount at the end so it doesn't intercept API routes
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
+else:
+    logger.warning(f"Dossier frontend statique non trouvé : {frontend_path}")
 
 
 if __name__ == "__main__":

@@ -16,8 +16,10 @@ export function GoalForm({ initial, onSave, onClose }: GoalFormProps) {
     nom: "",
     montant_cible: 0,
     categorie: "ÉpargneUrgence",
-    date_echeance: "",
+    date_debut: "",
+    date_fin: "",
     description: "",
+    poids_allocation: 1,
   })
 
   useEffect(() => {
@@ -87,6 +89,21 @@ export function GoalForm({ initial, onSave, onClose }: GoalFormProps) {
                 />
               </div>
 
+              {/* Poids */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-wider text-white/40 ml-1">Poids (%)</label>
+                <input
+                  type="number"
+                  step="1"
+                  value={formData.poids_allocation || 1}
+                  onChange={(e) => setFormData({ ...formData, poids_allocation: parseInt(e.target.value) })}
+                  className="w-full px-4 py-3 rounded-2xl bg-white/[0.03] border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                  placeholder="1"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
               {/* Catégorie */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-wider text-white/40 ml-1">Catégorie</label>
@@ -102,15 +119,29 @@ export function GoalForm({ initial, onSave, onClose }: GoalFormProps) {
               </div>
             </div>
 
-            {/* Date d'échéance */}
+            {/* Date de début */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-wider text-white/40 ml-1">Date d'échéance (optionnel)</label>
+              <label className="text-[10px] font-black uppercase tracking-wider text-white/40 ml-1">Date de début (optionnel)</label>
               <div className="relative">
                 <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
                 <input
                   type="date"
-                  value={formData.date_echeance}
-                  onChange={(e) => setFormData({ ...formData, date_echeance: e.target.value })}
+                  value={formData.date_debut}
+                  onChange={(e) => setFormData({ ...formData, date_debut: e.target.value })}
+                  className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white/[0.03] border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Date finale */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-wider text-white/40 ml-1">Date finale (optionnel)</label>
+              <div className="relative">
+                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                <input
+                  type="date"
+                  value={formData.date_fin}
+                  onChange={(e) => setFormData({ ...formData, date_fin: e.target.value })}
                   className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white/[0.03] border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
                 />
               </div>

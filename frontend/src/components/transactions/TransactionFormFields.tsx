@@ -38,6 +38,12 @@ export const TransactionFormFields: React.FC<TransactionFormFieldsProps> = ({
     return objectifs.filter(o => (o.montant_actuel || 0) < (o.montant_cible || 0));
   }, [objectifs, showFinishedGoals]);
 
+  const getProgression = (goal: { montant_actuel?: number; montant_cible: number }) => {
+    const actuel = goal.montant_actuel || 0;
+    const cible = goal.montant_cible || 1;
+    return cible > 0 ? (actuel / cible) * 100 : 0;
+  };
+
   return (
     <div className="space-y-6 text-left">
       {/* Type Toggle */}
@@ -110,7 +116,7 @@ export const TransactionFormFields: React.FC<TransactionFormFieldsProps> = ({
             <option value="" className="bg-slate-900 text-gray-400">Aucun objectif</option>
             {visibleObjectifs.map(goal => (
               <option key={goal.id} value={goal.id} className="bg-slate-900">
-                {goal.nom} ({Math.round(goal.progression_pourcentage || 0)}%)
+                {goal.nom} ({Math.round(getProgression(goal))}%)
               </option>
             ))}
           </select>

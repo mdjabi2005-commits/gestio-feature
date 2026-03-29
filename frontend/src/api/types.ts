@@ -118,14 +118,20 @@ export interface Objectif {
   id?: number;
   nom: string;
   montant_cible: number;
-  date_echeance?: string;
+  date_debut?: string;
+  date_fin?: string;
   categorie: string;
   description?: string;
   statut?: 'active' | 'completed' | 'archived';
   date_creation?: string;
   montant_actuel?: number;
   montant_mensuel?: number;
-  progression_pourcentage?: number;
-  projection_date?: string;
+  montant_mensuel_calcule?: number;
   poids_allocation?: number;
+}
+
+export interface GoalMonthlyProgress {
+  month: string;
+  theoretical: number;
+  real: number;
 }

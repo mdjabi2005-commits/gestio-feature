@@ -30,7 +30,7 @@ export function GoalSavingsConfig({
   const [newGoal, setNewGoal] = useState<Partial<Objectif>>({
     nom: "",
     categorie: GOAL_CATEGORIES[0].name,
-    date_echeance: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
+    date_fin: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
   })
   const [saving, setSaving] = useState(false)
 
@@ -71,14 +71,14 @@ export function GoalSavingsConfig({
     // Default 10% or remaining if less
     const initialPct = Math.min(10, remainingPct)
     
-    const formattedDate = newGoal.date_echeance?.length === 7 
-      ? `${newGoal.date_echeance}-01` 
-      : newGoal.date_echeance
+    const formattedDate = newGoal.date_fin?.length === 7 
+      ? `${newGoal.date_fin}-01` 
+      : newGoal.date_fin
 
     const goalToAdd: Objectif = {
        nom: newGoal.nom, 
        categorie: newGoal.categorie || "ÉpargneAutre", 
-       date_echeance: formattedDate,
+       date_fin: formattedDate,
        montant_cible: 0, 
        poids_allocation: initialPct, 
        statut: 'active'
@@ -87,7 +87,7 @@ export function GoalSavingsConfig({
     setNewGoal({ 
        nom: "", 
        categorie: GOAL_CATEGORIES[0].name, 
-       date_echeance: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0] 
+       date_fin: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0] 
     })
     toast.success("Objectif ajouté au plan !")
   }
@@ -96,7 +96,7 @@ export function GoalSavingsConfig({
     setSaving(true)
     const dataToSend = tempObjectifs.map(goal => {
         if (!goal.id) {
-           const months = getDurationMonths(goal.date_echeance)
+           const months = getDurationMonths(goal.date_fin)
            const monthly = (goal.poids_allocation! / 100) * totalMonthlySavings
            return { ...goal, montant_cible: Math.max(1, Math.round(monthly * months)) }
         }
@@ -130,7 +130,14 @@ export function GoalSavingsConfig({
         <div className="flex items-center justify-between p-8 border-b border-white/5 bg-white/[0.02]">
           <div className="flex items-center gap-4">
              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20"><PiggyBank className="w-6 h-6 text-emerald-400" /></div>
-             <div><h2 className="text-xl font-black text-white uppercase tracking-tighter text-balance">Plan d'Épargne</h2><p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Allocation par Pourcentage (%)</p></div>
+             <div>
+               <h2 className="text-xl font-black text-white uppercase tracking-tighter text-balance">Plan d'Épargne</h2>
+               <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Allocation par Pourcentage (%)</p>
+               <div className="flex items-center gap-2 mt-1">
+                 <span className="text-xs font-bold text-emerald-400/80">{totalMonthlySavings.toLocaleString("fr-FR")}€/mois</span>
+                 <span className="text-[10px] text-white/20">d'épargne disponible</span>
+               </div>
+             </div>
           </div>
           <button onClick={() => onOpenChange(false)} className="p-3 rounded-2xl text-white/20 hover:text-white hover:bg-white/10 transition-all"><X className="w-6 h-6" /></button>
         </div>

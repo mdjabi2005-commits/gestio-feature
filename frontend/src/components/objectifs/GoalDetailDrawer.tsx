@@ -3,11 +3,12 @@
 import React, { useEffect, useState } from "react"
 import { X, Target } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { api, type Objectif, type Transaction, type Attachment } from "@/api"
+import { api, type Objectif, type Transaction, type Attachment, type GoalMonthlyProgress } from "@/api"
 import { GoalPredictiveAnalysis } from "./GoalPredictiveAnalysis"
 import { GoalProgressComparison } from "./GoalProgressComparison"
 import { GoalHistory } from "./GoalHistory"
 import { GoalGallery } from "./GoalGallery"
+import { GoalEvolutionChart } from "./GoalEvolutionChart"
 
 interface GoalMetrics {
     montant_actuel_temporel: number
@@ -36,10 +37,28 @@ interface GoalDetailDrawerProps {
 export function GoalDetailDrawer({ goal, transactions, open, onOpenChange }: GoalDetailDrawerProps) {
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [loading, setLoading] = useState(false)
+  const [monthlyProgress, setMonthlyProgress] = useState<GoalMonthlyProgress[]>([])
+  const [loadingProgress, setLoadingProgress] = useState(false)
 
   useEffect(() => {
-    if (goal?.id && open) fetchAttachments()
+    if (goal?.id && open) {
+      fetchAttachments()
+      fetchMonthlyProgress()
+    }
   }, [goal?.id, open])
+
+  const fetchMonthlyProgress = async () => {
+    if (!goal?.id) return
+    setLoadingProgress(true)
+    try {
+      const data = await api.getGoalMonthlyProgress(goal.id)
+      setMonthlyProgress(data)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingProgress(false)
+    }
+  }
 
   const fetchAttachments = async () => {
     if (!goal?.id) return
@@ -98,16 +117,21 @@ export function GoalDetailDrawer({ goal, transactions, open, onOpenChange }: Goa
             delayMonths={delayMonths} 
             projectionDateReel={goal.projection_date_reel || null}
             montantRetard={goal.montant_retard ?? 0}
-            monantMensuelCalc={goal.montant_mensuel_calc ?? 0}
+            montantMensuelCalc={goal.montant_mensuel_calc ?? 0}
             montantMensuelReel={goal.montant_mensuel_reel ?? 0}
           />
 
           <GoalProgressComparison 
             progressReel={progressReel}
             progressTh={progressTh}
-            dateEcheance={goal.date_echeance}
+            dateEcheance={goal.date_fin}
             projectionDateCalc={goal.projection_date_calc || null}
             projectionDateReel={goal.projection_date_reel || null}
+          />
+
+          <GoalEvolutionChart 
+            data={monthlyProgress} 
+            title="Évolution mensuelle (Théorique vs Réel)"
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">

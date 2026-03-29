@@ -83,3 +83,19 @@ async def delete_goal(goal_id: int):
     except Exception as e:
         logger.error(f"Erreur delete_goal: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{goal_id}/monthly-progress")
+async def get_goal_monthly_progress(goal_id: int):
+    """Récupère la progression mensuelle théorique vs réelle d'un objectif."""
+    try:
+        goal = goal_repository.get_by_id(goal_id)
+        if not goal:
+            raise HTTPException(status_code=404, detail="Objectif non trouvé")
+        progress = goal_repository.get_monthly_progress(goal_id)
+        return progress
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erreur get_goal_monthly_progress: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

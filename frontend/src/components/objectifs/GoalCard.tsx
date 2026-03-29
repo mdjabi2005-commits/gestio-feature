@@ -43,7 +43,7 @@ export function GoalCard({ goal, onDelete, onEdit, onClick }: GoalCardProps) {
     <div 
       onClick={onClick}
       className={cn(
-        "group relative p-6 rounded-[40px] bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] hover:border-indigo-500/20 transition-all cursor-pointer overflow-hidden flex flex-col justify-between h-[440px]",
+        "group relative p-6 rounded-[40px] bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] hover:border-indigo-500/20 transition-all cursor-pointer overflow-hidden flex flex-col justify-between min-h-[440px] h-auto",
         impactStatus === 'delayed' && "border-rose-500/10 hover:border-rose-500/30",
         impactStatus === 'ahead' && "border-emerald-500/10 hover:border-emerald-500/30"
       )}
@@ -105,32 +105,8 @@ export function GoalCard({ goal, onDelete, onEdit, onClick }: GoalCardProps) {
         </div>
 
         <div className="space-y-5">
-          {/* Theoretical Progress (Plan) */}
-          <div className="space-y-1.5 text-indigo-400/80">
-            <div className="flex justify-between items-end">
-               <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Objectif (Plan de Salaire)</span>
-               <span className="text-xs font-black tabular-nums">{Math.round(progressTh)}%</span>
-            </div>
-            <div className="h-1 bg-white/[0.05] rounded-full overflow-hidden">
-               <div 
-                 className="h-full bg-indigo-500 transition-all duration-1000 ease-out opacity-30"
-                 style={{ width: `${Math.min(progressTh, 100)}%` }}
-               />
-            </div>
-            {(montantMensuelTh > 0 || montantMensuelReel > 0) && (
-              <div className="flex justify-between text-[9px] pt-0.5">
-                <span className="text-indigo-400/50">
-                  {montantMensuelTh > 0 ? `Objectif: ${Math.round(montantMensuelTh).toLocaleString("fr-FR")}€/mois` : 'Objectif: -'}
-                </span>
-                <span className="text-emerald-400/70">
-                  {montantMensuelReel > 0 ? `Réel: ${Math.round(montantMensuelReel).toLocaleString("fr-FR")}€/mois` : 'Réel: -'}
-                </span>
-              </div>
-            )}
-          </div>
-
           {/* Real Progress (Reality) */}
-          <div className="space-y-2">
+          <div className="space-y-4">
             <div className="flex justify-between items-end">
               <div className="space-y-0.5">
                 <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-tighter">Progression Réelle</span>
@@ -157,11 +133,21 @@ export function GoalCard({ goal, onDelete, onEdit, onClick }: GoalCardProps) {
                   boxShadow: isReached ? "0 0 15px rgba(16,185,129,0.3)" : "0 0 10px rgba(16,185,129,0.2)" 
                 }}
               />
-              {/* Theoretical Shadow on Real Bar */}
-              <div 
-                className="absolute top-0 bottom-0 left-0 bg-indigo-500/10 border-r border-indigo-500/40 z-0 transition-all duration-1000"
-                style={{ width: `${Math.min(progressTh, 100)}%` }}
-              />
+            </div>
+
+            <div className="flex justify-between items-center px-1">
+              <div className="flex flex-col">
+                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Cible Mensuelle</span>
+                <span className="text-sm font-black text-indigo-400">
+                  {montantMensuelTh > 0 ? `${Math.round(montantMensuelTh).toLocaleString("fr-FR")}€ / mois` : '-'}
+                </span>
+              </div>
+              <div className="text-right flex flex-col">
+                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Rythme Réel</span>
+                <span className="text-sm font-black text-emerald-400">
+                  {montantMensuelReel > 0 ? `${Math.round(montantMensuelReel).toLocaleString("fr-FR")}€ / mois` : '-'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -183,19 +169,19 @@ export function GoalCard({ goal, onDelete, onEdit, onClick }: GoalCardProps) {
                          </span>
                       </div>
                       <div className="flex items-center gap-2 pl-1">
-                         <p className="text-xs font-black text-rose-400 italic">
-                            Retard : {(montantActuelTh - montantActuelReel).toLocaleString("fr-FR")}€
+                         <p className="text-xs font-black text-rose-500 italic">
+                            Retard : {Math.round(goal.montant_retard ?? 0).toLocaleString("fr-FR")}€
                          </p>
                       </div>
                    </div>
                 )}
              </div>
-             {(goal.projection_date_reel || goal.projection_date) && !isReached && (
+             {(goal.projection_date_reel || goal.projection_date_calc) && !isReached && (
                 <div className="flex flex-col items-end gap-0.5">
                    <div className="flex items-center gap-1.5 overflow-hidden text-right">
                       <Clock className="w-3 h-3 text-white/20 shrink-0" />
                       <span className="text-[10px] font-bold text-white/40 whitespace-nowrap italic">
-                         Estimation : {new Date(goal.projection_date_reel || goal.projection_date!).toLocaleDateString("fr-FR", { month: 'short', year: 'numeric' })}
+                         Estimation : {new Date(goal.projection_date_reel || goal.projection_date_calc!).toLocaleDateString("fr-FR", { month: 'short', year: 'numeric' })}
                       </span>
                    </div>
                    <p className="text-[9px] font-black text-white/10 uppercase tracking-widest">Projection Réelle</p>
@@ -211,13 +197,23 @@ export function GoalCard({ goal, onDelete, onEdit, onClick }: GoalCardProps) {
       </div>
 
       <div className="flex items-center justify-between pt-4 border-t border-white/[0.05]">
-        <div className="flex items-center gap-2 text-white/40">
+        <div className="flex items-center gap-3 text-white/40">
           <Hourglass className="w-3.5 h-3.5" />
-          <span className="text-[10px] font-bold uppercase tracking-wider">
-            {goal.date_echeance 
-              ? `Cible : ${new Date(goal.date_echeance).toLocaleDateString("fr-FR", { month: "short", year: "numeric" })}` 
-              : "Sans échéance"}
-          </span>
+          <div className="flex items-center gap-2">
+            {goal.date_debut && (
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400/60">
+                {new Date(goal.date_debut).toLocaleDateString("fr-FR", { month: "short", year: "numeric" })}
+              </span>
+            )}
+            {goal.date_debut && goal.date_fin && (
+              <span className="text-[10px] text-white/20">→</span>
+            )}
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              {goal.date_fin 
+                ? `${new Date(goal.date_fin).toLocaleDateString("fr-FR", { month: "short", year: "numeric" })}` 
+                : "Sans échéance"}
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {daysRemaining !== null && daysRemaining > 0 && !isReached && (

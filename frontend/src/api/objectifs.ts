@@ -1,4 +1,4 @@
-import { Objectif } from './types';
+import { Objectif, GoalMonthlyProgress } from './types';
 
 const API_BASE_URL = 'http://localhost:8002';
 
@@ -53,5 +53,11 @@ export const objectifsApi = {
       body: formData,
     });
     if (!res.ok) throw new Error('Failed to upload goal attachment');
+  },
+
+  getGoalMonthlyProgress: async (goalId: number): Promise<GoalMonthlyProgress[]> => {
+    const res = await fetch(`${API_BASE_URL}/api/goals/${goalId}/monthly-progress`);
+    if (!res.ok) throw new Error('Failed to fetch monthly progress');
+    return res.json();
   },
 };
