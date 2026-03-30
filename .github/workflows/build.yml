@@ -63,6 +63,25 @@ jobs:
           # Remarque : on build ici pour que l'installateur contienne le dossier 'out'
           # Cela permet à l'utilisateur final de ne pas avoir Node.js installé.
 
+      - name: Package Universal Mac/Linux Archive
+        shell: bash
+        run: |
+          mkdir release-universal
+          cp -r backend release-universal/
+          mkdir -p release-universal/frontend
+          cp -r frontend/out release-universal/frontend/out
+          cp pyproject.toml uv.lock launcher.py launcher.bat launcher.sh release-universal/
+          cd release-universal
+          zip -qr ../Gestio-Universal.zip *
+
+      - name: Upload Universal artifact
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: GestioV4-Universal
+          path: Gestio-Universal.zip
+          if-no-files-found: error
+
       - name: Inno Setup installer
         if: matrix.os == 'windows-latest'
         shell: pwsh
@@ -117,10 +136,11 @@ jobs:
           name: GestioV4-Windows
           path: ./release
 
-      - name: Prepare Mac/Linux script
-        run: |
-          chmod +x install-mac-linux.sh
-          cp install-mac-linux.sh ./release/install-mac-linux.sh
+      - name: Download Universal artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: GestioV4-Universal
+          path: ./release
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -135,12 +155,12 @@ jobs:
             | Plateforme | Fichier | Instructions |
             |---|---|---|
             | Windows | `Gestio-Setup-v*.exe` | Double-cliquez sur l'assistant d'installation |
-            | macOS / Linux | `install-mac-linux.sh` | `chmod +x install-mac-linux.sh && ./install-mac-linux.sh` |
+            | macOS / Linux | `Gestio-Universal.zip` | Dézippez et exécutez `bash launcher.sh` (nécessite l'outil `uv`) |
 
             Vos données financières sont stockées exclusivement sur votre machine locale.
           files: |
             ./release/Gestio-Setup-*.exe
-            ./release/install-mac-linux.sh
+            ./release/Gestio-Universal.zip
           fail_on_unmatched_files: true
           draft: false
           prerelease: false
