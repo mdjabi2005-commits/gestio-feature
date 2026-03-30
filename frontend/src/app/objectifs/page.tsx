@@ -4,7 +4,6 @@ import { Target } from "lucide-react"
 import { useFinancial } from "@/context/FinancialDataContext"
 import { GoalCard } from "@/components/objectifs/GoalCard"
 import { GoalTable } from "@/components/objectifs/GoalTable"
-import { GoalForm } from "@/components/objectifs/GoalForm"
 import { GoalDetailDrawer } from "@/components/objectifs/GoalDetailDrawer"
 import { GoalSavingsConfig } from "@/components/objectifs/GoalSavingsConfig"
 import { GoalPageHeader } from "@/components/objectifs/GoalPageHeader"
@@ -15,12 +14,11 @@ import { api, type Objectif, type GoalMonthlyProgress } from "@/api"
 
 export default function ObjectifsPage() {
   const { 
-    objectifs, objectifsLoading, setObjectif, deleteObjectif, 
-    showFinishedGoals, setShowFinishedGoals, activeSalaryPlan, transactions
+    objectifs, objectifsLoading, deleteObjectif, 
+    showFinishedGoals, setShowFinishedGoals, activeSalaryPlan, transactions,
+    setIsGoalModalOpen, setEditingGoal
   } = useFinancial()
   
-  const [showForm, setShowForm] = useState(false)
-  const [editTarget, setEditTarget] = useState<Objectif | null>(null)
   const [selectedGoal, setSelectedGoal] = useState<Objectif | null>(null)
   const [showSavingsConfig, setShowSavingsConfig] = useState(false)
   const [globalMonthlyProgress, setGlobalMonthlyProgress] = useState<GoalMonthlyProgress[]>([])
@@ -74,7 +72,6 @@ export default function ObjectifsPage() {
       <GoalPageHeader 
         showSavingsConfig={showSavingsConfig} setShowSavingsConfig={setShowSavingsConfig}
         showFinishedGoals={showFinishedGoals} setShowFinishedGoals={setShowFinishedGoals}
-        onAddGoal={() => { setEditTarget(null); setShowForm(true); }}
       />
 
       <GoalStatsSummary 
@@ -98,24 +95,34 @@ export default function ObjectifsPage() {
             <h3 className="text-lg font-bold text-white/60">Aucun objectif visible</h3>
             <p className="text-sm text-white/30 max-w-xs mx-auto">{objectifs.length > 0 ? "Tous vos objectifs sont complétés et masqués." : "Commencez par créer votre premier objectif d'épargne."}</p>
           </div>
-          <button onClick={() => setShowForm(true)} className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 text-sm font-bold hover:bg-white/10 transition-all hover:text-white">Créer un objectif</button>
+          <button onClick={() => setIsGoalModalOpen(true)} className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 text-sm font-bold hover:bg-white/10 transition-all hover:text-white">Créer un objectif</button>
         </div>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredGoals.map(goal => (
-              <GoalCard key={goal.id} goal={goal as any} onDelete={deleteObjectif} onEdit={g => { setEditTarget(g); setShowForm(true); }} onClick={() => setSelectedGoal(goal)} />
+              <GoalCard 
+                key={goal.id} 
+                goal={goal as any} 
+                onDelete={deleteObjectif} 
+                onEdit={g => { setEditingGoal(g); setIsGoalModalOpen(true); }} 
+                onClick={() => setSelectedGoal(goal)} 
+              />
             ))}
           </div>
           <div className="space-y-4 pt-10">
             <h3 className="text-sm font-black uppercase tracking-widest text-white/40 px-2">Gestion détaillée</h3>
-            <GoalTable goals={filteredGoals as any} onDelete={deleteObjectif} onEdit={g => { setEditTarget(g); setShowForm(true); }} onSelect={setSelectedGoal} />
+            <GoalTable 
+              goals={filteredGoals as any} 
+              onDelete={deleteObjectif} 
+              onEdit={g => { setEditingGoal(g); setIsGoalModalOpen(true); }} 
+              onSelect={setSelectedGoal} 
+            />
           </div>
         </>
       )}
 
       <GoalDetailDrawer goal={selectedGoal as any} transactions={transactions.filter(t => t.objectif_id === selectedGoal?.id)} open={!!selectedGoal} onOpenChange={o => !o && setSelectedGoal(null)} />
-      {showForm && <GoalForm initial={editTarget} onSave={setObjectif} onClose={() => { setShowForm(false); setEditTarget(null); }} />}
       <GoalSavingsConfig open={showSavingsConfig} onOpenChange={setShowSavingsConfig} goals={enrichedGoals} totalMonthlySavings={totalMonthlySavings} onSaved={() => {}} />
     </div>
   )

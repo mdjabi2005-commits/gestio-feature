@@ -157,7 +157,7 @@ def test_add_attachment_to_objectif(
     goal = Goal(
         nom="Vacances",
         montant_cible=2000.0,
-        date_echeance=date(2026, 12, 31),
+        date_fin=date(2026, 12, 31),
         categorie="Loisirs",
     )
 

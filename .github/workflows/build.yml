@@ -54,123 +54,28 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: uv run python resources/icons/generate_icons.py
 
-      - name: PyInstaller build
-        if: matrix.os == 'windows-latest'
-        run: uv run pyinstaller gestio.spec --noconfirm
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-      - name: Validate Azure secrets
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
+      - name: Build Frontend (Production)
         run: |
-          $missing = @()
-          if ([string]::IsNullOrWhiteSpace($env:AZURE_VAULT_URI))    { $missing += "AZURE_VAULT_URI" }
-          if ([string]::IsNullOrWhiteSpace($env:AZURE_CLIENT_ID))    { $missing += "AZURE_CLIENT_ID" }
-          if ([string]::IsNullOrWhiteSpace($env:AZURE_TENANT_ID))    { $missing += "AZURE_TENANT_ID" }
-          if ([string]::IsNullOrWhiteSpace($env:AZURE_CLIENT_SECRET)){ $missing += "AZURE_CLIENT_SECRET" }
-
-          # Afficher les longueurs (pas les valeurs) pour debug
-          Write-Host "AZURE_VAULT_URI    : $($env:AZURE_VAULT_URI.Length) chars"
-          Write-Host "AZURE_CLIENT_ID    : $($env:AZURE_CLIENT_ID.Length) chars"
-          Write-Host "AZURE_TENANT_ID    : $($env:AZURE_TENANT_ID.Length) chars"
-          Write-Host "AZURE_CLIENT_SECRET: $($env:AZURE_CLIENT_SECRET.Length) chars"
-
-          if ($missing.Count -gt 0) {
-            Write-Error "Secrets GitHub manquants ou vides : $($missing -join ', ')"
-            Write-Host ""
-            Write-Host "Comment corriger :"
-            Write-Host "  1. Aller sur GitHub -> Settings -> Secrets and variables -> Actions"
-            Write-Host "  2. Verifier que ces secrets existent et ne sont pas vides : $($missing -join ', ')"
-            exit 1
-          }
-
-          Write-Host "Tous les secrets Azure sont presents."
-
-      - name: Install AzureSignTool
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: dotnet tool install --global AzureSignTool
-
-      - name: Sign GestioV4.exe
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          AzureSignTool sign `
-            --azure-key-vault-url "$env:AZURE_VAULT_URI" `
-            --azure-key-vault-client-id "$env:AZURE_CLIENT_ID" `
-            --azure-key-vault-tenant-id "$env:AZURE_TENANT_ID" `
-            --azure-key-vault-client-secret "$env:AZURE_CLIENT_SECRET" `
-            --azure-key-vault-certificate "$env:CERT_NAME" `
-            --timestamp-rfc3161 "$env:TIMESTAMP_URL" `
-            --timestamp-digest sha256 `
-            --file-digest sha256 `
-            --description "Gestio - Gestion Financiere Personnelle" `
-            --description-url "https://github.com/djabi/gestio" `
-            "dist\GestioV4\GestioV4.exe"
-
-      - name: Sign DLLs
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          $dlls = Get-ChildItem -Path "dist\GestioV4" -Recurse -Include "*.dll","*.pyd" | Where-Object { $_.Length -gt 0 } | Select-Object -ExpandProperty FullName
-          if ($dlls.Count -eq 0) { Write-Host "No DLLs found."; exit 0 }
-          AzureSignTool sign `
-            --azure-key-vault-url "$env:AZURE_VAULT_URI" `
-            --azure-key-vault-client-id "$env:AZURE_CLIENT_ID" `
-            --azure-key-vault-tenant-id "$env:AZURE_TENANT_ID" `
-            --azure-key-vault-client-secret "$env:AZURE_CLIENT_SECRET" `
-            --azure-key-vault-certificate "$env:CERT_NAME" `
-            --timestamp-rfc3161 "$env:TIMESTAMP_URL" `
-            --timestamp-digest sha256 `
-            --file-digest sha256 `
-            --continue-on-error `
-            @dlls
+          npm install --prefix frontend
+          npm run build --prefix frontend
+          # Remarque : on build ici pour que l'installateur contienne le dossier 'out'
+          # Cela permet à l'utilisateur final de ne pas avoir Node.js installé.
 
       - name: Inno Setup installer
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          # Generer gestio.iss en ASCII pur (ecrase tout fichier corrompu du checkout)
-          uv run python scripts/generate_iss.py
-          $bytes = [System.IO.File]::ReadAllBytes("gestio.iss")
-          $bad = $bytes | Where-Object { $_ -gt 127 }
-          if ($bad.Count -gt 0) { Write-Error "gestio.iss non-ASCII !"; exit 1 }
-          Write-Host "gestio.iss OK - $($bytes.Count) octets, 100% ASCII"
+          # Installer Inno Setup via choco si besoin (souvent déjà présent sur windows-latest)
+          # choco install innosetup --no-progress --yes
 
-          # Installer Inno Setup via choco avec retry
-          $maxRetries = 3
-          for ($i = 1; $i -le $maxRetries; $i++) {
-            choco install innosetup --no-progress --yes
-            if ($LASTEXITCODE -eq 0) { break }
-            Write-Host "Tentative $i/$maxRetries echouee, nouvelle tentative..."
-            Start-Sleep -Seconds 10
-          }
-          if ($LASTEXITCODE -ne 0) { Write-Error "Impossible d'installer Inno Setup"; exit 1 }
-
-          New-Item -ItemType Directory -Force -Path "dist\installer" | Out-Null
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" gestio.iss
+          New-Item -ItemType Directory -Force -Path "dist" | Out-Null
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" distribution/gestio.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Sign installer
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          $installer = Get-ChildItem "dist\installer\Gestio-Setup-*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $installer) {
-            Write-Error "Installeur introuvable dans dist\installer\ - Inno Setup a echoue"
-            exit 1
-          }
-          Write-Host "Signature de : $($installer.FullName)"
-          AzureSignTool sign `
-            --azure-key-vault-url "$env:AZURE_VAULT_URI" `
-            --azure-key-vault-client-id "$env:AZURE_CLIENT_ID" `
-            --azure-key-vault-tenant-id "$env:AZURE_TENANT_ID" `
-            --azure-key-vault-client-secret "$env:AZURE_CLIENT_SECRET" `
-            --azure-key-vault-certificate "$env:CERT_NAME" `
-            --timestamp-rfc3161 "$env:TIMESTAMP_URL" `
-            --timestamp-digest sha256 `
-            --file-digest sha256 `
-            --description "Gestio Installer" `
-            "$($installer.FullName)"
 
       - name: Upload Windows artifact
         if: matrix.os == 'windows-latest'

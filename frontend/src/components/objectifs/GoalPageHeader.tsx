@@ -8,14 +8,13 @@ interface GoalPageHeaderProps {
   setShowSavingsConfig: (show: boolean) => void
   showFinishedGoals: boolean
   setShowFinishedGoals: (show: boolean) => void
-  onAddGoal: () => void
 }
 
 export function GoalPageHeader({ 
+  showSavingsConfig,
   setShowSavingsConfig, 
   showFinishedGoals, 
-  setShowFinishedGoals, 
-  onAddGoal 
+  setShowFinishedGoals
 }: GoalPageHeaderProps) {
   return (
     <div className="flex items-center justify-between">
@@ -41,12 +40,6 @@ export function GoalPageHeader({
         >
           {showFinishedGoals ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
           {showFinishedGoals ? "Masquer terminés" : "Afficher terminés"}
-        </button>
-        <button
-          onClick={onAddGoal}
-          className="group flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white text-sm font-bold shadow-xl shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-        >
-          <Plus className="w-4 h-4" /> Nouvel Objectif
         </button>
       </div>
     </div>

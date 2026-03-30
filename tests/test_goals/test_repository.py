@@ -25,7 +25,7 @@ def goal_vacances() -> Goal:
     return Goal(
         nom="Vacances 2026",
         montant_cible=2000.0,
-        date_echeance=date(2026, 12, 31),
+        date_fin=date(2026, 12, 31),
         categorie="Loisirs",
         description="Vacances d'été",
         statut="active",
@@ -38,7 +38,7 @@ def goal_voiture() -> Goal:
     return Goal(
         nom="Voiture",
         montant_cible=10000.0,
-        date_echeance=date(2027, 6, 30),
+        date_fin=date(2027, 6, 30),
         categorie="Voiture",
         description="Achat voiture",
         statut="active",
@@ -93,10 +93,11 @@ def test_update_goal(goal_repo, goal_vacances):
         {
             "nom": "Vacances modifiées",
             "montant_cible": 2500.0,
-            "date_echeance": date(2026, 12, 31),
+            "date_fin": date(2026, 12, 31),
             "categorie": "Loisirs",
             "description": "Vacances modifiées",
             "statut": "active",
+            "poids_allocation": 1.0,
         },
     )
 

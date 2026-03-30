@@ -26,6 +26,11 @@ frontend/src/lib/
 
 ```mermaid
 graph TD
+    subgraph Global
+        Header[Header / Command Center]
+        Context[FinancialDataContext]
+    end
+
     subgraph API
         BUD[FastAPI /api/budgets]
         ECH[FastAPI /api/echeances]
@@ -34,14 +39,18 @@ graph TD
     end
     
     subgraph Frontend
-        Context[FinancialDataContext]
         Page[BudgetsPage]
         Selector[MonthSelector]
         Utils["budget-utils.ts"]
         Summary[PlanningSummary]
         Drawer[BudgetTransactionsDrawer]
+        Setup[SalaryPlanSetup]
     end
 
+    Header -->|onAddBudget| Context
+    Context -->|isSalaryPlanOpen| Setup
+    Setup -->|POST| SAL
+    
     BUD --> Context
     ECH --> Context
     TXS --> Context
@@ -117,12 +126,13 @@ Les Salary Plans permettent de définir un revenu de référence et des allocati
 
 ```mermaid
 graph LR
-    User[Utilisateur] -->|Configure| Setup[SalaryPlanSetup]
+    Header[Header] -->|onAddBudget| Setup[SalaryPlanSetup]
     Setup -->|POST| API[/api/salary-plans/]
     API -->|upsert| DB[(SQLite: salary_plans)]
     DB -->|SELECT| API
     API -->|JSON| Context
     Context -->|activeSalaryPlan| Summary[PlanningSummary]
+    Context -->|isSalaryPlanOpen| Setup
 ```
 
 ### Entrées / Sorties

@@ -1,10 +1,9 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Plus, TrendingDown, PiggyBank } from "lucide-react"
+import { TrendingDown, PiggyBank } from "lucide-react"
 import { useFinancial } from "@/context/FinancialDataContext"
 import { BudgetCard } from "@/components/budgets/BudgetCard"
-import { BudgetForm } from "@/components/budgets/BudgetForm"
 import { PlanningSummary } from "@/components/budgets/PlanningSummary"
 import { StrategyCard } from "@/components/budgets/StrategyCard"
 import { SalaryPlanSetup } from "@/components/budgets/SalaryPlanSetup"
@@ -20,11 +19,11 @@ import type { Budget } from "@/api"
 export default function BudgetsPage() {
   const { 
     budgets, transactions, setBudget, deleteBudget, budgetsLoading, 
-    summary, echeances, activeSalaryPlan, setSalaryPlan 
+    summary, echeances, activeSalaryPlan, setSalaryPlan,
+    setIsBudgetModalOpen, setEditingBudget
   } = useFinancial()
-  const [showForm, setShowForm] = useState(false)
+  
   const [showPlanSetup, setShowPlanSetup] = useState(false)
-  const [editTarget, setEditTarget] = useState<Budget | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedBudgetForTransactions, setSelectedBudgetForTransactions] = useState<Budget | null>(null)
   
@@ -57,8 +56,10 @@ export default function BudgetsPage() {
 
   const allCategories = summary?.repartition_categories ?? []
 
-  const handleEdit = (budget: Budget) => { setEditTarget(budget); setShowForm(true) }
-  const handleClose = () => { setShowForm(false); setEditTarget(null) }
+  const handleEdit = (budget: Budget) => { 
+    setEditingBudget(budget); 
+    setIsBudgetModalOpen(true); 
+  }
 
   const handleAddSub = async (subName: string) => {
     if (!selectedCategory) return
@@ -80,7 +81,6 @@ export default function BudgetsPage() {
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <BudgetsHeader
         budgetsCount={budgets.length}
-        onNewBudget={() => { setEditTarget(null); setShowForm(true) }}
       />
 
       <div className="space-y-6 mb-10">
@@ -152,15 +152,11 @@ export default function BudgetsPage() {
         selectedMonth={selectedMonth}
         selectedYear={selectedYear}
       />
-
-      {showForm && (
-        <BudgetForm initial={editTarget} onSave={setBudget} onClose={handleClose} />
-      )}
     </div>
   )
 }
 
-function BudgetsHeader({ budgetsCount, onNewBudget }: { budgetsCount: number; onNewBudget: () => void }) {
+function BudgetsHeader({ budgetsCount }: { budgetsCount: number }) {
   return (
     <div className="flex items-center justify-between mb-8">
       <div>
@@ -171,12 +167,6 @@ function BudgetsHeader({ budgetsCount, onNewBudget }: { budgetsCount: number; on
             : "Aucun budget défini"}
         </p>
       </div>
-      <button
-        onClick={onNewBudget}
-        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-sm font-medium hover:bg-indigo-500/30 transition-all"
-      >
-        <Plus className="w-4 h-4" /> Nouveau budget
-      </button>
     </div>
   )
 }
@@ -228,5 +218,3 @@ function SalaryPlanSection({
     />
   )
 }
-
-
