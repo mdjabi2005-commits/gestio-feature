@@ -48,18 +48,26 @@ gestion-financiere/
 ### Prérequis
 
 - Python 3.12+
-- Node.js 20+
-- **uv** (gestionnaire Python)
+- Node.js 20+ (Uniquement pour le développement Frontend)
+- **uv** (gestionnaire Python) - s'installe automatiquement si manquant via les scripts de démarrage.
 
-### Backend
+### 🌟 Démarrage Universel (Recommandé)
 
+Lancez simplement le script correspondant à votre OS. Il installera les dépendances automatiquement.
+- Windows : `Double clic sur launcher.bat`
+- Mac/Linux : `bash launcher.sh`
+
+*(Note : Si le frontend n'est pas compilé et que `node_modules` est absent, le serveur démarrera en mode PROD sur `8002`)*
+
+### Démarrage Manuel Séparé (Mode Développement Avancé)
+
+**Backend:**
 ```bash
 uv sync
-uv run uvicorn backend.main:app --reload   # http://localhost:8002
+uv run uvicorn backend.main:app --reload --port 8002   # http://localhost:8002
 ```
 
-### Frontend
-
+**Frontend:**
 ```bash
 cd frontend && npm install
 npm run dev         # http://localhost:3000
