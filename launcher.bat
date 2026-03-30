@@ -1,5 +1,6 @@
 @echo off
-pushd %~dp0
-powershell.exe -ExecutionPolicy Bypass -File "./distribution/run.ps1"
+pushd "%~dp0"
+echo Démarrage de l'environnement Python...
+uv run launcher.py
 popd
 exit

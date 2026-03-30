@@ -97,11 +97,7 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-async def root():
-    return {"message": "Welcome to Gestio API (v4)"}
-
-
+# La route racine '/' est volontairement supprimée pour laisser StaticFiles servir index.html
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
