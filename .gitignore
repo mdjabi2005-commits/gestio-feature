@@ -18,6 +18,10 @@ yarn-error.log*
 package-lock.json
 yarn.lock
 .next/
+frontend/out/
+frontend/dist/
+dist/
+build/
 
 # ── uv / virtualenv ───────────────────────────────────────────────────────────
 .venv/
@@ -28,8 +32,8 @@ env/
 .env.*
 !.env.example
 
-# ── Inno Setup (genere automatiquement par scripts/generate_iss.py) ──────────
-gestio.iss
+# ── Inno Setup (gere manuellement) ──────────────────
+# distribution/gestio.iss
 
 # ── PyInstaller ───────────────────────────────────────────────────────────────
 dist/

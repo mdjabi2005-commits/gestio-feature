@@ -17,6 +17,8 @@ interface FinancialContextType {
   isEcheanceModalOpen: boolean; setIsEcheanceModalOpen: (v: boolean) => void;
   isSalaryPlanOpen: boolean; setIsSalaryPlanOpen: (v: boolean) => void;
   isSavingsPlanOpen: boolean; setIsSavingsPlanOpen: (v: boolean) => void;
+  isBudgetModalOpen: boolean; setIsBudgetModalOpen: (v: boolean) => void;
+  isGoalModalOpen: boolean; setIsGoalModalOpen: (v: boolean) => void;
   editingTransaction: Transaction | null; setEditingTransaction: (t: Transaction | null) => void;
   editingEcheance: any | null; setEditingEcheance: (e: any | null) => void;
   editingBudget: Budget | null; setEditingBudget: (b: Budget | null) => void;
@@ -44,6 +46,8 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
   const [isEcheanceModalOpen, setIsEcheanceModalOpen] = useState(false);
   const [isSalaryPlanOpen, setIsSalaryPlanOpen] = useState(false);
   const [isSavingsPlanOpen, setIsSavingsPlanOpen] = useState(false);
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editingEcheance, setEditingEcheance] = useState<any | null>(null);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
@@ -65,6 +69,8 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
     isEcheanceModalOpen, setIsEcheanceModalOpen,
     isSalaryPlanOpen, setIsSalaryPlanOpen,
     isSavingsPlanOpen, setIsSavingsPlanOpen,
+    isBudgetModalOpen, setIsBudgetModalOpen,
+    isGoalModalOpen, setIsGoalModalOpen,
     editingTransaction, setEditingTransaction,
     editingEcheance, setEditingEcheance,
     editingBudget, setEditingBudget,
