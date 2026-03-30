@@ -57,8 +57,9 @@ jobs:
 
       - name: Build Frontend (Production)
         run: |
-          npm install --prefix frontend
-          npm run build --prefix frontend
+          cd frontend
+          npm install
+          npm run build
           # Remarque : on build ici pour que l'installateur contienne le dossier 'out'
           # Cela permet à l'utilisateur final de ne pas avoir Node.js installé.
 
