@@ -205,11 +205,11 @@ Ils sont définis dynamiquement dans : `backend/config/paths.py`.
 3. **Vérifier** que la documentation reflète les nouvelles structures
 
 **TOUJOURS** vérifier et mettre à jour :
-- **Les tests** : Lancer `python -m pytest tests/ -v` et corriger les tests cassés
+- **Les tests** : Lancer `uv run pytest tests/ -v` et corriger les tests cassés. **ATTENTION :** Assurez-vous d'être à la racine du projet (`V1-feature`), et *jamais* dans le dossier `backend/`, car le dossier `tests/` se situe à la racine.
 - **Les READMEs/LOGIC_FLOWs** : S'assurer qu'ils sont à jour avec le code
 
 > [!IMPORTANT]
 > Quand l'utilisateur dit **"fin de session"** ou **"session terminée"** :
-> 1. Lancer les tests (`python -m pytest tests/ -v`) et corriger les échecs
+> 1. Lancer les tests (`uv run pytest tests/ -v` depuis la racine !) et corriger les échecs
 > 2. Passer en revue **tous** les READMEs et LOGIC_FLOWs modifiés pendant la session
 > 3. Les mettre à jour si besoin (nouvelles fonctions, endpoints, erreurs courantes)

@@ -29,10 +29,13 @@ backend/
 
 ## Commandes
 
+> **ATTENTION** : Tous les scripts et tests doivent impérativement être exécutés depuis la **racine du projet** (`V1-feature`), *jamais* depuis le dossier `backend/`. Le dossier `tests/` se trouvant à la racine, le PYTHONPATH a besoin que vous soyez au niveau zéro du projet.
+
 ```bash
+# Lancement depuis la racine du projet
 uv sync
 uv run uvicorn backend.main:app --reload   # Dev
-pytest tests/path/test.py::test_function   # Test unitaire
+uv run pytest tests/path/test.py::test_function   # Test unitaire
 ```
 
 ## Documentation (OBLIGATOIRE avant de coder)
