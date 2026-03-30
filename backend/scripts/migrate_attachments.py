@@ -3,8 +3,8 @@ import os
 from pathlib import Path
 
 # Path to DB
-DATA_DIR = Path.home() / "analyse"
-DB_PATH = DATA_DIR / "finances.db"
+from backend.config.paths import DB_PATH
+DB_PATH = Path(DB_PATH)
 
 def migrate():
     print(f"Migrating database at {DB_PATH}")

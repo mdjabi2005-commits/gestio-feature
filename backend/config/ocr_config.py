@@ -14,8 +14,8 @@ _dotenv_loaded = False
 def _ensure_dotenv():
     global _dotenv_loaded
     if not _dotenv_loaded:
-        env_path = Path(__file__).parent.parent.parent / ".env"
-        load_dotenv(env_path)
+        from backend.config.paths import ENV_PATH
+        load_dotenv(ENV_PATH)
         _dotenv_loaded = True
 
 

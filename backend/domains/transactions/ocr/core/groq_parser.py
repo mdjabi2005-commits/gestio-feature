@@ -30,8 +30,9 @@ class GroqParser:
         puis récupère la clé d'API (GROQ_API_KEY).
         """
         from dotenv import load_dotenv
+        from backend.config.paths import ENV_PATH
 
-        load_dotenv()
+        load_dotenv(ENV_PATH)
 
         self.model_name = model_name
 

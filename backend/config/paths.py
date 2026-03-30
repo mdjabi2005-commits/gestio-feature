@@ -1,35 +1,30 @@
 import os
 from pathlib import Path
+import platformdirs
 
 # Racine du projet
 APP_ROOT = Path(__file__).parent.parent
+APP_NAME = "Gestio"
 
-# Base directory
-_home = Path.home()
-
-# Folder paths - Production
-DATA_DIR = str(_home / "test")
+# Folder paths - Production & Cross Platform
+DATA_DIR = platformdirs.user_data_dir(appname=APP_NAME, appauthor=False)
 
 # Database
 DB_PATH = os.path.join(DATA_DIR, "finances.db")
 
+# User Desktop folders for active scanning
+DESKTOP_DIR = platformdirs.user_desktop_dir()
+
 # Scan directories (Tickets only)
-TO_SCAN_DIR = os.path.join(DATA_DIR, "tickets_a_scanner")
+TO_SCAN_DIR = os.path.join(DESKTOP_DIR, "tickets_a_scanner")
 SORTED_DIR = os.path.join(DATA_DIR, "tickets_tries")
 
 # Revenue directories
-REVENUS_A_TRAITER = os.path.join(DATA_DIR, "revenus_a_traiter")
+REVENUS_A_TRAITER = os.path.join(DESKTOP_DIR, "revenus_a_traiter")
 REVENUS_TRAITES = os.path.join(DATA_DIR, "revenus_traites")
 
 # Application Logs
-APP_LOG_DIR = os.path.join(DATA_DIR, "logs")
-APP_LOG_PATH = os.path.join(APP_LOG_DIR, "gestio_app.log")
-
-# CSV Export
-CSV_EXPORT_DIR = os.path.join(DATA_DIR, "exports")
-CSV_TRANSACTIONS_SANS_TICKETS = os.path.join(
-    CSV_EXPORT_DIR, "transactions_sans_tickets.csv"
-)
+APP_LOG_PATH = os.path.join(DATA_DIR, "gestio_app.log")
 
 # Objectifs attachments
 OBJECTIFS_DIR = os.path.join(DATA_DIR, "objectifs")
@@ -44,8 +39,6 @@ for directory in [
     SORTED_DIR,
     REVENUS_A_TRAITER,
     REVENUS_TRAITES,
-    APP_LOG_DIR,
-    CSV_EXPORT_DIR,
     OBJECTIFS_DIR,
 ]:
     os.makedirs(directory, exist_ok=True)

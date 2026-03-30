@@ -1,9 +1,10 @@
 import pytest
 import os
 from dotenv import load_dotenv
+from backend.config.paths import ENV_PATH
 
 # Charge le .env avant toute autre chose dans pytest
-load_dotenv()
+load_dotenv(ENV_PATH)
 
 from backend.domains.transactions.ocr.core.groq_parser import GroqParser
 import textwrap

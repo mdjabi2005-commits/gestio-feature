@@ -95,8 +95,9 @@ class OCRService:
 
     def __init__(self):
         from dotenv import load_dotenv
+        from backend.config.paths import ENV_PATH
 
-        load_dotenv()
+        load_dotenv(ENV_PATH)
 
         self.ocr_engine = RapidOCREngine()
         self.pattern_manager = PatternManager()

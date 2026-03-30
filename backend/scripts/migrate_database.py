@@ -53,9 +53,8 @@ def get_db_path(user_db_path: Optional[str] = None) -> str:
     if user_db_path:
         return user_db_path
 
-    test_mode = os.getenv("TEST_MODE", "").lower() == "true"
-    base_dir = Path.home() / ("test" if test_mode else "analyse")
-    return str(base_dir / "finances.db")
+    from backend.config.paths import DB_PATH
+    return str(DB_PATH)
 
 
 def create_backup(db_path: str) -> str:

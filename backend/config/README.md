@@ -18,7 +18,6 @@ Ce dossier centralise **toute la configuration de l'application** : chemins de f
 from .paths import (
     DATA_DIR, DB_PATH, TO_SCAN_DIR, SORTED_DIR,
     REVENUS_A_TRAITER, REVENUS_TRAITES,
-    CSV_EXPORT_DIR, CSV_TRANSACTIONS_SANS_TICKETS
 )
 ```
 
@@ -36,11 +35,12 @@ from config import DB_PATH
 
 #### Configuration des chemins
 
-**Répertoire racine** :
+**Répertoire de données techniques (DB, logs, archives) via platformdirs** :
 
 ```python
-DATA_DIR = str(Path.home() / "analyse")
-# Emplacement : C:\Users\<user>\analyse (ou /home/<user>/analyse sur Linux)
+import platformdirs
+DATA_DIR = platformdirs.user_data_dir(appname="Gestio", appauthor=False)
+# Emplacement OS standard : Ex: C:\Users\<user>\AppData\Local\Gestio sur Windows
 ```
 
 **Base de données** :
@@ -51,11 +51,13 @@ DB_PATH = os.path.join(DATA_DIR, "finances.db")
 
 **Dossiers gérés** :
 
-- `tickets_a_scanner` : Pour les tickets à traiter
-- `tickets_tries` : Archives des tickets
-- `revenus_a_traiter` / `revenus_traites` : Fiches de paie
-- `logs` : Logs applicatifs
-- `exports` : Exports CSV
+- Placés sur le **Bureau** de l'utilisateur pour un accès facile (Dossiers de scan actif) :
+  - `tickets_a_scanner` : Déposez vos tickets ici
+  - `revenus_a_traiter` : Déposez vos fiches de paie / revenus ici
+- Placés sous le **DATA_DIR** (Dossiers cachés / archivage) :
+  - `tickets_tries` : Archives des tickets déjà scannés
+  - `revenus_traites` : Archives des revenus scannés
+  - `gestio_app.log` : Log applicatif
 
 #### Création automatique
 
@@ -81,6 +83,7 @@ Tous les dossiers sont créés automatiquement au démarrage.
 
 - `os` : Manipulation de chemins
 - `pathlib.Path` : Chemins cross-platform
+- `platformdirs` : Résolution des répertoires natifs de l'OS (Desktop, AppData, etc.)
 - `logging` : Système de logs standard Python
 
 ## ⚠️ NotesImportantes
