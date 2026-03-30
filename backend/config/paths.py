@@ -16,11 +16,11 @@ DB_PATH = os.path.join(DATA_DIR, "finances.db")
 DESKTOP_DIR = platformdirs.user_desktop_dir()
 
 # Scan directories (Tickets only)
-TO_SCAN_DIR = os.path.join(DESKTOP_DIR, "tickets_a_scanner")
+TO_SCAN_DIR = os.path.join(DESKTOP_DIR, "Gestio_Tickets")
 SORTED_DIR = os.path.join(DATA_DIR, "tickets_tries")
 
 # Revenue directories
-REVENUS_A_TRAITER = os.path.join(DESKTOP_DIR, "revenus_a_traiter")
+REVENUS_A_TRAITER = os.path.join(DESKTOP_DIR, "Gestio_Revenus")
 REVENUS_TRAITES = os.path.join(DATA_DIR, "revenus_traites")
 
 # Application Logs
