@@ -50,10 +50,6 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen --no-dev --group build
 
-      - name: Generate icons
-        if: matrix.os == 'windows-latest'
-        run: uv run python resources/icons/generate_icons.py
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
