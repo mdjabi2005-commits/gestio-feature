@@ -12,11 +12,11 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={autopf}\{#MyAppName}
+DefaultDirName={localappdata}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
-; Uncomment the following line to run in non administrative install mode (install for current user only.)
-;PrivilegesRequired=lowest
+; Installation au niveau utilisateur (pas besoin des droits Administrateur !)
+PrivilegesRequired=lowest
 OutputDir=..\dist\installer
 OutputBaseFilename=Gestio-Setup-v{#MyAppVersion}
 SetupIconFile={#MyAppIcon}
