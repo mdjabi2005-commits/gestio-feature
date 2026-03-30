@@ -86,11 +86,30 @@ jobs:
     name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bump version and push tag
+        id: tag_action
+        if: github.ref == 'refs/heads/main'
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: patch
+
+      - name: Set Tag Name
+        id: vars
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "tag=${{ steps.tag_action.outputs.new_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
@@ -106,19 +125,22 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "Gestio ${{ github.ref_name }}"
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: "Gestio ${{ steps.vars.outputs.tag }}"
           body: |
-            ## Gestio ${{ github.ref_name }}
+            ## Gestio ${{ steps.vars.outputs.tag }}
 
-            | Platform | File | Instructions |
+            🚀 **Release Automatique** (Générée lors du push sur main)
+
+            | Plateforme | Fichier | Instructions |
             |---|---|---|
-            | Windows | `Gestio-Setup-v*.exe` | Double-click, assistant d'installation |
+            | Windows | `Gestio-Setup-v*.exe` | Double-cliquez sur l'assistant d'installation |
             | macOS / Linux | `install-mac-linux.sh` | `chmod +x install-mac-linux.sh && ./install-mac-linux.sh` |
 
-            Your financial data is stored only on your machine.
+            Vos données financières sont stockées exclusivement sur votre machine locale.
           files: |
             ./release/Gestio-Setup-*.exe
             ./release/install-mac-linux.sh
           fail_on_unmatched_files: true
-          draft: true
+          draft: false
           prerelease: false

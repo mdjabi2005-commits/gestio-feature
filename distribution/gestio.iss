@@ -1,5 +1,5 @@
 #define MyAppName "Gestio"
-#define MyAppVersion "4.1.2"
+#define MyAppVersion "1.0.0"
 #define MyAppPublisher "Gestio Team"
 #define MyAppExeName "launcher.bat"
 #define MyAppIcon "favicon.ico"
