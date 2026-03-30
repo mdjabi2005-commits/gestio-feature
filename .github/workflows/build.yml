@@ -71,8 +71,7 @@ jobs:
           mkdir -p release-universal/frontend
           cp -r frontend/out release-universal/frontend/out
           cp pyproject.toml uv.lock launcher.py launcher.bat launcher.sh release-universal/
-          cd release-universal
-          zip -qr ../Gestio-Universal.zip *
+          python -c "import shutil; shutil.make_archive('Gestio-Universal', 'zip', 'release-universal')"
 
       - name: Upload Universal artifact
         if: matrix.os == 'windows-latest'
