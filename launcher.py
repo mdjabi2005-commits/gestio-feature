@@ -23,6 +23,30 @@ def wait_for_port(port, timeout=30):
         time.sleep(1)
     return False
 
+
+def open_browser(url: str):
+    """Tente d'ouvrir le navigateur en mode application (Chrome) ou standard."""
+    browser_launched = False
+    
+    # On essaie d'abord avec pybrowsers pour gérer le flag --app de Chrome
+    if browsers:
+        try:
+            chrome = browsers.get("chrome")
+            if chrome and 'path' in chrome:
+                chrome_path = chrome['path']
+                print(f"\n➜ Chrome détecté : {chrome_path}")
+                subprocess.Popen([chrome_path, f"--app={url}"])
+                browser_launched = True
+            else:
+                print("\n➜ Chrome non détecté par pybrowsers.")
+        except Exception as e:
+            print(f"\n⚠️ Erreur silencieuse de pybrowsers: {e}")
+            
+    # Fallback ultra robuste si Chrome n'est pas là
+    if not browser_launched:
+        print("\n➜ Lancement via le navigateur par défaut de votre système...")
+        webbrowser.open(url)
+
 def main():
     # Sécurité anti-zombie : tuer les anciens processus uvicorn restés bloqués en arrière-plan (Windows)
     if os.name == 'nt':
@@ -51,38 +75,38 @@ def main():
     print("\n✅ Serveur en ligne ! Ouverture de l'interface utilisateur...")
     
     url = f"http://localhost:{PORT}"
-    browser_launched = False
-    
-    # On essaie d'abord avec pybrowsers pour gérer le flag --app de Chrome
-    if browsers:
-        try:
-            chrome = browsers.get("chrome")
-            if chrome and 'path' in chrome:
-                chrome_path = chrome['path']
-                print(f"\n➜ Chrome détecté : {chrome_path}")
-                subprocess.Popen([chrome_path, f"--app={url}"])
-                browser_launched = True
-            else:
-                print("\n➜ Chrome non détecté par pybrowsers.")
-        except Exception as e:
-            print(f"\n⚠️ Erreur silencieuse de pybrowsers: {e}")
-            
-    # Fallback ultra robuste si Chrome n'est pas là
-    if not browser_launched:
-        print("\n➜ Lancement via le navigateur par défaut de votre système...")
-        webbrowser.open(url)
+    open_browser(url)
         
     print("\n🎯 Gestio est en cours d'exécution.")
-    print("   Laissez cette fenêtre ouverte ou fermez-la pour tout arrêter.")
+    print("   --------------------------------------------------")
+    print("   💡 ASTUCE : Appuyez sur ENTREE pour rouvrir Gestio.")
+    print("   💡 QUITTER : Ctrl+C pour tout arrêter.")
+    print("   --------------------------------------------------")
     print("=" * 50)
     
     try:
-        # Garder le script Python en vie tant que Uvicorn tourne !
-        backend_process.wait()
+        # Sur Windows, on utilise msvcrt pour un polling clavier non-bloquant
+        if os.name == 'nt':
+            import msvcrt
+            while backend_process.poll() is None:
+                if msvcrt.kbhit():
+                    char = msvcrt.getch()
+                    # Touche ENTRÉE (b'\r' ou b'\n')
+                    if char in (b'\r', b'\n'):
+                        print("\n🔄 Réouverture de Gestio...")
+                        open_browser(url)
+                time.sleep(0.1)
+        else:
+            # Sur Linux/macOS, on retombe sur wait() simple pour l'instant (plus complexe sans bloquer)
+            backend_process.wait()
+            
     except KeyboardInterrupt:
-        print("\nArrêt manuel de Gestio demandé...")
+        print("\n\nArrêt manuel de Gestio demandé...")
         backend_process.terminate()
         print("Serveur arrêté avec succès. À bientôt !")
+    except Exception as e:
+        print(f"\nUne erreur est survenue : {e}")
+        backend_process.terminate()
 
 if __name__ == "__main__":
     main()
