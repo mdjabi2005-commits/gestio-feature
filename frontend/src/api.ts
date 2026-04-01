@@ -147,8 +147,10 @@ export const api = {
   },
 
   updateOCRConfig: async (data: { api_key: string }) => {
-    const res = await fetch(`${API_BASE_URL}/api/ocr/config?api_key=${encodeURIComponent(data.api_key)}`, {
+    const res = await fetch(`${API_BASE_URL}/api/ocr/config`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error('Failed to update OCR config');
     return res.json();

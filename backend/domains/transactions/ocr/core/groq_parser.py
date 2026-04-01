@@ -36,20 +36,10 @@ class GroqParser:
 
         self.model_name = model_name
 
-        try:
-            from backend.config.ocr_config import get_groq_api_key
-
-            self.api_key = get_groq_api_key()
-        except Exception:
-            self.api_key = os.getenv("GROQ_API_KEY")
-
-        if not self.api_key:
-            logger.warning(
-                "GROQ_API_KEY absente ! Le parsing LLM échouera systématiquement."
-            )
-            self.client = None
-        else:
-            self.client = Groq(api_key=self.api_key)
+        # Pas d'initialisation du client ici - fait à la demande (lazy loading)
+        # pour permettre une mise à jour de la clé API après le démarrage
+        self._client = None
+        self._api_key = None
 
         # Construction du prompt avec catégories + sous-catégories depuis le YAML
         # Mise en cache pour éviter rechargement à chaque parse()
@@ -94,7 +84,11 @@ Rien d'autre ne doit être renvoyé à part l'objet JSON contenant ces 3 clés.
         """
         Analyse le texte brut de l'OCR et renvoie {category, subcategory, description}.
         """
-        if not self.client:
+        # Lazy loading du client Groq - permet mise à jour dynamique de la clé
+        if self._client is None:
+            self._ensure_client()
+
+        if not self._client:
             logger.error("Tentative d'utilisation de GroqParser sans GROQ_API_KEY.")
             return self._fallback()
 
@@ -107,7 +101,7 @@ Rien d'autre ne doit être renvoyé à part l'objet JSON contenant ces 3 clés.
                 f"Envoi du texte brut ({len(text)} car) à Groq ({self.model_name})..."
             )
 
-            chat_completion = self.client.chat.completions.create(
+            chat_completion = self._client.chat.completions.create(
                 messages=[
                     {
                         "role": "system",
@@ -179,3 +173,22 @@ Rien d'autre ne doit être renvoyé à part l'objet JSON contenant ces 3 clés.
             "subcategory": None,
             "description": "Transaction sans catégorie",
         }
+
+    def _ensure_client(self) -> None:
+        """Initialise le client Groq à la demande (lazy loading)."""
+        from backend.config.ocr_config import get_groq_api_key
+
+        api_key = get_groq_api_key()
+        if not api_key:
+            api_key = os.getenv("GROQ_API_KEY")
+
+        if not api_key:
+            logger.warning("GROQ_API_KEY absente - Groq désactivé")
+            self._client = None
+            return
+
+        # Ne recréer le client que si la clé a changé
+        if self._api_key != api_key:
+            logger.info("Initialisation du client Groq...")
+            self._api_key = api_key
+            self._client = Groq(api_key=api_key)

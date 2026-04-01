@@ -30,7 +30,13 @@ APP_LOG_PATH = os.path.join(DATA_DIR, "gestio_app.log")
 OBJECTIFS_DIR = os.path.join(DATA_DIR, "objectifs")
 
 # Fichier .env utilisateur (hors dossier d'installation, accessible en écriture)
+# Recherche dans : APPDATA/Gestio/.env OU projet/backend/.env
 ENV_PATH = Path(DATA_DIR) / ".env"
+if not ENV_PATH.exists():
+    # Fallback: chercher dans le dossier du projet
+    PROJECT_ENV = APP_ROOT / ".env"
+    if PROJECT_ENV.exists():
+        ENV_PATH = PROJECT_ENV
 
 # Create directories
 for directory in [
