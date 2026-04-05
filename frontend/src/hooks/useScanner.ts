@@ -84,7 +84,7 @@ export function useScanner(isOpen: boolean, onClose: () => void, onScanResults: 
         }
       }
       onScanResults(results)
-      toast.success(`${results.length} doc(s) en ${((Date.now() - start)/1000).toFixed(1)}s !`)
+      toast.success(`${results.length} doc(s) en ${((Date.now() - start)/1000).toFixed(1)}s !`, { position: "top-center" })
       onClose()
     } catch (error: any) { toast.error(error.message || "Échec") }
     finally { setIsScanning(false) }

@@ -71,6 +71,5 @@ git push origin v1.0.0   # ← déclenche le workflow
 
 ## 🔒 Note confidentialité
 
-Les données de l'utilisateur sont stockées **uniquement sur sa machine** (`~/analyse/` ou `~/Gestio/analyse/` sur
-Windows).
+Les données de l'utilisateur sont stockées **uniquement sur sa machine** via `platformdirs.user_data_dir("Gestio")` (ex: `AppData\Local\Gestio\` sur Windows).
 Aucune donnée n'est transmise sur internet lors de l'utilisation.
