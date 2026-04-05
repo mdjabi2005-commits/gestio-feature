@@ -88,15 +88,17 @@ npm run dev         # http://localhost:3000
 
 ## Base de données
 
-**La base SQLite N'est PAS dans ce dépôt.**
+**La base SQLite utilise `platformdirs` pour un emplacement multi-plateforme.**
 
 | Variable | Emplacement par défaut |
 |----------|------------------------|
-| Normal | `~/analyse/finances.db` |
-| Test (TEST_MODE=true) | `~/test/finances.db` |
+| Normal | `platformdirs.user_data_dir("Gestio")/finances.db` |
+| Test (TEST_MODE=true) | `platformdirs.user_data_dir("Gestio")/test_finances.db` |
 
-- **Linux** : `/home/<user>/analyse/finances.db`
-- **Windows** : `C:\Users\<user>\analyse\finances.db`
+| OS | Emplacement |
+|----|--------------|
+| Windows | `C:\Users\<user>\AppData\Local\Gestio\finances.db` |
+| Linux | `/home/<user>/.local/share/Gestio/finances.db` |
 
 Voir : `backend/config/paths.py`
 
@@ -107,6 +109,19 @@ Voir : `backend/config/paths.py`
 ### Taille des fichiers
 
 **INTERDIT :** Tout fichier dépassant **200 lignes** doit être subdivisé.
+
+### Tests
+
+```bash
+# Lancer tous les tests (depuis la racine du projet)
+uv run pytest tests/ -v
+
+# Lancer un test spécifique
+uv run pytest tests/test_transactions/test_repository.py::test_insert -v
+
+# Lancer avec coverage
+uv run pytest tests/ --cov=backend --cov-report=html
+```
 
 ### Commits
 

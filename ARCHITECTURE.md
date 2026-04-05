@@ -174,11 +174,12 @@ Si tu modifies un modèle Pydantic backend →同步 vers TypeScript frontend :
 ### Le backend ne démarre pas
 
 ```bash
+# La DB est dans platformdirs.user_data_dir("Gestio")
 # Vérifier que SQLite existe
-ls backend/data/
+ls "$(python -c "import platformdirs; print(platformdirs.user_data_dir('Gestio'))")"
 
 # Vérifier les logs
-python -m uvicorn backend.main:app --reload --log-level debug
+uv run uvicorn backend.main:app --reload --log-level debug
 ```
 
 ### Le frontend ne charge pas les données
@@ -190,11 +191,14 @@ python -m uvicorn backend.main:app --reload --log-level debug
 ### Les tests échouent
 
 ```bash
-# Lancer les tests
-python -m pytest tests/ -v
+# Lancer les tests (TOUJOURS depuis la racine du projet)
+uv run pytest tests/ -v
 
 # Tests spécifiques
-python -m pytest tests/test_api/ -v
+uv run pytest tests/test_api/ -v
+
+# Un test unique
+uv run pytest tests/test_transactions/test_repository.py::test_insert -v
 ```
 
 ### Erreur "base.db not found"
