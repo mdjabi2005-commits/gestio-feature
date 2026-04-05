@@ -4,10 +4,11 @@ Gère l'accès aux données de la table 'echeances'
 """
 
 import logging
-import sqlite3
 from datetime import date, timedelta
 from typing import List, Optional
 from dateutil.relativedelta import relativedelta
+
+from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database import db_transaction
 from .model_echeance import Echeance
@@ -89,7 +90,7 @@ class EcheanceRepository:
                 echeance_id = cursor.lastrowid
             logger.info(f"Échéance ajoutée avec succès (ID: {echeance_id})")
             return echeance_id
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             from backend.config.logging_config import log_error
 
             log_error(e, "Erreur lors de l'ajout de l'échéance")
@@ -133,7 +134,7 @@ class EcheanceRepository:
                 )
             logger.info(f"Échéance ID {echeance.id} mise à jour avec succès")
             return True
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             from backend.config.logging_config import log_error
 
             log_error(
@@ -156,7 +157,7 @@ class EcheanceRepository:
                 f"Échéance ID {echeance_id} supprimée ({transactions_deleted} transactions)"
             )
             return True
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             from backend.config.logging_config import log_error
 
             log_error(
@@ -235,6 +236,6 @@ class EcheanceRepository:
 
             return sorted(occurrences, key=lambda x: x["date"])
 
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur lors du calcul des occurrences: {e}")
             return []

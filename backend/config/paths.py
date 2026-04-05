@@ -1,44 +1,43 @@
 import os
 from pathlib import Path
 import platformdirs
+from dotenv import load_dotenv
 
-# Racine du projet
-APP_ROOT = Path(__file__).parent.parent
-APP_NAME = "Gestio"
+APP_ROOT = Path(__file__).parent.parent.parent
+APP_NAME = "gestio-test"
 
-# Folder paths - Production & Cross Platform
 DATA_DIR = platformdirs.user_data_dir(appname=APP_NAME, appauthor=False)
 
-# Database
 DB_PATH = os.path.join(DATA_DIR, "finances.db")
 
-# User Desktop folders for active scanning
 DESKTOP_DIR = platformdirs.user_desktop_dir()
 
-# Scan directories (Tickets only)
 TO_SCAN_DIR = os.path.join(DESKTOP_DIR, "Gestio_Tickets")
 SORTED_DIR = os.path.join(DATA_DIR, "tickets_tries")
 
-# Revenue directories
 REVENUS_A_TRAITER = os.path.join(DESKTOP_DIR, "Gestio_Revenus")
 REVENUS_TRAITES = os.path.join(DATA_DIR, "revenus_traites")
 
-# Application Logs
 APP_LOG_PATH = os.path.join(DATA_DIR, "gestio_app.log")
 
-# Objectifs attachments
 OBJECTIFS_DIR = os.path.join(DATA_DIR, "objectifs")
 
-# Fichier .env utilisateur (hors dossier d'installation, accessible en écriture)
-# Recherche dans : APPDATA/Gestio/.env OU projet/backend/.env
 ENV_PATH = Path(DATA_DIR) / ".env"
 if not ENV_PATH.exists():
-    # Fallback: chercher dans le dossier du projet
     PROJECT_ENV = APP_ROOT / ".env"
     if PROJECT_ENV.exists():
         ENV_PATH = PROJECT_ENV
 
-# Create directories
+# Générer automatiquement la clé maître si elle n'existe pas
+from backend.shared.security.master_key import initialiser_cle_maitre
+
+_cle_generee = initialiser_cle_maitre(ENV_PATH)
+
+# Recharger le .env après éventuelle génération
+load_dotenv(ENV_PATH, override=True)
+
+MASTER_KEY = os.getenv("MASTER_KEY", _cle_generee)
+
 for directory in [
     DATA_DIR,
     TO_SCAN_DIR,

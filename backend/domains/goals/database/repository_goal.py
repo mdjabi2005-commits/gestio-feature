@@ -3,10 +3,11 @@ Repository pour les Goals - Objectifs d'épargne
 """
 
 import logging
-import sqlite3
 from datetime import date, datetime
 from typing import List, Optional
 from dateutil.relativedelta import relativedelta
+
+from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database import db_transaction
 from backend.domains.transactions.services.salary_plan_service import (
@@ -105,7 +106,7 @@ class GoalRepository:
                 new_id = cursor.lastrowid
                 logger.info(f"Goal added: ID {new_id}")
                 return new_id
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur SQL add goal: {e}")
             return None
 
@@ -145,7 +146,7 @@ class GoalRepository:
                 )
                 self._salary_plan_cache = None
                 return cursor.rowcount > 0
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur SQL update goal: {e}")
             return False
 
@@ -157,7 +158,7 @@ class GoalRepository:
                 cursor.execute("DELETE FROM goals WHERE id = ?", (goal_id,))
                 self._salary_plan_cache = None
                 return cursor.rowcount > 0
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur SQL delete goal: {e}")
             return False
 

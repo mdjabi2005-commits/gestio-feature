@@ -3,9 +3,10 @@ Transaction Repository - Gestion des données pour le domaine Transactions.
 """
 
 import logging
-import sqlite3
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import List, Optional, Dict
+
+from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database import db_transaction
 from backend.shared.utils import create_empty_transaction_df, convert_transaction_df
@@ -75,16 +76,12 @@ class TransactionRepository:
             query = """
                 INSERT INTO transactions
                 (type, categorie, sous_categorie, description, montant, date,
-                 source, external_id, compte_id, echeance_id, objectif_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 source, external_id, compte_id, echeance_id, objectif_id,
+                 date_mise_a_jour, statut_synchro)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
 
-            # Handle attachment if provided in the input (as a temporary field)
-            attachment_path = None
-            if isinstance(transaction, dict):
-                attachment_path = transaction.get("attachment")
-            elif hasattr(transaction, "attachment"):
-                attachment_path = getattr(transaction, "attachment")
+            now = datetime.now(timezone.utc).isoformat()
 
             with db_transaction(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -102,9 +99,18 @@ class TransactionRepository:
                         data.get("compte_id"),
                         data["echeance_id"],
                         data["objectif_id"],
+                        now,
+                        data.get("statut_synchro", "local"),
                     ),
                 )
                 new_id = cursor.lastrowid
+
+                # Handle attachment if provided in the input
+                attachment_path = None
+                if isinstance(transaction, dict):
+                    attachment_path = transaction.get("attachment")
+                elif hasattr(transaction, "attachment"):
+                    attachment_path = getattr(transaction, "attachment")
 
                 # Save attachment if provided
                 if new_id and attachment_path:
@@ -124,7 +130,7 @@ class TransactionRepository:
         except ValueError as e:
             logger.error(f"Validation échouée: {e}")
             return None
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur SQL add: {e}")
             return None
 
@@ -138,11 +144,13 @@ class TransactionRepository:
         try:
             data = self._to_validated_db_dict(transaction)
 
+            now = datetime.now(timezone.utc).isoformat()
+
             query = """
                 UPDATE transactions
                 SET type=?, categorie=?, sous_categorie=?, description=?,
                     montant=?, date=?, source=?, external_id=?, echeance_id=?,
-                    objectif_id=?
+                    objectif_id=?, date_mise_a_jour=?, statut_synchro=?
                 WHERE id=?
             """
 
@@ -161,6 +169,8 @@ class TransactionRepository:
                         data["external_id"],
                         data["echeance_id"],
                         data["objectif_id"],
+                        now,
+                        data.get("statut_synchro", "local"),
                         tx_id,
                     ),
                 )
@@ -169,7 +179,7 @@ class TransactionRepository:
         except ValueError as e:
             logger.error(f"Validation échouée update: {e}")
             return False
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur SQL update: {e}")
             return False
 
@@ -238,7 +248,7 @@ class TransactionRepository:
             logger.info(f"{len(ids)} transaction(s) supprimée(s)")
             return True
 
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur delete: {e}")
             return False
 

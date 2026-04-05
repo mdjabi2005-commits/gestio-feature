@@ -4,7 +4,8 @@ Unified table for both recurring and one-time due dates.
 """
 
 import logging
-import sqlite3
+
+from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database.connection import get_db_connection, close_connection
 
@@ -66,7 +67,7 @@ def init_echeance_table(db_path: str = None) -> None:
         conn.commit()
         logger.info("Echeance table initialized successfully")
 
-    except sqlite3.Error as e:
+    except sqlcipher.Error as e:
         from backend.config.logging_config import log_error
 
         log_error(e, "Echeance table initialization failed")

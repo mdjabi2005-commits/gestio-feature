@@ -21,11 +21,16 @@
 
 ### 📥 Lire une issue GitHub
 
-**TOUJOURS utiliser le script `fetch_issue.py`** pour récupérer le contenu d'une issue :
-
+**Cas 1 : Numéro d'issue connu**
 ```bash
 python scripts/fetch_issue.py 123
 # → Crée issue_123.md avec encodage UTF-8
+```
+
+**Cas 2 : Depuis une branche** (ex: branche `10-ma-feature`)
+```bash
+# Extraire le numéro de la branche (10) et récupérer l'issue
+python scripts/fetch_issue.py 10
 ```
 
 **NE JAMAIS** utiliser `gh issue view 123` directement — problèmes d'encodage garantis.

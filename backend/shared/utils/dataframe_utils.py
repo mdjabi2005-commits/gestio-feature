@@ -23,6 +23,8 @@ TRANSACTION_COLUMNS = [
     "external_id",
     "echeance_id",
     "compte_id",
+    "date_mise_a_jour",
+    "statut_synchro",
 ]
 
 # Colonnes standard pour les pièces jointes

@@ -3,9 +3,10 @@ Base Repository - Classe de base pour les repositories.
 """
 
 import logging
-import sqlite3
 from abc import ABC, abstractmethod
 from typing import Any, Generic, List, Optional, TypeVar
+
+from sqlcipher3 import dbapi2 as sqlcipher
 
 from .connection import get_db_connection, close_connection
 from .db_context import db_transaction
@@ -28,7 +29,7 @@ class BaseRepository(ABC, Generic[T]):
         self.db_path = db_path
 
     @abstractmethod
-    def _row_to_model(self, row: sqlite3.Row) -> T:
+    def _row_to_model(self, row: sqlcipher.Row) -> T:
         """Convertit une ligne SQL en modèle."""
         pass
 
@@ -88,7 +89,7 @@ class BaseRepository(ABC, Generic[T]):
                 cursor = conn.cursor()
                 cursor.execute(query, tuple(data.values()))
                 return cursor.lastrowid
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Insert error: {e}")
             return None
 
@@ -102,7 +103,7 @@ class BaseRepository(ABC, Generic[T]):
                 cursor = conn.cursor()
                 cursor.execute(query, tuple(data.values()) + (id,))
                 return cursor.rowcount > 0
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Update error: {e}")
             return False
 
@@ -113,7 +114,7 @@ class BaseRepository(ABC, Generic[T]):
                 cursor = conn.cursor()
                 cursor.execute(f"DELETE FROM {self.table_name} WHERE id = ?", (id,))
                 return cursor.rowcount > 0
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Delete error: {e}")
             return False
 
@@ -130,6 +131,6 @@ class BaseRepository(ABC, Generic[T]):
                 cursor = conn.cursor()
                 cursor.execute(query, ids)
                 return True
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Delete many error: {e}")
             return False

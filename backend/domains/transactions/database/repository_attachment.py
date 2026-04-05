@@ -3,8 +3,9 @@ Repository pour les pièces jointes des transactions.
 """
 
 import logging
-import sqlite3
 from typing import List, Optional
+
+from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database.connection import get_db_connection, close_connection
 from .model_attachment import TransactionAttachment
@@ -22,7 +23,7 @@ class AttachmentRepository:
         conn = None
         try:
             conn = get_db_connection(db_path=self.db_path)
-            conn.row_factory = sqlite3.Row
+            conn.row_factory = sqlcipher.Row
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT * FROM transaction_attachments WHERE transaction_id = ?",
@@ -30,7 +31,7 @@ class AttachmentRepository:
             )
             rows = cursor.fetchall()
             return [TransactionAttachment(**dict(row)) for row in rows]
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur get_attachments_by_transaction: {e}")
             return []
         finally:
@@ -42,7 +43,7 @@ class AttachmentRepository:
         conn = None
         try:
             conn = get_db_connection(db_path=self.db_path)
-            conn.row_factory = sqlite3.Row
+            conn.row_factory = sqlcipher.Row
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT * FROM transaction_attachments WHERE echeance_id = ?",
@@ -50,7 +51,7 @@ class AttachmentRepository:
             )
             rows = cursor.fetchall()
             return [TransactionAttachment(**dict(row)) for row in rows]
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur get_attachments_by_echeance: {e}")
             return []
         finally:
@@ -62,7 +63,7 @@ class AttachmentRepository:
         conn = None
         try:
             conn = get_db_connection(db_path=self.db_path)
-            conn.row_factory = sqlite3.Row
+            conn.row_factory = sqlcipher.Row
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT * FROM transaction_attachments WHERE objectif_id = ?",
@@ -70,7 +71,7 @@ class AttachmentRepository:
             )
             rows = cursor.fetchall()
             return [TransactionAttachment(**dict(row)) for row in rows]
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur get_attachments_by_objectif: {e}")
             return []
         finally:
@@ -82,7 +83,7 @@ class AttachmentRepository:
         conn = None
         try:
             conn = get_db_connection(db_path=self.db_path)
-            conn.row_factory = sqlite3.Row
+            conn.row_factory = sqlcipher.Row
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT * FROM transaction_attachments WHERE id = ?", (attachment_id,)
@@ -91,14 +92,14 @@ class AttachmentRepository:
             if row:
                 return TransactionAttachment(**dict(row))
             return None
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur get_attachment_by_id: {e}")
             return None
         finally:
             close_connection(conn)
 
     def add_attachment(
-        self, attachment: TransactionAttachment, conn: sqlite3.Connection = None
+        self, attachment: TransactionAttachment, conn: sqlcipher.Connection = None
     ) -> Optional[int]:
         if conn:
             return self._add_attachment_with_conn(attachment, conn, commit=False)
@@ -109,7 +110,7 @@ class AttachmentRepository:
             result = self._add_attachment_with_conn(attachment, conn, commit=True)
             close_connection(conn)
             return result
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur add_attachment: {e}")
             if conn:
                 close_connection(conn)
@@ -118,7 +119,7 @@ class AttachmentRepository:
     def _add_attachment_with_conn(
         self,
         attachment: TransactionAttachment,
-        conn: sqlite3.Connection,
+        conn: sqlcipher.Connection,
         commit: bool = True,
     ) -> Optional[int]:
         try:
@@ -137,7 +138,7 @@ class AttachmentRepository:
                 conn.commit()
             new_id = cursor.lastrowid
             return new_id
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur add_attachment: {e}")
             if commit:
                 conn.rollback()
@@ -154,7 +155,7 @@ class AttachmentRepository:
             deleted = cursor.rowcount > 0
             conn.commit()
             return deleted
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur delete_attachment: {e}")
             return False
         finally:
