@@ -1,7 +1,8 @@
 """Database schema initialization and migration."""
 
 import logging
-import sqlite3
+
+from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database import db_transaction
 
@@ -9,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def add_column_if_missing(
-    cursor: sqlite3.Cursor,
+    cursor: sqlcipher.Cursor,
     table: str,
     column: str,
     default: str = None,
@@ -25,12 +26,12 @@ def add_column_if_missing(
         cursor.execute(col_def)
         logger.info(f"Added '{column}' column to {table} table")
         return True
-    except sqlite3.OperationalError:
+    except sqlcipher.OperationalError:
         return False
 
 
 def create_index_if_not_exists(
-    cursor: sqlite3.Cursor,
+    cursor: sqlcipher.Cursor,
     index_name: str,
     table: str,
     columns: str,
@@ -39,7 +40,7 @@ def create_index_if_not_exists(
     try:
         cursor.execute(f"CREATE INDEX IF NOT EXISTS {index_name} ON {table}({columns})")
         logger.info(f"Created index {index_name}")
-    except sqlite3.OperationalError:
+    except sqlcipher.OperationalError:
         pass
 
 
@@ -91,6 +92,28 @@ def init_transaction_table(db_path: str = None) -> None:
             add_column_if_missing(cursor, "transactions", "compte_id")
             add_column_if_missing(cursor, "transactions", "echeance_id")
             add_column_if_missing(cursor, "transactions", "objectif_id")
+            # Migration: renommer les anciennes colonnes anglaises si elles existent
+            cursor.execute("PRAGMA table_info(transactions)")
+            existing_cols = [col[1] for col in cursor.fetchall()]
+            if "updated_at" in existing_cols:
+                try:
+                    cursor.execute(
+                        'ALTER TABLE transactions RENAME COLUMN "updated_at" TO "date_mise_a_jour"'
+                    )
+                    logger.info("Renamed 'updated_at' → 'date_mise_a_jour'")
+                except sqlcipher.OperationalError:
+                    pass
+            if "sync_status" in existing_cols:
+                try:
+                    cursor.execute(
+                        'ALTER TABLE transactions RENAME COLUMN "sync_status" TO "statut_synchro"'
+                    )
+                    logger.info("Renamed 'sync_status' → 'statut_synchro'")
+                except sqlcipher.OperationalError:
+                    pass
+
+            add_column_if_missing(cursor, "transactions", "date_mise_a_jour")
+            add_column_if_missing(cursor, "transactions", "statut_synchro", "'local'")
 
             create_index_if_not_exists(
                 cursor, "idx_transactions_external_id", "transactions", "external_id"
@@ -103,7 +126,7 @@ def init_transaction_table(db_path: str = None) -> None:
             )
 
         logger.info("Transaction table initialized successfully")
-    except sqlite3.Error as e:
+    except sqlcipher.Error as e:
         from backend.config.logging_config import log_error
 
         log_error(e, "Transaction table initialization failed")
@@ -188,7 +211,7 @@ def init_attachments_table(db_path: str = None) -> None:
             )
 
         logger.info("Attachments table initialized successfully")
-    except sqlite3.Error as e:
+    except sqlcipher.Error as e:
         logger.error(f"Attachments table initialization failed: {e}")
         raise
 
@@ -258,7 +281,7 @@ def create_indexes() -> None:
                 "CREATE INDEX IF NOT EXISTS idx_transactions_categorie ON transactions(categorie)"
             )
         logger.info("Database indexes created successfully")
-    except sqlite3.Error as e:
+    except sqlcipher.Error as e:
         from backend.config.logging_config import log_error
 
         log_error(e, "Index creation failed")
@@ -285,6 +308,6 @@ def init_budgets_table(db_path: str = None) -> None:
             )
 
         logger.info("Budgets table initialized successfully")
-    except sqlite3.Error as e:
+    except sqlcipher.Error as e:
         logger.error(f"Budgets table initialization failed: {e}")
         raise

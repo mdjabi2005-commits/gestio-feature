@@ -7,7 +7,8 @@ Fonctions de maintenance, de rafraîchissement et de backfill des échéances.
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 import logging
-import sqlite3
+
+from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database.connection import get_db_connection, close_connection
 from backend.domains.transactions.database.model_echeance import Echeance
@@ -58,9 +59,7 @@ def cleanup_past_echeances() -> int:
         conn.commit()
         conn.close()
 
-        logger.info(
-            f"Cleanup: {expired_prevues} prévues expirées"
-        )
+        logger.info(f"Cleanup: {expired_prevues} prévues expirées")
         return expired_prevues
 
     except Exception as e:
@@ -68,7 +67,6 @@ def cleanup_past_echeances() -> int:
         if conn:
             conn.close()
         return 0
-
 
 
 def backfill_echeances(months_back: int = 3) -> int:
@@ -91,7 +89,7 @@ def backfill_echeances(months_back: int = 3) -> int:
     conn = None
     try:
         conn = get_db_connection()
-        conn.row_factory = sqlite3.Row
+        conn.row_factory = sqlcipher.Row
         cursor = conn.cursor()
 
         cursor.execute("SELECT * FROM echeances WHERE statut = 'active'")

@@ -48,6 +48,8 @@ class Transaction(BaseModel):
     compte_id: Optional[int] = Field(None, description="ID du compte")
     objectif_id: Optional[int] = Field(None, description="ID de l'objectif lié")
     has_attachments: bool = Field(False, description="Indicateur pièces jointes")
+    date_mise_a_jour: Optional[str] = Field(None, description="Timestamp de mise à jour")
+    statut_synchro: str = Field("local", description="Statut de synchronisation")
 
     # ── Validators ──────────────────────────────────────────
 
@@ -136,6 +138,8 @@ class Transaction(BaseModel):
             "echeance_id": self.echeance_id,
             "compte_id": self.compte_id,
             "objectif_id": self.objectif_id,
+            "date_mise_a_jour": self.date_mise_a_jour,
+            "statut_synchro": self.statut_synchro,
         }
 
     # ── Config ──────────────────────────────────────────────

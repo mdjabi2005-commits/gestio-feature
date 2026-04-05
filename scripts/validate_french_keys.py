@@ -60,7 +60,7 @@ FORBIDDEN_KEYS = {
     "data",
     "result",
     "created_at",
-    "updated_at",
+    "updated_at",  # Remplacé par date_mise_a_jour
     "deleted_at",
     "is_active",
     "user_id",

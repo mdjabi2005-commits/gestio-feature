@@ -1,7 +1,8 @@
 import logging
-import sqlite3
 from datetime import datetime
 from typing import List, Optional
+
+from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database.connection import get_db_connection, close_connection
 from .model import Budget
@@ -17,12 +18,12 @@ class BudgetRepository:
         conn = None
         try:
             conn = get_db_connection(db_path=self.db_path)
-            conn.row_factory = sqlite3.Row
+            conn.row_factory = sqlcipher.Row
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM budgets ORDER BY categorie ASC")
             rows = cursor.fetchall()
             return [Budget(**dict(row)) for row in rows]
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur get_all budgets: {e}")
             return []
         finally:
@@ -32,12 +33,12 @@ class BudgetRepository:
         conn = None
         try:
             conn = get_db_connection(db_path=self.db_path)
-            conn.row_factory = sqlite3.Row
+            conn.row_factory = sqlcipher.Row
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM budgets WHERE categorie = ?", (categorie,))
             row = cursor.fetchone()
             return Budget(**dict(row)) if row else None
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur get_by_category: {e}")
             return None
         finally:
@@ -64,7 +65,7 @@ class BudgetRepository:
             conn.commit()
             return self.get_by_category(budget.categorie)
 
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur upsert budget: {e}")
             if conn:
                 conn.rollback()
@@ -80,7 +81,7 @@ class BudgetRepository:
             cursor.execute("DELETE FROM budgets WHERE id = ?", (budget_id,))
             conn.commit()
             return cursor.rowcount > 0
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Erreur delete budget: {e}")
             if conn:
                 conn.rollback()

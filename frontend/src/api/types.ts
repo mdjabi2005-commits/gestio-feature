@@ -18,6 +18,8 @@ export interface Transaction {
   recurrence?: string;
   date_fin?: string;
   attachment?: string;
+  date_mise_a_jour?: string;
+  statut_synchro?: 'local' | 'en_attente' | 'synchronise';
 }
 
 export interface Attachment {

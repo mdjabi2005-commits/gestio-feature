@@ -3,7 +3,8 @@ Database schema initialization for Goals table.
 """
 
 import logging
-import sqlite3
+
+from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database.connection import get_db_connection, close_connection
 
@@ -58,7 +59,7 @@ def init_goal_table(db_path: str = None) -> None:
         conn.commit()
         logger.info("Goals table initialized successfully")
 
-    except sqlite3.Error as e:
+    except sqlcipher.Error as e:
         logger.error(f"Goals table initialization failed: {e}")
         if conn:
             conn.rollback()

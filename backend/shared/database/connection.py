@@ -1,66 +1,73 @@
 """Database connection management."""
 
 import logging
-import sqlite3
 from typing import Optional
 
-from backend.config import DB_PATH
+from sqlcipher3 import dbapi2 as sqlcipher
 
-# Default timeout
+from backend.config import DB_PATH, MASTER_KEY
+
 DATABASE_TIMEOUT = 30.0
 
 logger = logging.getLogger(__name__)
 
 
-def get_db_connection(timeout: float = DATABASE_TIMEOUT, db_path: Optional[str] = None) -> sqlite3.Connection:
+def get_db_connection(
+    timeout: float = DATABASE_TIMEOUT, db_path: Optional[str] = None
+) -> sqlcipher.Connection:
     """
-    Get a SQLite database connection.
+    Get a SQLCipher encrypted SQLite database connection.
 
     Args:
         timeout: Connection timeout in seconds
         db_path: Optional custom database path (for testing). If None, uses DB_PATH from config.
 
     Returns:
-        SQLite connection object
+        SQLCipher connection object
 
     Raises:
-        sqlite3.Error: If connection fails
+        sqlcipher.Error: If connection fails
     """
-    # Use custom path if provided (for tests), otherwise use production DB_PATH
+    if not MASTER_KEY:
+        raise ValueError(
+            "MASTER_KEY not configured. Please set MASTER_KEY in .env file."
+        )
+
     actual_db_path = db_path if db_path is not None else DB_PATH
 
     try:
-        conn = sqlite3.connect(actual_db_path, timeout=max(timeout, 30.0))
-        conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign keys
-        conn.execute("PRAGMA journal_mode = WAL")  # Enable WAL mode for concurrent access
-        conn.execute("PRAGMA busy_timeout = 30000")  # 30 second busy timeout
-        conn.row_factory = sqlite3.Row  # Return rows as dictionaries
+        conn = sqlcipher.connect(actual_db_path, timeout=max(timeout, 30.0))
+        conn.execute(f"PRAGMA key = '{MASTER_KEY}'")
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA busy_timeout = 30000")
+        conn.row_factory = sqlcipher.Row
         return conn
-    except sqlite3.Error as e:
+    except sqlcipher.Error as e:
         logger.error(f"Database connection failed: {e}")
         raise
 
 
-def close_connection(conn: Optional[sqlite3.Connection]) -> None:
+def close_connection(conn: Optional[sqlcipher.Connection]) -> None:
     """
     Safely close a database connection.
 
     Args:
-        conn: SQLite connection to close
+        conn: SQLCipher connection to close
     """
     if conn:
         try:
             conn.close()
-        except sqlite3.Error as e:
+        except sqlcipher.Error as e:
             logger.error(f"Error closing connection: {e}")
 
 
 def execute_query(
-        query: str,
-        params: tuple = (),
-        fetch_one: bool = False,
-        fetch_all: bool = False,
-        commit: bool = False
+    query: str,
+    params: tuple = (),
+    fetch_one: bool = False,
+    fetch_all: bool = False,
+    commit: bool = False,
 ):
     """
     Execute a database query with automatic connection management.
@@ -91,7 +98,7 @@ def execute_query(
 
         return cursor
 
-    except sqlite3.Error as e:
+    except sqlcipher.Error as e:
         logger.error(f"Query execution failed: {e}")
         if conn:
             conn.rollback()

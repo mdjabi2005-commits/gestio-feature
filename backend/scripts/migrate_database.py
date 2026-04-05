@@ -21,7 +21,8 @@ import argparse
 import logging
 import os
 import shutil
-import sqlite3
+from sqlcipher3 import dbapi2 as sqlite3
+from backend.config.paths import MASTER_KEY
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -69,6 +70,7 @@ def create_backup(db_path: str) -> str:
 def get_existing_tables(db_path: str) -> list:
     """Récupère la liste des tables existantes."""
     conn = sqlite3.connect(db_path)
+    conn.execute(f"PRAGMA key = '{MASTER_KEY}'")
     cursor = conn.cursor()
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
     tables = [row[0] for row in cursor.fetchall()]
@@ -79,6 +81,7 @@ def get_existing_tables(db_path: str) -> list:
 def get_table_columns(db_path: str, table: str) -> list:
     """Récupère les colonnes d'une table."""
     conn = sqlite3.connect(db_path)
+    conn.execute(f"PRAGMA key = '{MASTER_KEY}'")
     cursor = conn.cursor()
     cursor.execute(f"PRAGMA table_info({table})")
     columns = [row[1] for row in cursor.fetchall()]
@@ -95,6 +98,7 @@ def add_column_if_missing(
 ) -> bool:
     """Ajoute une colonne si elle n'existe pas."""
     conn = sqlite3.connect(db_path)
+    conn.execute(f"PRAGMA key = '{MASTER_KEY}'")
     cursor = conn.cursor()
     try:
         cursor.execute(f"PRAGMA table_info({table})")
@@ -120,6 +124,7 @@ def add_column_if_missing(
 def rename_column(db_path: str, table: str, old_col: str, new_col: str) -> bool:
     """Renomme une colonne."""
     conn = sqlite3.connect(db_path)
+    conn.execute(f"PRAGMA key = '{MASTER_KEY}'")
     cursor = conn.cursor()
     try:
         cursor.execute(f"ALTER TABLE {table} RENAME COLUMN {old_col} TO {new_col}")
@@ -150,6 +155,7 @@ def migrate_transactions(db_path: str) -> None:
             rename_column(db_path, "transactions", old_col, new_col)
 
     conn = sqlite3.connect(db_path)
+    conn.execute(f"PRAGMA key = '{MASTER_KEY}'")
     cursor = conn.cursor()
     cursor.execute("PRAGMA table_info(transactions)")
     columns = [row[1] for row in cursor.fetchall()]
@@ -167,6 +173,8 @@ def migrate_transactions(db_path: str) -> None:
         "compte_id": "INTEGER",
         "echeance_id": "INTEGER",
         "objectif_id": "INTEGER",
+        "date_mise_a_jour": "TEXT",
+        "statut_synchro": "TEXT DEFAULT 'local'",
     }
 
     for col, col_type in required_cols.items():
@@ -175,6 +183,7 @@ def migrate_transactions(db_path: str) -> None:
             add_column_if_missing(db_path, "transactions", col, col_type, default)
 
     conn = sqlite3.connect(db_path)
+    conn.execute(f"PRAGMA key = '{MASTER_KEY}'")
     cursor = conn.cursor()
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_transactions_external_id ON transactions(external_id)"
@@ -218,6 +227,7 @@ def migrate_attachments(db_path: str) -> None:
             add_column_if_missing(db_path, "transaction_attachments", col, col_type)
     else:
         conn = sqlite3.connect(db_path)
+        conn.execute(f"PRAGMA key = '{MASTER_KEY}'")
         cursor = conn.cursor()
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_attachments_tx_id ON transaction_attachments(transaction_id)"
@@ -247,6 +257,7 @@ def migrate_budgets(db_path: str) -> None:
     }
 
     conn = sqlite3.connect(db_path)
+    conn.execute(f"PRAGMA key = '{MASTER_KEY}'")
     cursor = conn.cursor()
     cursor.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='budgets'"
@@ -334,6 +345,7 @@ def migrate_goals(db_path: str) -> None:
     """Migre la table goals."""
     logger.info("🔧 Migration table: goals")
     conn = sqlite3.connect(db_path)
+    conn.execute(f"PRAGMA key = '{MASTER_KEY}'")
     cursor = conn.cursor()
 
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='goals'")
@@ -374,6 +386,7 @@ def remove_unused_columns(db_path: str) -> None:
     ]
 
     conn = sqlite3.connect(db_path)
+    conn.execute(f"PRAGMA key = '{MASTER_KEY}'")
     cursor = conn.cursor()
     cursor.execute("PRAGMA table_info(transactions)")
     existing_cols = [row[1] for row in cursor.fetchall()]
@@ -418,6 +431,7 @@ def remove_obsolete_tables(db_path: str, tables: list) -> None:
     for table in OBSOLETE_TABLES:
         if table in tables:
             conn = sqlite3.connect(db_path)
+            conn.execute(f"PRAGMA key = '{MASTER_KEY}'")
             cursor = conn.cursor()
             try:
                 cursor.execute(f"DROP TABLE {table}")
@@ -433,6 +447,7 @@ def verify_integrity(db_path: str) -> bool:
     """Vérifie l'intégrité de la base de données."""
     logger.info("🔍 Vérification intégrité...")
     conn = sqlite3.connect(db_path)
+    conn.execute(f"PRAGMA key = '{MASTER_KEY}'")
     cursor = conn.cursor()
 
     try:
@@ -457,6 +472,7 @@ def show_table_summary(db_path: str) -> None:
     logger.info("📊 Résumé des tables:")
     tables = get_existing_tables(db_path)
     conn = sqlite3.connect(db_path)
+    conn.execute(f"PRAGMA key = '{MASTER_KEY}'")
     cursor = conn.cursor()
 
     for table in tables:

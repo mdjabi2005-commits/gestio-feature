@@ -3,9 +3,11 @@ Database context managers - Helpers pour les opérations DB.
 """
 
 import logging
-import sqlite3
 from contextlib import contextmanager
 from typing import Generator, Optional
+
+from sqlcipher3 import dbapi2 as sqlcipher
+
 from .connection import get_db_connection, close_connection
 
 logger = logging.getLogger(__name__)
@@ -14,7 +16,7 @@ logger = logging.getLogger(__name__)
 @contextmanager
 def db_transaction(
     db_path: Optional[str] = None,
-) -> Generator[sqlite3.Connection, None, None]:
+) -> Generator[sqlcipher.Connection, None, None]:
     """
     Context manager pour les transactions de base de données.
     Gère automatiquement l'ouverture, le commit/rollback et la fermeture.
@@ -31,7 +33,7 @@ def db_transaction(
         conn = get_db_connection(db_path=db_path)
         yield conn
         conn.commit()
-    except sqlite3.Error as e:
+    except sqlcipher.Error as e:
         logger.error(f"Database error: {e}")
         if conn:
             conn.rollback()
@@ -44,7 +46,7 @@ def execute_single(
     query: str,
     params: tuple = (),
     db_path: Optional[str] = None,
-) -> Optional[sqlite3.Row]:
+) -> Optional[sqlcipher.Row]:
     """
     Exécute une requête SELECT et retourne une seule ligne.
 
