@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Chemin calculé depuis la racine du projet (2 niveaux au-dessus de shared/utils/)
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
-_YAML_PATH = _PROJECT_ROOT / "domains" / "transactions" / "database" / "categories.yaml"
+_YAML_PATH = _PROJECT_ROOT / "domains" / "transactions" / "categories.yaml"
 
 # Cache en mémoire — chargé une seule fois au démarrage
 _cache: Dict | None = None
