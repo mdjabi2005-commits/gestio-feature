@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
 from backend.domains.transactions.database.model import Transaction
 from backend.domains.transactions.ocr.core.pdfplumber_engine import pdfplumber_engine
-from backend.domains.transactions.services.salary_plan_service import (
+from backend.domains.budgets.services.salary_plan_service import (
     SalaryPlanError,
     apply_salary_split,
 )

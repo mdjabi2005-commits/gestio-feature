@@ -24,17 +24,11 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Démarrage : Initialisation de la base de données
     try:
-        from backend.domains.transactions.database.schema import (
-            init_transaction_table,
-            init_attachments_table,
-            init_budgets_table,
-        )
-        from backend.domains.transactions.database.schema_table_echeance import (
-            init_echeance_table,
-        )
-        from backend.domains.goals.database.schema_goal import (
-            init_goal_table,
-        )
+        from backend.domains.transactions.database.schema import init_transaction_table
+        from backend.domains.attachments.database.schema import init_attachments_table
+        from backend.domains.budgets.database.schema import init_budgets_table
+        from backend.domains.echeance.database.schema import init_echeance_table
+        from backend.domains.goals.database.schema_goal import init_goal_table
 
         init_transaction_table()
         init_attachments_table()

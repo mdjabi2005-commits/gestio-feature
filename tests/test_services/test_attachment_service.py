@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 import pytest
 
-from backend.domains.transactions.services.attachment_service import attachment_service
-from backend.domains.transactions.database.repository_attachment import (
+from backend.domains.attachments.services.attachment_service import attachment_service
+from backend.domains.attachments.database.repository import (
     attachment_repository,
 )
 
@@ -28,7 +28,7 @@ def temp_scanned_dirs(tmp_path: Path, monkeypatch):
 def attachment_svc(db_path, temp_scanned_dirs):
     """Service branché sur une base SQLite temporaire vierge."""
     attachment_repository.db_path = db_path
-    from backend.domains.transactions.database.schema import init_attachments_table
+    from backend.domains.attachments.database.schema import init_attachments_table
 
     init_attachments_table(db_path)
     return attachment_service
@@ -100,11 +100,11 @@ def test_add_attachment_to_echeance(
     attachment_svc, temp_scanned_dirs, tmp_path, db_path
 ):
     """Test l'ajout d'une pièce jointe à une échéance."""
-    from backend.domains.transactions.database.repository_echeance import (
+    from backend.domains.echeance.database.repository import (
         EcheanceRepository,
     )
-    from backend.domains.transactions.database.model_echeance import Echeance
-    from backend.domains.transactions.database.schema_table_echeance import (
+    from backend.domains.echeance.database.model import Echeance
+    from backend.domains.echeance.database.schema import (
         init_echeance_table,
     )
     from datetime import date

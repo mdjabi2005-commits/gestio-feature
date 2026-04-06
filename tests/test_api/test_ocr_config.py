@@ -46,7 +46,7 @@ class TestSalaryPlanService:
 
     def test_load_salary_plan_default(self):
         """Test chargement du plan par défaut."""
-        from backend.domains.transactions.services.salary_plan_service import (
+        from backend.domains.budgets.services.salary_plan_service import (
             load_salary_plan,
         )
 
@@ -57,7 +57,7 @@ class TestSalaryPlanService:
 
     def test_validate_salary_plan_valid(self):
         """Test validation plan valide."""
-        from backend.domains.transactions.services.salary_plan_service import (
+        from backend.domains.budgets.services.salary_plan_service import (
             validate_salary_plan,
         )
 
@@ -87,7 +87,7 @@ class TestSalaryPlanService:
 
     def test_validate_salary_plan_invalid_total(self):
         """Test validation plan invalide (total >= 100%)."""
-        from backend.domains.transactions.services.salary_plan_service import (
+        from backend.domains.budgets.services.salary_plan_service import (
             validate_salary_plan,
             SalaryPlanError,
         )
@@ -105,7 +105,7 @@ class TestSalaryPlanService:
 
     def test_apply_salary_split(self):
         """Test application du split salary."""
-        from backend.domains.transactions.services.salary_plan_service import (
+        from backend.domains.budgets.services.salary_plan_service import (
             apply_salary_split,
         )
 
@@ -132,7 +132,7 @@ class TestSalaryPlanService:
 
     def test_get_available_plans(self):
         """Test récupération des plans disponibles."""
-        from backend.domains.transactions.services.salary_plan_service import (
+        from backend.domains.budgets.services.salary_plan_service import (
             get_available_plans,
         )
 

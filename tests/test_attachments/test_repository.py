@@ -6,8 +6,8 @@ import pytest
 from pathlib import Path
 from datetime import date
 
-from backend.domains.transactions.database.model_attachment import TransactionAttachment
-from backend.domains.transactions.database.repository_attachment import (
+from backend.domains.attachments.database.model import TransactionAttachment
+from backend.domains.attachments.database.repository import (
     AttachmentRepository,
 )
 from backend.domains.transactions.database.repository import transaction_repository

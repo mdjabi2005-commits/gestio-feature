@@ -8,9 +8,9 @@ from typing import List
 from datetime import date
 from dateutil.relativedelta import relativedelta
 
-from backend.domains.transactions.database.model_echeance import Echeance
-from backend.domains.transactions.database.repository_echeance import EcheanceRepository
-from backend.domains.transactions.echeance.echeance_service import (
+from backend.domains.echeance.database.model import Echeance
+from backend.domains.echeance.database.repository import EcheanceRepository
+from backend.domains.echeance.services.echeance_service import (
     calculate_next_occurrence,
     backfill_echeances,
 )

@@ -11,7 +11,7 @@ from dateutil.relativedelta import relativedelta
 from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database import db_transaction
-from .model_echeance import Echeance
+from .model import Echeance
 
 logger = logging.getLogger(__name__)
 

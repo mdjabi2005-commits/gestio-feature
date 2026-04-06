@@ -10,7 +10,7 @@ from dateutil.relativedelta import relativedelta
 from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database import db_transaction
-from backend.domains.transactions.services.salary_plan_service import (
+from backend.domains.budgets.services.salary_plan_service import (
     load_salary_plan,
     SalaryPlanError,
 )

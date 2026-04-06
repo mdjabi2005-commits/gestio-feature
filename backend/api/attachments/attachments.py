@@ -6,9 +6,9 @@ import logging
 from datetime import date as date_type
 from backend.domains.transactions.database.model import Transaction
 from backend.domains.transactions.database.repository import TransactionRepository
-from backend.domains.transactions.database.repository_echeance import EcheanceRepository
-from backend.domains.transactions.services.attachment_service import attachment_service
-from backend.domains.transactions.database.model_attachment import TransactionAttachment
+from backend.domains.echeance.database.repository import EcheanceRepository
+from backend.domains.attachments.services.attachment_service import attachment_service
+from backend.domains.attachments.database.model import TransactionAttachment
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ async def list_objectif_attachments(objectif_id: int):
     if not goal:
         raise HTTPException(status_code=404, detail="Objectif non trouvé")
 
-    from backend.domains.transactions.database.repository_attachment import (
+    from backend.domains.attachments.database.repository import (
         AttachmentRepository,
     )
 
@@ -43,7 +43,7 @@ async def list_objectif_attachments(objectif_id: int):
 @router.get("/echeance/{echeance_id}", response_model=List[TransactionAttachment])
 async def list_echeance_attachments(echeance_id: int):
     """Liste les pièces jointes d'une échéance."""
-    from backend.domains.transactions.database.repository_attachment import (
+    from backend.domains.attachments.database.repository import (
         AttachmentRepository,
     )
 
@@ -54,7 +54,7 @@ async def list_echeance_attachments(echeance_id: int):
 @router.post("/echeance/{echeance_id}")
 async def upload_echeance_attachment(echeance_id: int, file: UploadFile = File(...)):
     """Upload une pièce jointe pour une échéance."""
-    from backend.domains.transactions.database.repository_attachment import (
+    from backend.domains.attachments.database.repository import (
         AttachmentRepository,
     )
     from datetime import datetime

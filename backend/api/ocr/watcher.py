@@ -79,7 +79,7 @@ def _process_file(file_path: str) -> bool:
                 logger.warning(f"Montant net non trouvé dans le PDF: {file_path}")
                 return False
 
-            from backend.domains.transactions.services.salary_plan_service import (
+            from backend.domains.budgets.services.salary_plan_service import (
                 apply_salary_split,
                 SalaryPlanError,
             )

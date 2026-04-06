@@ -4,7 +4,7 @@ Transaction Database Package.
 
 from .model import Transaction
 from .repository import TransactionRepository, transaction_repository
-from .schema import init_transaction_table, migrate_transaction_table, create_indexes, init_attachments_table
+from .schema import init_transaction_table, migrate_transaction_table, create_indexes
 from .constants import (
     TRANSACTION_TYPES,
     TRANSACTION_CATEGORIES,
@@ -29,7 +29,6 @@ __all__ = [
     "transaction_repository",
     # Schema
     "init_transaction_table",
-    "init_attachments_table",
     "migrate_transaction_table",
     "create_indexes",
 ]

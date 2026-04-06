@@ -11,7 +11,7 @@ import logging
 from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database.connection import get_db_connection, close_connection
-from backend.domains.transactions.database.model_echeance import Echeance
+from backend.domains.echeance.database.model import Echeance
 
 logger = logging.getLogger(__name__)
 

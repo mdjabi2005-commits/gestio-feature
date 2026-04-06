@@ -11,8 +11,8 @@ from typing import List, Optional, Any
 import mimetypes
 
 from backend.config.paths import SORTED_DIR, REVENUS_TRAITES, OBJECTIFS_DIR
-from backend.domains.transactions.database.model_attachment import TransactionAttachment
-from backend.domains.transactions.database.repository_attachment import (
+from backend.domains.attachments.database.model import TransactionAttachment
+from backend.domains.attachments.database.repository import (
     attachment_repository,
 )
 
