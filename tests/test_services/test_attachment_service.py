@@ -34,9 +34,7 @@ def attachment_svc(db_path, temp_scanned_dirs):
     return attachment_service
 
 
-@pytest.mark.xfail(
-    reason="Bug backend: add_attachment sans commit + fichier pas déplacé"
-)
+@pytest.mark.integration
 def test_add_and_delete_physical_file(
     attachment_svc, temp_scanned_dirs, tmp_path, transaction_depense
 ):
@@ -95,7 +93,7 @@ def test_add_and_delete_physical_file(
     )
 
 
-@pytest.mark.skip(reason="Bug backend: echeance_repository n'existe pas")
+@pytest.mark.integration
 def test_add_attachment_to_echeance(
     attachment_svc, temp_scanned_dirs, tmp_path, db_path
 ):
@@ -177,9 +175,7 @@ def test_add_attachment_to_objectif(
     assert success is True, "L'ajout de l'attachment objectif a échoué"
 
 
-@pytest.mark.xfail(
-    reason="Bug backend: paths non correctement injectés via monkeypatch"
-)
+@pytest.mark.integration
 def test_find_file(attachment_svc, temp_scanned_dirs, tmp_path):
     """Test la recherche de fichier par nom."""
     sorted_dir, revenus_dir, objectifs_dir = temp_scanned_dirs
@@ -194,7 +190,7 @@ def test_find_file(attachment_svc, temp_scanned_dirs, tmp_path):
     assert found.name == "test_ticket.jpg"
 
 
-@pytest.mark.xfail(reason="Bug backend: add_attachment sans commit")
+@pytest.mark.integration
 def test_get_attachments(
     attachment_svc, temp_scanned_dirs, tmp_path, transaction_depense, db_path
 ):

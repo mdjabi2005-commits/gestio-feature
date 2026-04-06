@@ -216,3 +216,75 @@ def get_available_plans() -> List[str]:
     if not config_dir.exists():
         return []
     return [f.name for f in config_dir.glob("salary_plan*.yaml")]
+
+
+SALARY_PLAN_PATH = _get_config_path("salary_plan_default.yaml")
+
+
+def generate_budgets_from_plan(plan_data: Dict[str, Any]) -> None:
+    """Génère les budgets depuis le salary plan."""
+    from backend.domains.budgets.database.model import Budget
+    from backend.domains.budgets.database.repository import budget_repository
+    from backend.shared.utils.categories_loader import get_subcategories
+
+    ref = plan_data.get("reference_salary", 0.0)
+    if ref <= 0:
+        return
+
+    for item in plan_data.get("items", []):
+        val = item.get("montant", 0)
+        category = item.get("categorie")
+        alloc_type = item.get("type")
+        sub_allocations = item.get("sub_allocations", [])
+
+        category_amount = val if alloc_type == "fixed" else (ref * (val / 100))
+        if category_amount <= 0:
+            continue
+
+        if sub_allocations and len(sub_allocations) > 0:
+            total_sub_pct = sum(s.get("value", 0) for s in sub_allocations)
+            for sub in sub_allocations:
+                sub_name = sub.get("name")
+                sub_pct = sub.get("value", 0)
+                sub_amount = (
+                    round(category_amount * (sub_pct / total_sub_pct), 2)
+                    if total_sub_pct > 0
+                    else 0
+                )
+                if sub_amount > 0 and sub_name:
+                    budget_repository.upsert(
+                        Budget(
+                            categorie=f"{category} > {sub_name}", montant_max=sub_amount
+                        )
+                    )
+        else:
+            budget_repository.upsert(
+                Budget(categorie=category, montant_max=round(category_amount, 2))
+            )
+
+
+def save_plan_to_yaml(plan_data: Dict[str, Any]) -> None:
+    """Sauvegarde le salary plan dans le fichier YAML."""
+    ref = plan_data.get("reference_salary", 0.0)
+    storage = {
+        "name": plan_data.get("nom", "Plan"),
+        "is_active": plan_data.get("is_active", True),
+        "reference_salary": ref,
+        "default_remainder_category": plan_data.get(
+            "default_remainder_category", "Épargne"
+        ),
+        "allocations": [
+            {
+                "category": i.get("categorie"),
+                "value": i.get("montant"),
+                "type": i.get("type"),
+                "sub_distribution_mode": i.get("sub_distribution_mode"),
+                "sub_allocations": i.get("sub_allocations"),
+            }
+            for i in plan_data.get("items", [])
+        ],
+    }
+    with open(SALARY_PLAN_PATH, "w", encoding="utf-8") as f:
+        yaml.dump(
+            {"salary_plan": storage}, f, allow_unicode=True, default_flow_style=False
+        )
