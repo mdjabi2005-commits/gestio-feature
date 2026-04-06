@@ -2,17 +2,17 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Response
 from typing import List, Optional
 import logging
 from datetime import date as date_type
-from backend.domains.transactions.database.model import Transaction
-from backend.domains.transactions.database.repository import TransactionRepository
-from backend.domains.echeance.database.repository import EcheanceRepository
-from backend.domains.attachments.services.attachment_service import (
+from backend.domains.transactions.model import Transaction
+from backend.domains.transactions.repository import TransactionRepository
+from backend.domains.echeance.repository import EcheanceRepository
+from backend.domains.attachments.service import (
     attachment_service,
     archive_file,
     archive_payroll_file,
     archive_ticket_file,
 )
-from backend.domains.attachments.database.model import TransactionAttachment
-from backend.domains.goals.database.repository_goal import goal_repository
+from backend.domains.attachments.model import TransactionAttachment
+from backend.domains.goals.repository import goal_repository
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ async def list_attachments(transaction_id: int):
 @router.get("/objectif/{objectif_id}", response_model=List[TransactionAttachment])
 async def list_objectif_attachments(objectif_id: int):
     """Liste les pièces jointes d'un objectif."""
-    from backend.domains.attachments.database.repository import (
+    from backend.domains.attachments.repository import (
         AttachmentRepository,
     )
 
@@ -45,7 +45,7 @@ async def list_objectif_attachments(objectif_id: int):
 @router.get("/echeance/{echeance_id}", response_model=List[TransactionAttachment])
 async def list_echeance_attachments(echeance_id: int):
     """Liste les pièces jointes d'une échéance."""
-    from backend.domains.attachments.database.repository import (
+    from backend.domains.attachments.repository import (
         AttachmentRepository,
     )
 

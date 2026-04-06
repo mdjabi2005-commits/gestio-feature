@@ -14,12 +14,12 @@ from typing import List, Optional, Dict, Any
 
 import yaml
 
-from backend.domains.transactions.database.model import Transaction
+from backend.domains.transactions.model import Transaction
 from backend.shared.utils.categories_loader import get_subcategories, get_categories
 
 logger = logging.getLogger(__name__)
 
-_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+_PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 
 class SalaryPlanError(Exception):
@@ -223,8 +223,8 @@ SALARY_PLAN_PATH = _get_config_path("salary_plan_default.yaml")
 
 def generate_budgets_from_plan(plan_data: Dict[str, Any]) -> None:
     """Génère les budgets depuis le salary plan."""
-    from backend.domains.budgets.database.model import Budget
-    from backend.domains.budgets.database.repository import budget_repository
+    from backend.domains.budgets.model import Budget
+    from backend.domains.budgets.repository import budget_repository
     from backend.shared.utils.categories_loader import get_subcategories
 
     ref = plan_data.get("reference_salary", 0.0)

@@ -10,7 +10,7 @@ from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database import db_transaction
 from backend.shared.utils import create_empty_transaction_df, convert_transaction_df
-from .model import Transaction
+from backend.domains.transactions.model import Transaction
 
 logger = logging.getLogger(__name__)
 

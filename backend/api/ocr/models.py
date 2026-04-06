@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
-from backend.domains.transactions.database.model import Transaction
+from backend.domains.transactions.model import Transaction
 
 
 class OCRScanResponse(BaseModel):

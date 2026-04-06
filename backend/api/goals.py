@@ -7,8 +7,8 @@ from typing import List
 
 from fastapi import APIRouter, HTTPException
 
-from backend.domains.goals.database.model_goal import Goal, GoalWithProgress
-from backend.domains.goals.database.repository_goal import goal_repository
+from backend.domains.goals.model import Goal, GoalWithProgress
+from backend.domains.goals.repository import goal_repository
 
 logger = logging.getLogger(__name__)
 

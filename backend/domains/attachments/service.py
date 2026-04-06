@@ -11,8 +11,8 @@ from typing import List, Optional, Any
 import mimetypes
 
 from backend.config import paths as paths_config
-from backend.domains.attachments.database.model import TransactionAttachment
-from backend.domains.attachments.database.repository import (
+from backend.domains.attachments.model import TransactionAttachment
+from backend.domains.attachments.repository import (
     attachment_repository,
 )
 
@@ -109,7 +109,7 @@ class AttachmentService:
             new_id = attachment_repository.add_attachment(attachment)
 
             if new_id:
-                from backend.domains.transactions.database.repository import (
+                from backend.domains.transactions.repository import (
                     transaction_repository,
                 )
 
@@ -323,7 +323,7 @@ def archive_file(
 
 def archive_payroll_file(temp_path: str, transactions: List[Any]) -> Optional[str]:
     """Archive le fichier PDF de fiche de paie."""
-    from backend.domains.transactions.database.model import Transaction
+    from backend.domains.transactions.model import Transaction
 
     if not transactions:
         return None

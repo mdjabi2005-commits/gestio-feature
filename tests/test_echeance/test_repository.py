@@ -5,15 +5,15 @@ Tests du EcheanceRepository — CRUD complet sur base de données de test.
 import pytest
 from datetime import date
 
-from backend.domains.echeance.database.model import Echeance
-from backend.domains.echeance.database.repository import EcheanceRepository
+from backend.domains.echeance.model import Echeance
+from backend.domains.echeance.repository import EcheanceRepository
 
 
 @pytest.fixture
 def echeance_repo(db_path) -> EcheanceRepository:
     """Repository branché sur la DB de test."""
     repo = EcheanceRepository(db_path=db_path)
-    from backend.domains.echeance.database.schema import (
+    from backend.domains.echeance.schema import (
         init_echeance_table,
     )
 

@@ -21,7 +21,7 @@ from ..core.rapidocr_engine import RapidOCREngine
 from ..core.groq_parser import GroqParser
 from ..core.hardware_utils import get_optimal_workers
 from ..core import pdf_engine as _pdf_module
-from backend.domains.transactions.database.model import Transaction
+from backend.domains.transactions.model import Transaction
 from ..core.parser import parse_amount, parse_date, parse_pdf_revenue
 
 logger = logging.getLogger(__name__)

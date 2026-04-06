@@ -5,7 +5,7 @@ from typing import List, Optional
 from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database.connection import get_db_connection, close_connection
-from .model import Budget
+from backend.domains.budgets.model import Budget
 
 logger = logging.getLogger(__name__)
 

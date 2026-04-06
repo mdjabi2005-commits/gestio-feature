@@ -8,7 +8,7 @@ from typing import List, Optional
 from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database.connection import get_db_connection, close_connection
-from .model import TransactionAttachment
+from backend.domains.attachments.model import TransactionAttachment
 
 logger = logging.getLogger(__name__)
 

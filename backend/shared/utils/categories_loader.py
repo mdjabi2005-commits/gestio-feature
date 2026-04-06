@@ -51,7 +51,7 @@ def get_categories() -> List[str]:
     data = _load()
     if not data.get("categories"):
         # Fallback sur les constantes Python
-        from backend.domains.transactions.database.constants import _FALLBACK_CATEGORIES
+        from backend.domains.transactions.constants import _FALLBACK_CATEGORIES
 
         return _FALLBACK_CATEGORIES
     return [cat["name"] for cat in data["categories"]]

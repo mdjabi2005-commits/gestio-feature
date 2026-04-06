@@ -5,10 +5,10 @@ import yaml
 from pathlib import Path
 from pydantic import BaseModel, Field
 
-from backend.domains.budgets.database.model import Budget
-from backend.domains.budgets.database.repository import budget_repository
-from backend.domains.budgets.database.schema import init_budgets_table
-from backend.domains.budgets.services.salary_plan_service import (
+from backend.domains.budgets.model import Budget
+from backend.domains.budgets.repository import budget_repository
+from backend.domains.budgets.schema import init_budgets_table
+from backend.domains.budgets.service import (
     SalaryPlanError,
     get_available_plans,
     load_salary_plan,

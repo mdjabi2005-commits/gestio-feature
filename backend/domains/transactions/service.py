@@ -13,8 +13,8 @@ from typing import Optional, Union, List
 
 import pandas as pd
 
-from ..database.model import Transaction
-from ..database.repository import transaction_repository
+from backend.domains.transactions.model import Transaction
+from backend.domains.transactions.repository import transaction_repository
 
 logger = logging.getLogger(__name__)
 

@@ -4,15 +4,15 @@ Tests du BudgetRepository — CRUD complet sur base de données de test.
 
 import pytest
 
-from backend.domains.budgets.database.model import Budget
-from backend.domains.budgets.database.repository import BudgetRepository
+from backend.domains.budgets.model import Budget
+from backend.domains.budgets.repository import BudgetRepository
 
 
 @pytest.fixture
 def budget_repo(db_path) -> BudgetRepository:
     """Repository branché sur la DB de test."""
     repo = BudgetRepository(db_path=db_path)
-    from backend.domains.budgets.database.schema import init_budgets_table
+    from backend.domains.budgets.schema import init_budgets_table
 
     init_budgets_table(db_path)
     return repo

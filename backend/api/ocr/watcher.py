@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from backend.config.paths import TO_SCAN_DIR, SORTED_DIR, REVENUS_TRAITES
-from backend.domains.transactions.database.repository import transaction_repository
+from backend.domains.transactions.repository import transaction_repository
 from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
 from backend.api.attachments.attachments import archive_file as _archive_file
 
@@ -79,11 +79,11 @@ def _process_file(file_path: str) -> bool:
                 logger.warning(f"Montant net non trouvé dans le PDF: {file_path}")
                 return False
 
-            from backend.domains.budgets.services.salary_plan_service import (
+            from backend.domains.budgets.service import (
                 apply_salary_split,
                 SalaryPlanError,
             )
-            from backend.domains.transactions.database.model import Transaction
+            from backend.domains.transactions.model import Transaction
             from datetime import date
 
             date_str = (
@@ -157,14 +157,14 @@ def _scan_directory() -> list:
 
                 try:
                     from backend.api.ocr.models import OCRScanResponse
-                    from backend.domains.transactions.database.model import Transaction
+                    from backend.domains.transactions.model import Transaction
 
                     if file_type := _is_valid_file(filename):
                         if file_type == "image":
                             ocr_service = get_ocr_service()
                             tx = ocr_service.process_ticket(file_path)
                             transaction_repository.add(tx)
-                            
+
                             _archive_file(
                                 file_path,
                                 category=tx.categorie or "Autre",
@@ -172,10 +172,16 @@ def _scan_directory() -> list:
                                 target_base_dir=SORTED_DIR,
                                 is_ticket=True,
                             )
-                            results.append(OCRScanResponse(transaction=tx, warnings=[], raw_ocr_text=""))
-                            
-                            try: os.remove(file_path)
-                            except: pass
+                            results.append(
+                                OCRScanResponse(
+                                    transaction=tx, warnings=[], raw_ocr_text=""
+                                )
+                            )
+
+                            try:
+                                os.remove(file_path)
+                            except:
+                                pass
                         elif file_type == "pdf":
                             # For PDF, we just trigger the existing _process_file
                             # but it's harder to get results back here.
@@ -189,7 +195,7 @@ def _scan_directory() -> list:
         logger.error(f"Erreur scan directory: {e}")
     finally:
         _processing = False
-    
+
     return results
 
 

@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 import pytest
 
-from backend.domains.attachments.services.attachment_service import attachment_service
-from backend.domains.attachments.database.repository import (
+from backend.domains.attachments.service import attachment_service
+from backend.domains.attachments.repository import (
     attachment_repository,
 )
 
@@ -28,7 +28,7 @@ def temp_scanned_dirs(tmp_path: Path, monkeypatch):
 def attachment_svc(db_path, temp_scanned_dirs):
     """Service branché sur une base SQLite temporaire vierge."""
     attachment_repository.db_path = db_path
-    from backend.domains.attachments.database.schema import init_attachments_table
+    from backend.domains.attachments.schema import init_attachments_table
 
     init_attachments_table(db_path)
     return attachment_service
@@ -48,11 +48,11 @@ def test_add_and_delete_physical_file(
     file_content = b"Ceci est un faux ticket pour les tests unitaires"
     filename = "ticket_de_caisse.jpg"
 
-    from backend.domains.transactions.database.repository import transaction_repository
+    from backend.domains.transactions.repository import transaction_repository
 
     transaction_repository.db_path = attachment_repository.db_path
 
-    from backend.domains.transactions.database.schema import init_transaction_table
+    from backend.domains.transactions.schema import init_transaction_table
 
     init_transaction_table(attachment_repository.db_path)
 
@@ -98,11 +98,11 @@ def test_add_attachment_to_echeance(
     attachment_svc, temp_scanned_dirs, tmp_path, db_path
 ):
     """Test l'ajout d'une pièce jointe à une échéance."""
-    from backend.domains.echeance.database.repository import (
+    from backend.domains.echeance.repository import (
         EcheanceRepository,
     )
-    from backend.domains.echeance.database.model import Echeance
-    from backend.domains.echeance.database.schema import (
+    from backend.domains.echeance.model import Echeance
+    from backend.domains.echeance.schema import (
         init_echeance_table,
     )
     from datetime import date
@@ -144,9 +144,9 @@ def test_add_attachment_to_objectif(
     attachment_svc, temp_scanned_dirs, tmp_path, db_path
 ):
     """Test l'ajout d'une pièce jointe à un objectif."""
-    from backend.domains.goals.database.repository_goal import goal_repository
-    from backend.domains.goals.database.model_goal import Goal
-    from backend.domains.goals.database.schema_goal import init_goal_table
+    from backend.domains.goals.repository import goal_repository
+    from backend.domains.goals.model import Goal
+    from backend.domains.goals.schema import init_goal_table
     from datetime import date
 
     goal_repository.db_path = db_path
@@ -195,8 +195,8 @@ def test_get_attachments(
     attachment_svc, temp_scanned_dirs, tmp_path, transaction_depense, db_path
 ):
     """Test la récupération des pièces jointes d'une transaction."""
-    from backend.domains.transactions.database.repository import transaction_repository
-    from backend.domains.transactions.database.schema import init_transaction_table
+    from backend.domains.transactions.repository import transaction_repository
+    from backend.domains.transactions.schema import init_transaction_table
 
     transaction_repository.db_path = db_path
     init_transaction_table(db_path)

@@ -13,7 +13,7 @@ from backend.api.attachments.attachments import (
     archive_ticket_file as _archive_ticket_file,
     archive_payroll_file as _archive_payroll_file,
 )
-from backend.domains.transactions.database.model import Transaction
+from backend.domains.transactions.model import Transaction
 
 
 class TestArchiveFile:

@@ -5,10 +5,9 @@ Module unifié pour gérer toutes les transactions financières
 peu importe leur source (OCR, CSV, Manuelle).
 """
 
-from .database import (
-    Transaction,
-    transaction_repository,
-    TransactionRepository,
+from .model import Transaction
+from .repository import transaction_repository, TransactionRepository
+from .constants import (
     TRANSACTION_TYPES,
     TRANSACTION_CATEGORIES,
     TRANSACTION_SOURCES,
@@ -16,7 +15,7 @@ from .database import (
     TYPE_DEPENSE,
     TYPE_REVENU,
 )
-from .services.transaction_service import transaction_service, TransactionService
+from .service import transaction_service, TransactionService
 
 __all__ = [
     # Model
