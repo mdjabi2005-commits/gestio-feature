@@ -50,6 +50,7 @@ L'architecture est construite pour maintenir le code isolé, testable et modulai
 
 3. **Couche d'Accès aux Données (Repositories)**
    - Tout accès à la base de données doit systématiquement passer par un objet ou fichier `repository.py` du domaine concerné. Les requêtes SQL/ORM ne doivent **jamais** exister dans un contrôleur d'API.
+   - **Généricité et BaseRepository** : Tous les domaines héritent désormais de `BaseRepository` (`backend/shared/database/base_repository.py`). Ce modèle centralise le CRUD pur, sécurise l'atomicité des requêtes croisées via les contextes de base de données, et parse de façon stricte les modèles via `Pydantic`.
 
 ---
 
