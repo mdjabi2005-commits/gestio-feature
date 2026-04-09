@@ -1,6 +1,6 @@
-# 📖 Glossaire du Domaine Transactions
+# 📖 Glossaire Global du Backend
 
-Ce document explique les termes techniques utilisés dans le domaine Transactions.
+Ce document explique les termes techniques utilisés dans l'API et ses différents domaines.
 
 ---
 
@@ -25,7 +25,7 @@ Exemples :
 - `Logement` / `Loyer`
 - `Voiture` / `Essence`
 
-> Les valeurs disponibles sont définies dans `database/constants.py` → `TRANSACTION_CATEGORIES`.
+> Les valeurs disponibles sont définies dans `domains/transactions/constants.py` → `TRANSACTION_CATEGORIES`.
 > La catégorie est automatiquement normalisée en **Title Case** par Pydantic à l'instanciation.
 
 ### `montant`
@@ -46,7 +46,7 @@ Exemples :
 | `ofx`            | Import fichier OFX/QFX bancaire         |
 | `enable_banking` | Import via API Enable Banking           |
 
-> Valeurs définies dans `database/constants.py` → `TRANSACTION_SOURCES`.
+> Valeurs définies dans `domains/transactions/constants.py` → `TRANSACTION_SOURCES`.
 
 ### `external_id`
 
@@ -143,7 +143,7 @@ Toutes les clés sont en **français** à tous les niveaux du code, sans excepti
 | Modèles Pydantic     | 🇫🇷 Français |
 | Services             | 🇫🇷 Français |
 | Repositories         | 🇫🇷 Français |
-| Pages UI (Streamlit) | 🇫🇷 Français |
+| Pages UI (React/Next)  | 🇫🇷 Français |
 | README / Doc         | 🇫🇷 Français |
 
 > **Règle absolue** : il n'existe aucun mapping EN → FR dans le code.
@@ -170,11 +170,11 @@ La méthode `to_db_dict()` sur le modèle retourne le dict prêt pour SQLite
 
 ---
 
-### Constantes — `database/constants.py` est la seule source de vérité
+### Constantes — `domains/transactions/constants.py` est la seule source de vérité
 
-Toutes les constantes du domaine (`TRANSACTION_TYPES`, `TRANSACTION_CATEGORIES`,
+Toutes les constantes liées aux transactions (`TRANSACTION_TYPES`, `TRANSACTION_CATEGORIES`,
 `TRANSACTION_SOURCES`, `SOURCE_DEFAULT`, etc.) sont définies **une seule fois**
-dans `database/constants.py` et importées depuis là partout ailleurs.
+dans `domains/transactions/constants.py` et importées depuis là partout ailleurs.
 
 ---
 
@@ -194,7 +194,7 @@ de construire les objets métier.
 Pages UI → Services → Repositories → SQLite
 ```
 
-- **Pages** : UI Streamlit, points d'entrée utilisateur. N'appellent **jamais** le repository directement.
+- **Pages** : UI React/Next.js (Frontend), points d'entrée utilisateur. Interagissent avec le backend via les appels API.
 - **Services** : Logique métier, point d'entrée unique pour les pages (`transaction_service`).
 - **Repositories** : Accès SQL uniquement. Reçoivent des `Transaction` ou des dicts FR.
 - **Models** : Validation et normalisation Pydantic. `to_db_dict()` prépare pour SQLite.
@@ -203,10 +203,10 @@ Pages UI → Services → Repositories → SQLite
 
 ## 📁 Fichiers clés
 
-| Fichier                            | Rôle                        |
-|------------------------------------|-----------------------------|
-| `database/model.py`                | Définition Transaction      |
-| `database/repository.py`           | Accès SQL transactions      |
-| `services/transaction_service.py`  | Logique métier transactions |
-| `recurrence/recurrence_service.py` | Génération occurrences      |
-| `services/attachment_service.py`   | Gestion fichiers            |
+| Fichier / Dossier                  | Rôle                                        |
+|------------------------------------|---------------------------------------------|
+| `domains/transactions/model.py`    | Définition Pydantic de la Transaction       |
+| `domains/transactions/repository.py`| Accès SQL aux transactions                 |
+| `domains/transactions/service.py`  | Logique métier centrale des transactions    |
+| `domains/echeance/service.py`      | Génération des occurrences et récurrences   |
+| `domains/attachments/service.py`   | Gestion du stockage et archivage de fichiers|

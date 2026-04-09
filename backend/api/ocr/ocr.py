@@ -10,9 +10,9 @@ from typing import List
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel
 
-from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
+from backend.domains.ocr.services.ocr_service import get_ocr_service
 from backend.domains.transactions.model import Transaction
-from backend.domains.transactions.ocr.core.pdfplumber_engine import pdfplumber_engine
+from backend.domains.ocr.core.pdfplumber_engine import pdfplumber_engine
 from backend.domains.budgets.service import (
     SalaryPlanError,
     apply_salary_split,

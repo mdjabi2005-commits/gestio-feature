@@ -31,7 +31,7 @@ config/
 ocr.py (API)
 ├── fastapi (APIRouter, UploadFile, File, HTTPException)
 ├── pydantic (BaseModel)
-├── backend.domains.transactions.ocr.services.ocr_service
+├── backend.domains.ocr.services.ocr_service
 │   ├── RapidOCREngine
 │   ├── GroqParser
 │   └── PatternManager

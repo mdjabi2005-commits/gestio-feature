@@ -12,7 +12,7 @@ from typing import Optional
 
 from backend.config.paths import TO_SCAN_DIR, SORTED_DIR, REVENUS_TRAITES
 from backend.domains.transactions.repository import transaction_repository
-from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
+from backend.domains.ocr.services.ocr_service import get_ocr_service
 from backend.api.attachments.attachments import archive_file as _archive_file
 
 logger = logging.getLogger(__name__)
@@ -64,7 +64,7 @@ def _process_file(file_path: str) -> bool:
             return True
 
         elif file_type == "pdf":
-            from backend.domains.transactions.ocr.core.pdfplumber_engine import (
+            from backend.domains.ocr.core.pdfplumber_engine import (
                 pdfplumber_engine,
             )
 

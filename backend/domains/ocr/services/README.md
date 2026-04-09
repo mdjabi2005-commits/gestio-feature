@@ -73,7 +73,7 @@ Gère les expressions régulières (Regex) pour identifier :
 
 ```python
 # Tester l'extraction
-from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
+from backend.domains.ocr.services.ocr_service import get_ocr_service
 ocr = get_ocr_service()
 tx = ocr.process_ticket("chemin/vers/ticket.jpg")
 print(tx.montant, tx.categorie)

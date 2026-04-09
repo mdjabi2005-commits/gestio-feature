@@ -13,7 +13,7 @@ from backend.api.ocr.ocr import router as ocr_router
 from backend.api.echeances.echeances import router as echeances_router
 from backend.api.budgets.budgets import router as budgets_router
 from backend.api.goals import router as goals_router
-from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
+from backend.domains.ocr.services.ocr_service import get_ocr_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
