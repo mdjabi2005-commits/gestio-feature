@@ -11,15 +11,11 @@ import pytest
 from datetime import date
 from pathlib import Path
 
-from backend.domains.transactions.database.schema import (
-    init_transaction_table,
-    init_attachments_table,
-)
-from backend.domains.transactions.database.schema_table_echeance import (
-    init_echeance_table,
-)
-from backend.domains.transactions.database.model import Transaction
-from backend.domains.transactions.database.repository import TransactionRepository
+from backend.domains.transactions.schema import init_transaction_table
+from backend.domains.attachments.schema import init_attachments_table
+from backend.domains.echeance.schema import init_echeance_table
+from backend.domains.transactions.model import Transaction
+from backend.domains.transactions.repository import TransactionRepository
 
 
 # ─────────────────────────────────────────────────────────────────────────────

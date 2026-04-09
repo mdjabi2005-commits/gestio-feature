@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from typing import List, Optional
 import logging
-from backend.domains.transactions.database.model import Transaction
-from backend.domains.transactions.database.repository import TransactionRepository
+from backend.domains.transactions.model import Transaction
+from backend.domains.transactions.repository import TransactionRepository
 
 logger = logging.getLogger(__name__)
 

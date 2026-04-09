@@ -1,14 +1,6 @@
 """Shared utilities package."""
 
 from .converters import normalize_text, safe_convert, safe_date_convert
-from .dataframe_utils import (
-    create_empty_df,
-    create_empty_transaction_df,
-    create_empty_attachment_df,
-    convert_transaction_df,
-    convert_attachment_df,
-)
-from .amount_parser import parse_amount
 from .categories_loader import (
     get_categories,
     get_subcategories,
@@ -24,31 +16,17 @@ from .file_utils import (
     cleanup_temp_files,
     TempFileManager,
 )
-from .dashboard_helpers import (
-    get_month_range,
-    get_paid_echeance_ids,
-    get_active_echeances,
-    dict_to_echeance,
-    build_type_breakdown,
-    build_echeances_list,
-    build_budget_summary,
-    build_daily_history,
-    aggregate_by_type,
-)
+from .master_key import initialiser_cle_maitre, generer_cle_maitre
+
+# NOTE: dashboard_helpers n'est PAS exposé ici car il importe shared.database
+# ce qui crée une dépendance circulaire au chargement du module.
+# Importer directement : from backend.shared.utils.dashboard_helpers import ...
 
 __all__ = [
     # Converters
     "normalize_text",
     "safe_convert",
     "safe_date_convert",
-    # DataFrame utils
-    "create_empty_df",
-    "create_empty_transaction_df",
-    "create_empty_attachment_df",
-    "convert_transaction_df",
-    "convert_attachment_df",
-    # Amount parser
-    "parse_amount",
     # Categories loader
     "get_categories",
     "get_subcategories",
@@ -62,14 +40,7 @@ __all__ = [
     "save_upload_to_temp",
     "cleanup_temp_files",
     "TempFileManager",
-    # Dashboard helpers
-    "get_month_range",
-    "get_paid_echeance_ids",
-    "get_active_echeances",
-    "dict_to_echeance",
-    "build_type_breakdown",
-    "build_echeances_list",
-    "build_budget_summary",
-    "build_daily_history",
-    "aggregate_by_type",
+    # Security / Master Key
+    "initialiser_cle_maitre",
+    "generer_cle_maitre",
 ]

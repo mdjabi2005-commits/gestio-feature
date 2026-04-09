@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw
 
-from backend.domains.transactions.database.schema import init_transaction_table
+from backend.domains.transactions.schema import init_transaction_table
 from backend.main import app
 
 init_transaction_table()

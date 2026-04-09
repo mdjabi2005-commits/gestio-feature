@@ -214,6 +214,11 @@ gestion-financiere/
 
 Si tu modifies un **modèle Pydantic** dans le backend, tu DOIS aussi modifier les **types TypeScript** dans `frontend/src/api.ts`.
 
+### 4. Vocabulaire et Concepts Complexes (GLOSSAIRE)
+
+Si tu rencontres un terme métier complexe ou une notion technique que tu ne comprends pas, **tu DOIS consulter le fichier** `backend/GLOSSARY.md`. 
+Si la notion n'y figure pas ou qu'elle manque de clarté, **n'hésite surtout pas à demander à l'utilisateur** de t'expliquer et d'enrichir ce glossaire pour que tu puisses mieux comprendre le code et son objectif global.
+
 ---
 
 ## 📏 Règles importantes

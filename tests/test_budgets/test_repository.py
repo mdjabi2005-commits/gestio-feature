@@ -12,7 +12,7 @@ from backend.domains.budgets.repository import BudgetRepository
 def budget_repo(db_path) -> BudgetRepository:
     """Repository branché sur la DB de test."""
     repo = BudgetRepository(db_path=db_path)
-    from backend.domains.transactions.database.schema import init_budgets_table
+    from backend.domains.budgets.schema import init_budgets_table
 
     init_budgets_table(db_path)
     return repo

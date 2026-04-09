@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Chemin calculé depuis la racine du projet (2 niveaux au-dessus de shared/utils/)
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
-_YAML_PATH = _PROJECT_ROOT / "domains" / "transactions" / "database" / "categories.yaml"
+_YAML_PATH = _PROJECT_ROOT / "domains" / "transactions" / "categories.yaml"
 
 # Cache en mémoire — chargé une seule fois au démarrage
 _cache: Dict | None = None
@@ -51,7 +51,7 @@ def get_categories() -> List[str]:
     data = _load()
     if not data.get("categories"):
         # Fallback sur les constantes Python
-        from backend.domains.transactions.database.constants import _FALLBACK_CATEGORIES
+        from backend.domains.transactions.constants import _FALLBACK_CATEGORIES
 
         return _FALLBACK_CATEGORIES
     return [cat["name"] for cat in data["categories"]]

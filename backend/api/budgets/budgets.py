@@ -7,12 +7,14 @@ from pydantic import BaseModel, Field
 
 from backend.domains.budgets.model import Budget
 from backend.domains.budgets.repository import budget_repository
-from backend.domains.transactions.database.schema import init_budgets_table
-from backend.domains.transactions.services.salary_plan_service import (
+from backend.domains.budgets.schema import init_budgets_table
+from backend.domains.budgets.service import (
     SalaryPlanError,
     get_available_plans,
     load_salary_plan,
     validate_salary_plan,
+    generate_budgets_from_plan,
+    save_plan_to_yaml,
 )
 from .models import SalaryPlanItem, SalaryPlanResponse
 
@@ -22,22 +24,32 @@ init_budgets_table()
 
 router = APIRouter(prefix="/api/budgets", tags=["budgets"])
 
-SALARY_PLAN_PATH = (
-    Path(__file__).parent.parent.parent / "config" / "salary_plan_default.yaml"
-)
-
 
 class BudgetCreate(BaseModel):
     categorie: str = Field(..., description="Catégorie principale")
     montant_max: float = Field(..., description="Budget mensuel max", ge=0)
 
 
-def _load_yaml_plan() -> dict:
-    """Charge le salary plan depuis le fichier YAML."""
-    try:
-        return load_salary_plan()
-    except FileNotFoundError:
-        return {}
+@router.get("/", response_model=List[Budget])
+async def get_budgets():
+    return budget_repository.get_all()
+
+
+@router.post("/", response_model=Budget)
+async def upsert_budget(data: BudgetCreate):
+    budget = Budget(categorie=data.categorie, montant_max=data.montant_max)
+    result = budget_repository.upsert(budget)
+    if not result:
+        raise HTTPException(status_code=400, detail="Échec upsert budget")
+    return result
+
+
+@router.delete("/{budget_id}")
+async def delete_budget(budget_id: int):
+    success = budget_repository.delete(budget_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Budget non trouvé")
+    return {"message": "Budget supprimé"}
 
 
 def _build_plan_response(plan: dict) -> SalaryPlanResponse:
@@ -63,100 +75,13 @@ def _build_plan_response(plan: dict) -> SalaryPlanResponse:
     )
 
 
-def _generate_budgets_from_plan(plan_data: dict) -> None:
-    """Génère les budgets depuis le salary plan."""
-    from backend.shared.utils.categories_loader import get_subcategories
-
-    ref = plan_data.get("reference_salary", 0.0)
-    if ref <= 0:
-        return
-
-    for item in plan_data.get("items", []):
-        val = item.get("montant", 0)
-        category = item.get("categorie")
-        alloc_type = item.get("type")
-        sub_allocations = item.get("sub_allocations", [])
-
-        category_amount = val if alloc_type == "fixed" else (ref * (val / 100))
-        if category_amount <= 0:
-            continue
-
-        if sub_allocations and len(sub_allocations) > 0:
-            total_sub_pct = sum(s.get("value", 0) for s in sub_allocations)
-            for sub in sub_allocations:
-                sub_name = sub.get("name")
-                sub_pct = sub.get("value", 0)
-                sub_amount = (
-                    round(category_amount * (sub_pct / total_sub_pct), 2)
-                    if total_sub_pct > 0
-                    else 0
-                )
-                if sub_amount > 0 and sub_name:
-                    budget_repository.upsert(
-                        Budget(
-                            categorie=f"{category} > {sub_name}", montant_max=sub_amount
-                        )
-                    )
-        else:
-            budget_repository.upsert(
-                Budget(categorie=category, montant_max=round(category_amount, 2))
-            )
-
-
-def _save_plan_to_yaml(plan_data: dict) -> None:
-    """Sauvegarde le salary plan dans le fichier YAML."""
-    ref = plan_data.get("reference_salary", 0.0)
-    storage = {
-        "name": plan_data.get("nom", "Plan"),
-        "is_active": plan_data.get("is_active", True),
-        "reference_salary": ref,
-        "default_remainder_category": plan_data.get(
-            "default_remainder_category", "Épargne"
-        ),
-        "allocations": [
-            {
-                "category": i.get("categorie"),
-                "value": i.get("montant"),
-                "type": i.get("type"),
-                "sub_distribution_mode": i.get("sub_distribution_mode"),
-                "sub_allocations": i.get("sub_allocations"),
-            }
-            for i in plan_data.get("items", [])
-        ],
-    }
-    with open(SALARY_PLAN_PATH, "w", encoding="utf-8") as f:
-        yaml.dump(
-            {"salary_plan": storage}, f, allow_unicode=True, default_flow_style=False
-        )
-
-
-@router.get("/", response_model=List[Budget])
-async def get_budgets():
-    return budget_repository.get_all()
-
-
-@router.post("/", response_model=Budget)
-async def upsert_budget(data: BudgetCreate):
-    budget = Budget(categorie=data.categorie, montant_max=data.montant_max)
-    result = budget_repository.upsert(budget)
-    if not result:
-        raise HTTPException(status_code=400, detail="Échec upsert budget")
-    return result
-
-
-@router.delete("/{budget_id}")
-async def delete_budget(budget_id: int):
-    success = budget_repository.delete(budget_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Budget non trouvé")
-    return {"message": "Budget supprimé"}
-
-
 @router.get("/salary-plans", response_model=List[SalaryPlanResponse])
 async def get_salary_plan():
     try:
-        plan = _load_yaml_plan()
+        plan = load_salary_plan()
         return [_build_plan_response(plan)]
+    except FileNotFoundError:
+        return []
     except Exception as e:
         logger.error(f"Error loading salary plan: {e}")
         raise HTTPException(500, str(e))
@@ -165,7 +90,6 @@ async def get_salary_plan():
 @router.post("/salary-plans", response_model=SalaryPlanResponse)
 async def save_salary_plan(plan_data: dict):
     try:
-        # Convert items to allocations for validation (map 'montant' to 'value')
         plan_for_validation = {
             **plan_data,
             "allocations": [
@@ -180,8 +104,8 @@ async def save_salary_plan(plan_data: dict):
             ],
         }
         validate_salary_plan(plan_for_validation)
-        _generate_budgets_from_plan(plan_data)
-        _save_plan_to_yaml(plan_data)
+        generate_budgets_from_plan(plan_data)
+        save_plan_to_yaml(plan_data)
 
         ref = plan_data.get("reference_salary", 0.0)
         return SalaryPlanResponse(
@@ -220,7 +144,11 @@ async def delete_salary_plan(plan_id: int):
                 "allocations": [],
             }
         }
-        with open(SALARY_PLAN_PATH, "w", encoding="utf-8") as f:
+        with open(
+            Path(__file__).parent.parent.parent / "config" / "salary_plan_default.yaml",
+            "w",
+            encoding="utf-8",
+        ) as f:
             yaml.dump(default_plan, f, allow_unicode=True, default_flow_style=False)
         return {"status": "success", "message": "Salary plan supprimé"}
     except Exception as e:

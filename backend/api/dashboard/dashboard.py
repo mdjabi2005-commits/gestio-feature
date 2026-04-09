@@ -5,8 +5,8 @@ Dashboard API - Endpoint principal pour les statistiques et vues agrégées.
 from fastapi import APIRouter, HTTPException
 from typing import Optional
 
-from backend.domains.transactions.database.repository import TransactionRepository
-from backend.domains.transactions.echeance.echeance_service import refresh_echeances
+from backend.domains.transactions.repository import TransactionRepository
+from backend.domains.echeance.service import refresh_echeances
 from backend.shared.utils.dashboard_helpers import (
     build_daily_history,
     aggregate_by_type,

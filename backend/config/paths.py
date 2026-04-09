@@ -29,7 +29,7 @@ if not ENV_PATH.exists():
         ENV_PATH = PROJECT_ENV
 
 # Générer automatiquement la clé maître si elle n'existe pas
-from backend.shared.security.master_key import initialiser_cle_maitre
+from backend.shared.utils.master_key import initialiser_cle_maitre
 
 _cle_generee = initialiser_cle_maitre(ENV_PATH)
 

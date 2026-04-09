@@ -10,15 +10,18 @@ from typing import List
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel
 
-from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
-from backend.domains.transactions.database.model import Transaction
-from backend.domains.transactions.ocr.core.pdfplumber_engine import pdfplumber_engine
-from backend.domains.transactions.services.salary_plan_service import (
+from backend.domains.ocr.services.ocr_service import get_ocr_service
+from backend.domains.transactions.model import Transaction
+from backend.domains.ocr.core.pdfplumber_engine import pdfplumber_engine
+from backend.domains.budgets.service import (
     SalaryPlanError,
     apply_salary_split,
 )
 from backend.config.ocr_config import get_ocr_config, save_ocr_config
-from backend.api.attachments.attachments import archive_ticket_file, archive_payroll_file
+from backend.api.attachments.attachments import (
+    archive_ticket_file,
+    archive_payroll_file,
+)
 from backend.shared.utils.file_utils import (
     validate_image_format,
     validate_pdf_format,
@@ -164,8 +167,6 @@ async def scan_batch(files: List[UploadFile] = File(...)):
         raise HTTPException(500, f"Échec du traitement par lot: {str(e)}")
     finally:
         mgr.cleanup()
-
-
 
 
 @router.post("/scan-income", response_model=IncomeScanResponse)

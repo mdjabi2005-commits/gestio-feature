@@ -1,148 +1,94 @@
 # Backend — Gestio V4
 
-API FastAPI avec architecture Domain-Driven Design (DDD).
+API FastAPI structurée selon les principes d'architecture stricte (Domain-Driven Design).
 
-## Structure
+## 🗺️ Fonctionnalité Principale
 
-```
+Le backend sert de cerveau à l'application Gestio. Il expose des APIs REST pour le frontend, valide la logique métier, interagit avec la base de données SQLite de manière sécurisée et gère les processus complexes (OCR, IA, analyse des fichiers, moteurs de récurrence).
+
+## 📂 Structure
+
+```text
 backend/
 ├── main.py                    # Point d'entrée FastAPI
-├── api/                       # Endpoints REST
-│   ├── dashboard/            # Résumé financier
-│   ├── transactions/          # CRUD transactions
-│   ├── attachments/          # Pièces jointes
-│   ├── ocr/                  # Scan tickets/PDF
-│   ├── echeances/            # Échéances
-│   └── budgets/              # Budgets mensuels
+├── api/                       # Définitions des Endpoints REST
+│   ├── attachments/
+│   ├── budgets/
+│   ├── dashboard/ 
+│   ├── echeances/
+│   ├── goals/
+│   ├── ocr/
+│   └── transactions/
 │
-├── domains/                   # Logique métier (DDD)
-│   ├── home/                 # Landing page
-│   ├── transactions/         # Transactions, OCR
-│   │   ├── database/         # Modèles, repositories
-│   │   ├── ocr/              # Moteurs OCR (RapidOCR, Groq)
-│   │   └── services/         # Logique métier
-│   ├── budgets/              # Gestion budgets
-│   └── goals/                # Objectifs financiers
+├── domains/                   # Logique Métier Séparée par Domaine (DDD)
+│   ├── attachments/
+│   ├── budgets/
+│   ├── echeance/
+│   ├── goals/
+│   ├── ocr/
+│   └── transactions/
 │
-├── shared/                    # Composants partagés
-│   ├── database/              # Connexion SQLite
-│   ├── services/             # File service
-│   └── ui/                   # Composants UI
-│
-├── config/                    # Configuration (paths, logging)
-└── resources/                # Assets (icons)
+├── shared/                    # Composants et utilitaires communs
+├── config/                    # Configuration globale (ex: paths.py)
+├── resources/                 # Ressources serveur et assets
+└── GLOSSARY.md                # Lexique métier financier
 ```
 
-## Ajouter un nouveau domain
+## 🏗️ Architecture DDD (Domain-Driven Design)
 
-### 1. Créer la structure
+L'architecture est construite pour maintenir le code isolé, testable et modulaire :
+
+### Règles strictes d'importation
+
+1. **Isolation des domaines : Un domaine ne doit pas inclure un autre domaine.**
+   - ✅ L'API a le droit d'appeler les Domaines.
+   - ✅ Un Composant partagé (`shared/`) peut être appelé partout.
+   - ❌ `backend.domains.transactions` ne doit **pas** importer `backend.domains.budgets`. Pour interagir, passez par des services d'orchestration ou via des événements si nécessaire.
+
+2. **Sens unique pour `shared/`**
+   - Les modules situés dans `shared/` ne doivent **absolument jamais** importer quoi que ce soit depuis `domains/` ou `api/`. L'import doit toujours aller du domaine vers le shared.
+
+3. **Couche d'Accès aux Données (Repositories)**
+   - Tout accès à la base de données doit systématiquement passer par un objet ou fichier `repository.py` du domaine concerné. Les requêtes SQL/ORM ne doivent **jamais** exister dans un contrôleur d'API.
+   - **Généricité et BaseRepository** : Tous les domaines héritent désormais de `BaseRepository` (`backend/shared/database/base_repository.py`). Ce modèle centralise le CRUD pur, sécurise l'atomicité des requêtes croisées via les contextes de base de données, et parse de façon stricte les modèles via `Pydantic`.
+
+---
+
+## 🔧 Quick Reference
+
+### Documentation Détaillée
+
+Chaque domaine possède son propre README expliquant sa logique et son fonctionnement. Par ailleurs, chaque contrôleur API a son `LOGIC_FLOW.md`.
+
+| Domaine / Feature | Métier (Dans `domains/`) | API & Flow (Dans `api/`) |
+|-------------------|--------------------------|--------------------------|
+| **Transactions** | [`/transactions/README.md`](domains/transactions/README.md) | [`/transactions/LOGIC_FLOW.md`](api/transactions/LOGIC_FLOW.md) |
+| **OCR** | [`/ocr/README.md`](domains/ocr/README.md) | [`/ocr/LOGIC_FLOW.md`](api/ocr/LOGIC_FLOW.md) |
+| **Budgets** | [`/budgets/README.md`](domains/budgets/README.md) | [`/budgets/LOGIC_FLOW.md`](api/budgets/LOGIC_FLOW.md) |
+| **Échéances** | [`/echeance/README.md`](domains/echeance/README.md) | [`/echeances/LOGIC_FLOW.md`](api/echeances/LOGIC_FLOW.md) |
+| **Objectifs (Goals)** | [`/goals/README.md`](domains/goals/README.md) | [`/goals/LOGIC_FLOW.md`](api/goals/LOGIC_FLOW.md) |
+| **Pièces Jointes** | [`/attachments/README.md`](domains/attachments/README.md) | [`/attachments/LOGIC_FLOW.md`](api/attachments/LOGIC_FLOW.md) |
+| **Dashboard** | *N/A* | [`/dashboard/LOGIC_FLOW.md`](api/dashboard/LOGIC_FLOW.md) |
+
+### Dictionnaire de Données
+
+👉 Pour comprendre la terminologie et le cycle de vie d'une transaction, le lexique est disponible dans : [**`GLOSSARY.md`**](GLOSSARY.md).
+
+### Base de données
+
+- **Emplacement** : Déterminé dynamiquement via `backend/config/paths.py` (variable de configuration `DB_PATH`).
+- **Moteur SQL** : SQLite (SQLCipher via extensions si actif).
+- **Initialisation** : Automatique au démarrage de l'app en appelant les différents `schema.py`.
+
+### Commandes Utiles (via le gestionnaire `uv`)
 
 ```bash
-backend/domains/mon_nouveau_domaine/
-├── __init__.py
-├── database/
-│   ├── __init__.py
-│   ├── model.py          # Modèle Pydantic
-│   └── repository.py     # CRUD
-└── services/
-    ├── __init__.py
-    └── mon_service.py    # Logique métier
+# Gérer les dépendances
+uv sync
+
+# Lancer le serveur (depuis la racine du projet, pas dans "backend/")
+uv run uvicorn backend.main:app --reload --port 8002
+
+# Lancer la batterie de tests globaux
+uv run pytest tests/ -v
 ```
-
-### 2. Créer l'API
-
-```python
-# backend/api/mon_nouveau_domaine.py
-from fastapi import APIRouter
-from backend.domains.mon_nouveau_domaine.database.repository import MonRepo
-
-router = APIRouter(prefix="/api/mon_nouveau_domaine", tags=["mon_nouveau_domaine"])
-repo = MonRepo()
-
-@router.get("/")
-async def get_items():
-    return repo.get_all()
-```
-
-### 3. Ajouter dans main.py
-
-```python
-from backend.api.mon_nouveau_domaine import router as nouveau_router
-app.include_router(nouveau_router)
-```
-
-### 4. Créer le LOGIC_FLOW
-
-Créer `backend/api/mon_nouveau_domaine/LOGIC_FLOW.md`
-
----
-
-## Architecture DDD
-
-### Règles
-
-1. **Un domaine ne doit pas importer un autre domaine**
-   - ✅ `api` → `domain.transactions`
-   - ✅ `shared` → `domain.transactions`
-   - ❌ `domain.transactions` → `domain.home`
-
-2. **Les modules de `shared/` ne doivent jamais importer un domaine**
-   - Sens unique : domaine → shared
-
-3. **Tout accès DB passe par le repository**
-
----
-
-## API Endpoints
-
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| `GET` | `/api/dashboard/` | Résumé financier |
-| `GET` | `/api/transactions/` | Liste transactions |
-| `POST` | `/api/transactions/` | Ajouter transaction |
-| `DELETE` | `/api/transactions/:id` | Supprimer transaction |
-| `GET` | `/api/attachments/transaction/:id` | Liste pièces jointes |
-| `POST` | `/api/attachments/transaction/:id` | Upload pièce jointe |
-| `DELETE` | `/api/attachments/:id` | Supprimer pièce jointe |
-| `GET` | `/api/ocr/config` | Récupère la clé API Groq |
-| `POST` | `/api/ocr/config` | Sauvegarde la clé API Groq |
-| `POST` | `/api/ocr/scan` | Scan un ticket (image) |
-| `POST` | `/api/ocr/scan-income` | Scan une fiche de paie (PDF) |
-| `GET` | `/api/ocr/salary-plans` | Liste les plans de salaire |
-| `POST` | `/api/ocr/salary-plans` | Sauvegarde un plan de salaire |
-| `GET` | `/api/echeances/` | Liste des échéances |
-| `POST` | `/api/echeances/` | Créer une échéance |
-| `GET` | `/api/budgets/` | Liste des budgets |
-| `POST` | `/api/budgets/` | Créer/mettre à jour un budget |
-| `DELETE` | `/api/budgets/:id` | Supprimer un budget |
-
----
-
-## Base de données
-
-- **Emplacement** : Voir `backend/config/paths.py` (variable `DB_PATH`)
-- **Outil** : SQLite
-- **Migrations** : Via `schema.py`
-
----
-
-## Commandes
-
-```bash
-uv pip install -r requirements.txt                           # Installer
-uv run uvicorn backend.main:app --reload   # Dev (port 8002)
-pytest                            # Tests
-```
-
----
-
-## Documentation par domaine
-
-Voir les fichiers `LOGIC_FLOW.md` dans :
-
-- `backend/api/transactions/LOGIC_FLOW.md`
-- `backend/api/dashboard/LOGIC_FLOW.md`
-- `backend/api/attachments/LOGIC_FLOW.md`
-- `backend/api/ocr/LOGIC_FLOW.md`
-- `backend/api/echeances/LOGIC_FLOW.md`
-- `backend/api/budgets/LOGIC_FLOW.md`

@@ -5,15 +5,15 @@ Tests du GoalRepository — CRUD complet sur base de données de test.
 import pytest
 from datetime import date
 
-from backend.domains.goals.database.model_goal import Goal
-from backend.domains.goals.database.repository_goal import GoalRepository
+from backend.domains.goals.model import Goal
+from backend.domains.goals.repository import GoalRepository
 
 
 @pytest.fixture
 def goal_repo(db_path) -> GoalRepository:
     """Repository branché sur la DB de test."""
     repo = GoalRepository(db_path=db_path)
-    from backend.domains.goals.database.schema_goal import init_goal_table
+    from backend.domains.goals.schema import init_goal_table
 
     init_goal_table(db_path)
     return repo
@@ -122,8 +122,8 @@ def test_delete_goal(goal_repo, goal_vacances):
 @pytest.mark.integration
 def test_get_all_with_progress(goal_repo, goal_vacances, db_path):
     """Récupère les objectifs avec progression."""
-    from backend.domains.transactions.database.repository import transaction_repository
-    from backend.domains.transactions.database.schema import init_transaction_table
+    from backend.domains.transactions.repository import transaction_repository
+    from backend.domains.transactions.schema import init_transaction_table
 
     transaction_repository.db_path = db_path
     init_transaction_table(db_path)

@@ -1,102 +1,67 @@
-# 💰 Domaine Transactions
+# Transactions Domain
 
-Bienvenue dans le centre nerveux de l'application. Ce module gère **toutes** les opérations financières (dépenses,
-revenus, virements).
+## Fonctionnalité
 
-## 🗺️ Carte du Module
+Centre nerveux de l'application. Gère **toutes** les opérations financières courantes et structurées (dépenses, revenus, virements internes). Fournit la vérité fondamentale du solde et de l'historique bancaire.
 
-Ce dossier est divisé en sous-modules spécialisés. Cliquez sur les liens pour accéder à la documentation détaillée de
-chaque partie :
+## Fichiers
 
-| Dossier           | Rôle                                                     | Documentation                             |
-|:------------------|:---------------------------------------------------------|:------------------------------------------|
-| **`database/`**   | **Données** (Schéma SQL, Repositories)                   | [🗄️ Lire la doc](database/README.md)     |
-| **`services/`**   | **Logique Métier** (Transaction, Attachment, SalaryPlan)  | [⚙️ Lire la doc](services/README.md)      |
-| **`echeance/`**   | **Échéances** (Service de gestion des échéances)        | [📅 Voir](echeance/echeance_service.py)  |
-| **`ocr/`**        | **Intelligence Artificielle** (Scan tickets/PDF)         | [👁️ Lire la doc](ocr/services/README.md) |
+- `model.py` - Modèle Pydantic `Transaction`
+- `schema.py` - Schéma SQL (SQLite)
+- `repository.py` - Opérations CRUD et requêtes avancées (listes filtrées)
+- `service.py` - Logique métier (calcul de statistiques, validations complexes)
+- `constants.py` - Énumérations et constantes (types de transactions, catégories)
+- `GLOSSARY.md` - Dictionnaire métier du vocabulaire financier utilisé
 
----
+## Usage
 
-## 🏗️ Architecture Globale
+### Manipulation de Transactions
 
-Comment tout cela fonctionne ensemble ? Voici le flux de données principal :
+```python
+from backend.domains.transactions.repository import transaction_repository
+from backend.domains.transactions.model import Transaction
 
-```mermaid
-graph TD
-    User((Utilisateur))
-    
-    subgraph "Interface (UI)"
-        Pages["📂 Pages\n(add.py, view.py)"]
-        View["🎨 View Components\n(Table, Calendar...)"]
-    end
-    
-    subgraph "Logique Métier"
-        OCR[👁️ Moteur OCR]
-        Recurrence[🔄 Moteur Récurrence]
-    end
-    
-    subgraph "Données"
-        Repo[🗄️ Repositories]
-        DB[(Base de Données)]
-    end
-    
-    %% Flux Utilisateur
-    User -->|Interagit| Pages
-    Pages -->|Utilise| View
-    
-    %% Flux Logique
-    Pages -->|Envoie Fichier| OCR
-    Pages -->|Gère| Recurrence
-    
-    %% Flux Données
-    Pages -->|CRUD| Repo
-    OCR -->|Extrait Données| Repo
-    Recurrence -->|Génère Auto| Repo
-    
-    Repo <-->|SQL| DB
-    
-    %% Styles
-    style Pages fill:#fff9c4,stroke:#fbc02d
-    style View fill:#e8f5e9,stroke:#2e7d32
-    style Repo fill:#e1f5fe,stroke:#0277bd
-    style OCR fill:#f3e5f5,stroke:#8e24aa
-    style Recurrence fill:#fff3e0,stroke:#ef6c00
+# Récupérer l'historique d'un mois
+transactions = transaction_repository.get_all(month=4, year=2026)
+
+# Ajouter une transaction manuelle
+tx = Transaction(
+    type="dépense",
+    categorie="Transport",
+    sous_categorie="Péage",
+    montant=15.50,
+    date="2026-04-09",
+    description="Autoroute"
+)
+transaction_repository.add(tx)
+
+# Mettre à jour une transaction
+transaction_repository.update("tx_123", tx)
 ```
 
-## 🚀 Guide Rapide
+## Stratégie de Données
 
-### Je veux modifier...
-
-- **Le service de gestion des transactions ?**
-  👉 [`services/transaction_service.py`](services/transaction_service.py) (Doc: [
-  `services/README.md`](services/README.md))
-
-- **La détection des prix sur les tickets ?**
-  👉 [`ocr/services/pattern_manager.py`](ocr/services/pattern_manager.py) (Doc: [
-  `ocr/services/README.md`](ocr/services/README.md))
-
-- **Le modèle de données d'une transaction ?**
-  👉 [`database/model.py`](database/model.py) (Doc: [`database/README.md`](database/README.md))
+Les transactions sont considérées comme la **source de vérité (SSOT)**.
+- Le solde actuel global est la somme dynamique de toutes les transactions réelles stockées.
+- Toute automatisation (échéance ou OCR) passe ultimement par la création d'une `Transaction` pour impacter les bilans.
 
 ---
 
 ## 🔧 Quick Reference
 
-### Fonctions clés à connaître
+### Endpoints API
 
-| Fonction | Fichier | Usage |
-|----------|---------|-------|
-| `calculate_next_occurrence` | `echeance/echeance_service.py` | Calcule la prochaine date d'une échéance |
-| `backfill_echeances` | `echeance/echeance_service.py` | Génère les transactions manquantes depuis les échéances |
-| `_get_paid_this_month` | `api/echeances/echeances.py` | Retourne les IDs des échéances payées ce mois |
-| `apply_salary_split` | `services/salary_plan_service.py` | Applique le split salaire |
-| `validate_salary_plan` | `services/salary_plan_service.py` | Valide un plan (< 100%) |
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| `GET` | `/api/transactions/` | Récupère les transactions (pagination/filtres) |
+| `POST` | `/api/transactions/` | Créer une transaction |
+| `PUT`| `/api/transactions/{id}` | Modifier une transaction |
+| `DELETE`| `/api/transactions/{id}`| Supprimer une transaction |
 
 ### Erreurs courantes
 
-| Erreur | Cause probable | Solution |
-|--------|---------------|----------|
-| `Échéance non trouvée` | ID inexistant dans la DB | Vérifier que l'ID existe dans `transactions` table |
-| `Solde échéance = 0` | Échéances filtrées par `status === 'paid'` | Inclure les 'paid' dans le calcul (elles comptent ce mois) |
-| `Allocations >= 100%` | Total des pourcentages trop élevé | Ajouter une catégorie reliquat (Épargne) |
-| `Module 'domains' not found` | Import sans `backend.` prefix | Utiliser `from backend.domains...` |
+| Erreur | Cause | Solution |
+|--------|-------|----------|
+| `Catégorie inconnue` | Erreur de saisie | Utiliser `constants.py` pour valider les catégories |
+| `Sync Error` | Différence de typage Front/Back | Aligner `Transaction` (`model.py`) avec `frontend/src/api.ts` |
+| `Exception: Date invalide` | Format string inapproprié | Toujours utiliser le standard ISO 8601 (`YYYY-MM-DD`) |

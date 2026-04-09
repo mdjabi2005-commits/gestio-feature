@@ -12,8 +12,8 @@ from backend.api.attachments.attachments import router as attachments_router
 from backend.api.ocr.ocr import router as ocr_router
 from backend.api.echeances.echeances import router as echeances_router
 from backend.api.budgets.budgets import router as budgets_router
-from backend.domains.goals.api.goals import router as goals_router
-from backend.domains.transactions.ocr.services.ocr_service import get_ocr_service
+from backend.api.goals import router as goals_router
+from backend.domains.ocr.services.ocr_service import get_ocr_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,17 +24,11 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Démarrage : Initialisation de la base de données
     try:
-        from backend.domains.transactions.database.schema import (
-            init_transaction_table,
-            init_attachments_table,
-            init_budgets_table,
-        )
-        from backend.domains.transactions.database.schema_table_echeance import (
-            init_echeance_table,
-        )
-        from backend.domains.goals.database.schema_goal import (
-            init_goal_table,
-        )
+        from backend.domains.transactions.schema import init_transaction_table
+        from backend.domains.attachments.schema import init_attachments_table
+        from backend.domains.budgets.schema import init_budgets_table
+        from backend.domains.echeance.schema import init_echeance_table
+        from backend.domains.goals.schema import init_goal_table
 
         init_transaction_table()
         init_attachments_table()

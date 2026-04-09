@@ -49,7 +49,7 @@ def get_active_echeances() -> List[dict]:
 
 def dict_to_echeance(data: dict) -> "Echeance":
     """Convertit dict vers Echeance."""
-    from backend.domains.transactions.database.model_echeance import Echeance
+    from backend.domains.echeance.model import Echeance
 
     return Echeance(
         id=data.get("id"),
@@ -125,7 +125,7 @@ def build_type_breakdown(t_type: str, color: str, data_by_type: dict) -> dict:
 
 def build_echeances_list(rows: List[dict], paid_ids: set) -> List[dict]:
     """Liste des prochaines échéances avec statut."""
-    from backend.domains.transactions.echeance.echeance_service import (
+    from backend.domains.echeance.service import (
         calculate_next_occurrence,
     )
 
