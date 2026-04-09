@@ -109,13 +109,6 @@ class AttachmentService:
             new_id = attachment_repository.add_attachment(attachment)
 
             if new_id:
-                from backend.domains.transactions.repository import (
-                    transaction_repository,
-                )
-
-                transaction_repository.update_attachment(
-                    transaction_id, str(target_path)
-                )
                 logger.info(f"Attachment ajouté: {unique_name} (ID: {new_id})")
                 return True
 

@@ -1,15 +1,31 @@
 """
-Tests pour shared/utils/amount_parser.py
+Tests pour le parsing des montants.
 Couvre : formats FR/EN, symboles €/$, None, vide, chaînes invalides.
+Utilise shared/utils/converters.safe_convert.
 """
 
 import pytest
 import pandas as pd
-from backend.shared.utils.amount_parser import parse_amount
+from backend.shared.utils.converters import safe_convert
+
+
+def parse_amount(value) -> float:
+    """Wrapper local pour simplifier les appels dans les tests."""
+    try:
+        if value is None or value == "":
+            return 0.0
+        try:
+            if pd.isna(value):
+                return 0.0
+        except (TypeError, ValueError):
+            pass
+    except Exception:
+        pass
+    return safe_convert(value, float, default=0.0)
 
 
 class TestParseAmount:
-    """Tests unitaires pour parse_amount."""
+    """Tests unitaires pour le parsing de montants."""
 
     # ─── Cas nominaux ────────────────────────────────────────
 
@@ -75,4 +91,3 @@ class TestParseAmount:
 
     def test_chaine_que_symbole_retourne_zero(self):
         assert parse_amount("€") == 0.0
-

@@ -9,7 +9,6 @@ from typing import List, Optional, Dict
 from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database import db_transaction
-from backend.shared.utils import create_empty_transaction_df, convert_transaction_df
 from backend.domains.transactions.model import Transaction
 
 logger = logging.getLogger(__name__)
@@ -114,8 +113,8 @@ class TransactionRepository:
 
                 # Save attachment if provided
                 if new_id and attachment_path:
-                    from .repository_attachment import attachment_repository
-                    from .model_attachment import TransactionAttachment
+                    from backend.domains.attachments.repository import attachment_repository
+                    from backend.domains.attachments.model import TransactionAttachment
 
                     attachment_repository.add_attachment(
                         TransactionAttachment(
@@ -255,8 +254,8 @@ class TransactionRepository:
     def update_attachment(self, transaction_id: int, attachment_path: str) -> bool:
         """Ajoute une pièce jointe pour une transaction (méthode legacy)."""
         try:
-            from .repository_attachment import attachment_repository
-            from .model_attachment import TransactionAttachment
+            from backend.domains.attachments.repository import attachment_repository
+            from backend.domains.attachments.model import TransactionAttachment
 
             attachment = TransactionAttachment(
                 transaction_id=transaction_id,

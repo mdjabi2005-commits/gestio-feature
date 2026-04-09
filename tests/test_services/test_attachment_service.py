@@ -199,6 +199,7 @@ def test_get_attachments(
     from backend.domains.transactions.schema import init_transaction_table
 
     transaction_repository.db_path = db_path
+    attachment_repository.db_path = db_path
     init_transaction_table(db_path)
 
     tx_id = transaction_repository.add(transaction_depense)
