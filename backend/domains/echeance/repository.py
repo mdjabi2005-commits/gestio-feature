@@ -4,13 +4,14 @@ Gère l'accès aux données de la table 'echeances'
 """
 
 import logging
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from typing import List, Optional
 from dateutil.relativedelta import relativedelta
 
 from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database import db_transaction
+from backend.shared.database.base_repository import BaseRepository
 from backend.domains.echeance.model import Echeance
 
 logger = logging.getLogger(__name__)
@@ -30,69 +31,33 @@ FREQ_DELTAS = {
 }
 
 
-class EcheanceRepository:
-    def __init__(self, db_path: str = None):
-        self.db_path = db_path
+class EcheanceRepository(BaseRepository[Echeance]):
+    table_name = "echeances"
+    model_class = Echeance
+
+    def _get_insert_data(self, echeance: Echeance) -> dict:
+        """Sérialise en excluant l'ID et formatant les dates."""
+        d = echeance.model_dump(exclude={'id'}, exclude_none=True)
+        if d.get('date_debut'): d['date_debut'] = d['date_debut'].isoformat()
+        if d.get('date_fin'): d['date_fin'] = d['date_fin'].isoformat()
+        d['date_creation'] = datetime.now().isoformat()
+        return d
 
     def get_all(self) -> List[Echeance]:
         """Récupère toutes les échéances actives."""
-        with db_transaction(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT * FROM echeances WHERE statut = 'active' ORDER BY date_debut ASC"
-            )
-            echeances = []
-            for row in cursor.fetchall():
-                try:
-                    echeances.append(Echeance.model_validate(dict(row)))
-                except Exception as e:
-                    logger.error(f"Error validating echeance row: {e}")
-            return echeances
+        return self.get_where("statut = 'active'", order_by="date_debut ASC")
 
     def get_all_raw(self) -> List[dict]:
         """Récupère toutes les échéances actives sous forme de dictionnaires."""
-        with db_transaction(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT * FROM echeances WHERE statut = 'active' ORDER BY date_debut ASC"
-            )
-            return [dict(row) for row in cursor.fetchall()]
+        return self.get_where_raw("statut = 'active'", order_by="date_debut ASC")
 
-    def add(self, echeance: Echeance) -> int:
+    def add(self, echeance: Echeance, conn=None) -> int:
         """Ajoute une nouvelle échéance et retourne son ID."""
         logger.info(f"Ajout d'une échéance : {echeance.nom} ({echeance.montant}€)")
-        query = """
-            INSERT INTO echeances (nom, type, categorie, sous_categorie, montant,
-                frequence, date_debut, date_fin, description, statut, type_echeance, objectif_id, date_creation)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, Datetime('now'))
-        """
-
         try:
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    query,
-                    (
-                        echeance.nom,
-                        echeance.type,
-                        echeance.categorie,
-                        echeance.sous_categorie,
-                        echeance.montant,
-                        echeance.frequence,
-                        echeance.date_debut,
-                        echeance.date_fin,
-                        echeance.description,
-                        echeance.statut,
-                        echeance.type_echeance,
-                        echeance.objectif_id,
-                    ),
-                )
-                echeance_id = cursor.lastrowid
-            logger.info(f"Échéance ajoutée avec succès (ID: {echeance_id})")
-            return echeance_id
-        except sqlcipher.Error as e:
+            return super().add(echeance, conn=conn) or 0
+        except Exception as e:
             from backend.config.logging_config import log_error
-
             log_error(e, "Erreur lors de l'ajout de l'échéance")
             return 0
 
@@ -103,66 +68,42 @@ class EcheanceRepository:
             return False
 
         logger.info(f"Mise à jour de l'échéance ID {echeance.id}")
-        query = """
-            UPDATE echeances
-            SET nom=?, type=?, categorie=?, sous_categorie=?, montant=?,
-                frequence=?, date_debut=?, date_fin=?, description=?,
-                statut=?, type_echeance=?, objectif_id=?, date_modification=Datetime('now')
-            WHERE id=?
-        """
+        
+        d = echeance.model_dump(exclude={'id'})
+        if d.get('date_debut'): d['date_debut'] = d['date_debut'].isoformat()
+        if d.get('date_fin'): d['date_fin'] = d['date_fin'].isoformat()
+        d['date_modification'] = datetime.now().isoformat()
 
         try:
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    query,
-                    (
-                        echeance.nom,
-                        echeance.type,
-                        echeance.categorie,
-                        echeance.sous_categorie,
-                        echeance.montant,
-                        echeance.frequence,
-                        echeance.date_debut,
-                        echeance.date_fin,
-                        echeance.description,
-                        echeance.statut,
-                        echeance.type_echeance,
-                        echeance.objectif_id,
-                        echeance.id,
-                    ),
-                )
-            logger.info(f"Échéance ID {echeance.id} mise à jour avec succès")
-            return True
-        except sqlcipher.Error as e:
+            success = self.update_by_id(echeance.id, d)
+            if success:
+                logger.info(f"Échéance ID {echeance.id} mise à jour avec succès")
+            return success
+        except Exception as e:
             from backend.config.logging_config import log_error
-
-            log_error(
-                e, f"Erreur lors de la mise à jour de l'échéance (ID: {echeance.id})"
-            )
+            log_error(e, f"Erreur lors de la mise à jour de l'échéance (ID: {echeance.id})")
             return False
 
-    def delete(self, echeance_id: int) -> bool:
+    def delete(self, echeance_id: int, conn=None) -> bool:
         """Supprime une échéance et ses transactions générées."""
         logger.info(f"Suppression de l'échéance ID {echeance_id}")
-        query = "DELETE FROM transactions WHERE echeance_id = ?"
-
+        
         try:
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(query, (echeance_id,))
+            with self._get_conn(conn) as c:
+                # Delete related transactions first (using same connection)
+                cursor = c.cursor()
+                cursor.execute("DELETE FROM transactions WHERE echeance_id = ?", (echeance_id,))
                 transactions_deleted = cursor.rowcount
+                
+                # Delete the echeance
                 cursor.execute("DELETE FROM echeances WHERE id = ?", (echeance_id,))
-            logger.info(
-                f"Échéance ID {echeance_id} supprimée ({transactions_deleted} transactions)"
-            )
-            return True
-        except sqlcipher.Error as e:
+                success = cursor.rowcount > 0
+                
+            logger.info(f"Échéance ID {echeance_id} supprimée ({transactions_deleted} transactions)")
+            return success
+        except Exception as e:
             from backend.config.logging_config import log_error
-
-            log_error(
-                e, f"Erreur lors de la suppression de l'échéance (ID: {echeance_id})"
-            )
+            log_error(e, f"Erreur lors de la suppression de l'échéance (ID: {echeance_id})")
             return False
 
     def get_occurrences_for_month(self, year: int, month: int) -> List[dict]:
@@ -174,21 +115,14 @@ class EcheanceRepository:
             month_start = date(year, month, 1)
             month_end = date(year, month, last_day)
 
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT * FROM echeances WHERE statut = 'active'")
-                rows = cursor.fetchall()
+            # Get raw objects since we don't need Pydantic models here really, 
+            # but using models ensures correct typing logic (as the previous version did).
+            echeances = self.get_all()
 
             occurrences = []
             limit_date = month_end
 
-            for row in rows:
-                try:
-                    echeance = Echeance.model_validate(dict(row))
-                except Exception as e:
-                    logger.error(f"Error validating echeance instance: {e}")
-                    continue
-
+            for echeance in echeances:
                 if echeance.date_fin and echeance.date_fin < month_start:
                     continue
 
@@ -236,6 +170,6 @@ class EcheanceRepository:
 
             return sorted(occurrences, key=lambda x: x["date"])
 
-        except sqlcipher.Error as e:
+        except Exception as e:
             logger.error(f"Erreur lors du calcul des occurrences: {e}")
             return []

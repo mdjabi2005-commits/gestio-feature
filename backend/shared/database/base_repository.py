@@ -1,136 +1,119 @@
 """
-Base Repository - Classe de base pour les repositories.
+Base Repository - Classe de base simplifiée pour les repositories.
 """
 
 import logging
-from abc import ABC, abstractmethod
-from typing import Any, Generic, List, Optional, TypeVar
+from contextlib import contextmanager
+from typing import Any, Generic, List, Optional, Type, TypeVar
 
 from sqlcipher3 import dbapi2 as sqlcipher
-
-from .connection import get_db_connection, close_connection
 from .db_context import db_transaction
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
-
-class BaseRepository(ABC, Generic[T]):
-    """
-    Classe de base pour les repositories.
-    Fournit les opérations CRUD de base.
-    """
-
+class BaseRepository(Generic[T]):
     table_name: str = ""
-    model_class: type = None
+    model_class: Type[T] = None
 
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path
 
-    @abstractmethod
+    # ── Helpers Internes ──────────────────────────────────────────────────
+
+    @contextmanager
+    def _get_conn(self, conn: Optional[sqlcipher.Connection] = None):
+        if conn:
+            yield conn
+        else:
+            with db_transaction(self.db_path) as new_conn:
+                yield new_conn
+
     def _row_to_model(self, row: sqlcipher.Row) -> T:
-        """Convertit une ligne SQL en modèle."""
-        pass
+        return self.model_class.model_validate(dict(row))
 
-    def _model_to_dict(self, model: T) -> dict:
-        """Convertit un modèle en dictionnaire pour INSERT/UPDATE."""
-        if hasattr(model, "model_dump"):
-            return model.model_dump()
-        return model.__dict__
+    def _get_insert_data(self, model: T) -> dict:
+        d = model.model_dump() if hasattr(model, "model_dump") else model.__dict__
+        return {k: v for k, v in d.items() if k != "id" and v is not None}
 
-    def get_all(self) -> List[T]:
-        """Récupère tous les enregistrements."""
+    def _execute_read(self, query: str, params: tuple = (), fetch_one: bool = False, raw: bool = False) -> Any:
         with db_transaction(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute(f"SELECT * FROM {self.table_name}")
-            return [self._row_to_model(row) for row in cursor.fetchall()]
+            cursor.execute(query, params)
+            if fetch_one:
+                row = cursor.fetchone()
+                if not row: return None
+                return dict(row) if raw else self._row_to_model(row)
+            
+            rows = cursor.fetchall()
+            if raw: return [dict(row) for row in rows]
+            
+            res = []
+            for r in rows:
+                try: res.append(self._row_to_model(r))
+                except Exception as e: logger.error(f"[{self.table_name}] Parse error: {e}")
+            return res
+
+    def _execute_write(self, query: str, params: tuple, conn=None) -> tuple:
+        try:
+            with self._get_conn(conn) as c:
+                cur = c.cursor()
+                cur.execute(query, params)
+                return cur.lastrowid, cur.rowcount
+        except sqlcipher.Error as e:
+            logger.error(f"[{self.table_name}] DB Write error: {e}")
+            return None, -1
+
+    # ── Lectures ──────────────────────────────────────────────────────────
+
+    def get_all(self, order_by: str = None, where: str = None, params: tuple = ()) -> List[T]:
+        q = f"SELECT * FROM {self.table_name}"
+        if where: q += f" WHERE {where}"
+        if order_by: q += f" ORDER BY {order_by}"
+        return self._execute_read(q, params)
+
+    def get_where(self, where: str, params: tuple = (), order_by: str = None) -> List[T]:
+        q = f"SELECT * FROM {self.table_name} WHERE {where}" + (f" ORDER BY {order_by}" if order_by else "")
+        return self._execute_read(q, params)
 
     def get_by_id(self, id: int) -> Optional[T]:
-        """Récupère un enregistrement par son ID."""
-        with db_transaction(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(f"SELECT * FROM {self.table_name} WHERE id = ?", (id,))
-            row = cursor.fetchone()
-            return self._row_to_model(row) if row else None
-
-    def get_where(self, where: str, params: tuple = ()) -> List[T]:
-        """Récupère les enregistrements correspondant à la condition."""
-        with db_transaction(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(f"SELECT * FROM {self.table_name} WHERE {where}", params)
-            return [self._row_to_model(row) for row in cursor.fetchall()]
+        return self._execute_read(f"SELECT * FROM {self.table_name} WHERE id = ?", (id,), fetch_one=True)
 
     def get_one_where(self, where: str, params: tuple = ()) -> Optional[T]:
-        """Récupère un seul enregistrement correspondant à la condition."""
-        with db_transaction(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(f"SELECT * FROM {self.table_name} WHERE {where}", params)
-            row = cursor.fetchone()
-            return self._row_to_model(row) if row else None
+        return self._execute_read(f"SELECT * FROM {self.table_name} WHERE {where} LIMIT 1", params, fetch_one=True)
+
+    def get_where_raw(self, where: str, params: tuple = (), order_by: str = None) -> List[dict]:
+        q = f"SELECT * FROM {self.table_name} WHERE {where}" + (f" ORDER BY {order_by}" if order_by else "")
+        return self._execute_read(q, params, raw=True)
 
     def count(self, where: str = "1=1", params: tuple = ()) -> int:
-        """Compte les enregistrements."""
-        with db_transaction(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                f"SELECT COUNT(*) FROM {self.table_name} WHERE {where}", params
-            )
-            return cursor.fetchone()[0]
+        res = self._execute_read(f"SELECT COUNT(*) FROM {self.table_name} WHERE {where}", params, raw=True, fetch_one=True)
+        return list(res.values())[0] if res else 0
 
-    def insert(self, data: dict) -> Optional[int]:
-        """Insère un nouvel enregistrement."""
-        columns = ", ".join(data.keys())
-        placeholders = ", ".join("?" * len(data))
-        query = f"INSERT INTO {self.table_name} ({columns}) VALUES ({placeholders})"
+    def exists(self, where: str, params: tuple = ()) -> bool:
+        return self.count(where, params) > 0
 
-        try:
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(query, tuple(data.values()))
-                return cursor.lastrowid
-        except sqlcipher.Error as e:
-            logger.error(f"Insert error: {e}")
-            return None
+    # ── Écritures ─────────────────────────────────────────────────────────
 
-    def update(self, id: int, data: dict) -> bool:
-        """Met à jour un enregistrement existant."""
+    def add(self, model: T, conn=None) -> Optional[int]:
+        data = self._get_insert_data(model)
+        if not data: return None
+        cols, pl = ", ".join(data.keys()), ", ".join("?" * len(data))
+        return self._execute_write(f"INSERT INTO {self.table_name} ({cols}) VALUES ({pl})", tuple(data.values()), conn)[0]
+
+    def update_by_id(self, id: int, data: dict, conn=None) -> bool:
+        if not data: return False
         set_clause = ", ".join(f"{k} = ?" for k in data.keys())
-        query = f"UPDATE {self.table_name} SET {set_clause} WHERE id = ?"
+        return self._execute_write(f"UPDATE {self.table_name} SET {set_clause} WHERE id = ?", tuple(data.values()) + (id,), conn)[1] > 0
 
-        try:
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(query, tuple(data.values()) + (id,))
-                return cursor.rowcount > 0
-        except sqlcipher.Error as e:
-            logger.error(f"Update error: {e}")
-            return False
+    def delete(self, id: int, conn=None) -> bool:
+        return self._execute_write(f"DELETE FROM {self.table_name} WHERE id = ?", (id,), conn)[1] > 0
 
-    def delete(self, id: int) -> bool:
-        """Supprime un enregistrement par son ID."""
-        try:
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(f"DELETE FROM {self.table_name} WHERE id = ?", (id,))
-                return cursor.rowcount > 0
-        except sqlcipher.Error as e:
-            logger.error(f"Delete error: {e}")
-            return False
+    def delete_where(self, where: str, params: tuple = (), conn=None) -> bool:
+        return self._execute_write(f"DELETE FROM {self.table_name} WHERE {where}", params, conn)[1] >= 0
 
     def delete_many(self, ids: List[int]) -> bool:
-        """Supprime plusieurs enregistrements par leurs IDs."""
-        if not ids:
-            return True
-
-        placeholders = ", ".join("?" * len(ids))
-        query = f"DELETE FROM {self.table_name} WHERE id IN ({placeholders})"
-
-        try:
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(query, ids)
-                return True
-        except sqlcipher.Error as e:
-            logger.error(f"Delete many error: {e}")
-            return False
+        if not ids: return True
+        pl = ", ".join("?" * len(ids))
+        return self._execute_write(f"DELETE FROM {self.table_name} WHERE id IN ({pl})", tuple(ids))[1] >= 0

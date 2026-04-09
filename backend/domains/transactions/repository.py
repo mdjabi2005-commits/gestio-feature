@@ -9,16 +9,16 @@ from typing import List, Optional, Dict
 from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database import db_transaction
+from backend.shared.database.base_repository import BaseRepository
 from backend.domains.transactions.model import Transaction
 
 logger = logging.getLogger(__name__)
 
 
-class TransactionRepository:
+class TransactionRepository(BaseRepository[Transaction]):
     """Repository pour gérer les transactions en base de données."""
-
-    def __init__(self, db_path: Optional[str] = None):
-        self.db_path = db_path
+    table_name = "transactions"
+    model_class = Transaction
 
     def _get_with_attachments_query(self) -> str:
         return """
@@ -56,14 +56,14 @@ class TransactionRepository:
 
         return validated.to_db_dict()
 
-    def add(self, transaction) -> Optional[int]:
+    def add(self, transaction, conn=None) -> Optional[int]:
         """Ajoute une transaction."""
         try:
             data = self._to_validated_db_dict(transaction)
 
             if data.get("external_id"):
-                with db_transaction(self.db_path) as conn:
-                    cursor = conn.cursor()
+                with self._get_conn(conn) as c:
+                    cursor = c.cursor()
                     cursor.execute(
                         "SELECT id FROM transactions WHERE external_id = ?",
                         (data["external_id"],),
@@ -72,36 +72,21 @@ class TransactionRepository:
                         logger.info(f"Doublon ignoré: {data['external_id']}")
                         return None
 
-            query = """
-                INSERT INTO transactions
-                (type, categorie, sous_categorie, description, montant, date,
-                 source, external_id, compte_id, echeance_id, objectif_id,
-                 date_mise_a_jour, statut_synchro)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
-
             now = datetime.now(timezone.utc).isoformat()
+            data["date_mise_a_jour"] = now
+            if "statut_synchro" not in data or not data["statut_synchro"]:
+                data["statut_synchro"] = "local"
+                
+            # Filter None to not override default schema values and keep insert clean
+            data_to_insert = {k: v for k, v in data.items() if v is not None}
 
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    query,
-                    (
-                        data["type"],
-                        data["categorie"],
-                        data["sous_categorie"],
-                        data["description"],
-                        data["montant"],
-                        data["date"],
-                        data["source"],
-                        data["external_id"],
-                        data.get("compte_id"),
-                        data["echeance_id"],
-                        data["objectif_id"],
-                        now,
-                        data.get("statut_synchro", "local"),
-                    ),
-                )
+            columns = ", ".join(data_to_insert.keys())
+            placeholders = ", ".join("?" * len(data_to_insert))
+            query = f"INSERT INTO {self.table_name} ({columns}) VALUES ({placeholders})"
+
+            with self._get_conn(conn) as c:
+                cursor = c.cursor()
+                cursor.execute(query, tuple(data_to_insert.values()))
                 new_id = cursor.lastrowid
 
                 # Handle attachment if provided in the input
@@ -111,7 +96,7 @@ class TransactionRepository:
                 elif hasattr(transaction, "attachment"):
                     attachment_path = getattr(transaction, "attachment")
 
-                # Save attachment if provided
+                # Save attachment if provided using the shared connection
                 if new_id and attachment_path:
                     from backend.domains.attachments.repository import attachment_repository
                     from backend.domains.attachments.model import TransactionAttachment
@@ -120,7 +105,7 @@ class TransactionRepository:
                         TransactionAttachment(
                             transaction_id=new_id, file_path=attachment_path
                         ),
-                        conn=conn,
+                        conn=c,
                     )
 
             logger.info(f"Transaction ajoutée: ID {new_id}")
@@ -142,38 +127,13 @@ class TransactionRepository:
 
         try:
             data = self._to_validated_db_dict(transaction)
-
             now = datetime.now(timezone.utc).isoformat()
+            
+            data["date_mise_a_jour"] = now
+            if "statut_synchro" not in data or not data["statut_synchro"]:
+                data["statut_synchro"] = "local"
 
-            query = """
-                UPDATE transactions
-                SET type=?, categorie=?, sous_categorie=?, description=?,
-                    montant=?, date=?, source=?, external_id=?, echeance_id=?,
-                    objectif_id=?, date_mise_a_jour=?, statut_synchro=?
-                WHERE id=?
-            """
-
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    query,
-                    (
-                        data["type"],
-                        data["categorie"],
-                        data["sous_categorie"],
-                        data["description"],
-                        data["montant"],
-                        data["date"],
-                        data["source"],
-                        data["external_id"],
-                        data["echeance_id"],
-                        data["objectif_id"],
-                        now,
-                        data.get("statut_synchro", "local"),
-                        tx_id,
-                    ),
-                )
-                return cursor.rowcount > 0
+            return self.update_by_id(tx_id, data)
 
         except ValueError as e:
             logger.error(f"Validation échouée update: {e}")
@@ -229,43 +189,11 @@ class TransactionRepository:
     def delete(self, transaction_id: int | List[int]) -> bool:
         """Supprime une ou plusieurs transactions."""
         if isinstance(transaction_id, int):
-            ids = [transaction_id]
+            return super().delete(transaction_id)
         else:
-            ids = transaction_id
-
-        if not ids:
-            return True
-
-        try:
-            placeholders = ",".join("?" * len(ids))
-            query = f"DELETE FROM transactions WHERE id IN ({placeholders})"
-
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(query, ids)
-
-            logger.info(f"{len(ids)} transaction(s) supprimée(s)")
-            return True
-
-        except sqlcipher.Error as e:
-            logger.error(f"Erreur delete: {e}")
-            return False
-
-    def update_attachment(self, transaction_id: int, attachment_path: str) -> bool:
-        """Ajoute une pièce jointe pour une transaction (méthode legacy)."""
-        try:
-            from backend.domains.attachments.repository import attachment_repository
-            from backend.domains.attachments.model import TransactionAttachment
-
-            attachment = TransactionAttachment(
-                transaction_id=transaction_id,
-                file_path=attachment_path,
-            )
-            new_id = attachment_repository.add_attachment(attachment)
-            return new_id is not None
-        except Exception as e:
-            logger.error(f"Erreur update_attachment: {e}")
-            return False
+            if not transaction_id:
+                return True
+            return self.delete_many(transaction_id)
 
 
 transaction_repository = TransactionRepository()

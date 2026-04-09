@@ -10,6 +10,7 @@ from dateutil.relativedelta import relativedelta
 from sqlcipher3 import dbapi2 as sqlcipher
 
 from backend.shared.database import db_transaction
+from backend.shared.database.base_repository import BaseRepository
 from backend.domains.budgets.service import (
     load_salary_plan,
     SalaryPlanError,
@@ -19,9 +20,12 @@ from backend.domains.goals.model import Goal, GoalWithProgress
 logger = logging.getLogger(__name__)
 
 
-class GoalRepository:
+class GoalRepository(BaseRepository[Goal]):
+    table_name = "goals"
+    model_class = Goal
+
     def __init__(self, db_path: str = None):
-        self.db_path = db_path
+        super().__init__(db_path)
         self._salary_plan_cache = None
 
     def _get_salary_plan(self) -> dict:
@@ -38,36 +42,26 @@ class GoalRepository:
                 }
         return self._salary_plan_cache
 
+    def _get_insert_data(self, goal: Goal) -> dict:
+        """Sérialise en excluant l'ID et formatant les dates."""
+        d = goal.model_dump(exclude={'id'})
+        if d.get('date_debut'): d['date_debut'] = d['date_debut'].isoformat()
+        if d.get('date_fin'): d['date_fin'] = d['date_fin'].isoformat()
+        if d.get('date_creation'):
+            d['date_creation'] = d['date_creation'].isoformat()
+        else:
+            d['date_creation'] = datetime.now().date().isoformat()
+        return d
+
     def get_all(self) -> List[Goal]:
-        """Récupère tous les objectifs."""
-        with db_transaction(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT * FROM goals WHERE statut != 'archived' ORDER BY date_creation DESC"
-            )
-            goals = []
-            for row in cursor.fetchall():
-                try:
-                    goals.append(Goal.model_validate(dict(row)))
-                except Exception as e:
-                    logger.error(f"Error validating goal row: {e}")
-            return goals
+        """Récupère tous les objectifs non archivés."""
+        return self.get_where("statut != 'archived'", order_by="date_creation DESC")
 
     def get_all_with_progress(self) -> List[GoalWithProgress]:
         """Récupère tous les objectifs avec leur progression."""
         goals = self.get_all()
         salary_plan = self._get_salary_plan()
         return [self._add_progress(goal, goals, salary_plan) for goal in goals]
-
-    def get_by_id(self, goal_id: int) -> Optional[Goal]:
-        """Récupère un objectif par son ID."""
-        with db_transaction(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM goals WHERE id = ?", (goal_id,))
-            row = cursor.fetchone()
-            if row:
-                return Goal.model_validate(dict(row))
-            return None
 
     def get_by_id_with_progress(self, goal_id: int) -> Optional[GoalWithProgress]:
         """Récupère un objectif avec sa progression."""
@@ -78,89 +72,30 @@ class GoalRepository:
             return self._add_progress(goal, all_goals, salary_plan)
         return None
 
-    def add(self, goal: Goal) -> Optional[int]:
-        """Ajoute un nouvel objectif."""
-        query = """
-            INSERT INTO goals (nom, montant_cible, date_debut, date_fin, categorie, description, statut, poids_allocation, date_creation, montant_mensuel)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-
-        try:
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    query,
-                    (
-                        goal.nom,
-                        goal.montant_cible,
-                        goal.date_debut.isoformat() if goal.date_debut else None,
-                        goal.date_fin.isoformat() if goal.date_fin else None,
-                        goal.categorie,
-                        goal.description,
-                        goal.statut,
-                        goal.poids_allocation,
-                        datetime.now().date().isoformat(),
-                        goal.montant_mensuel,
-                    ),
-                )
-                new_id = cursor.lastrowid
-                logger.info(f"Goal added: ID {new_id}")
-                return new_id
-        except sqlcipher.Error as e:
-            logger.error(f"Erreur SQL add goal: {e}")
-            return None
-
     def update(self, goal_id: int, goal_data: dict) -> bool:
         """Met à jour un objectif existant."""
         if not goal_id:
             return False
 
-        query = """
-            UPDATE goals
-            SET nom = ?, montant_cible = ?, date_debut = ?, date_fin = ?, categorie = ?, description = ?, statut = ?, poids_allocation = ?, date_modification = ?, montant_mensuel = ?
-            WHERE id = ?
-        """
+        # Format dates
+        if 'date_debut' in goal_data and goal_data['date_debut']:
+            goal_data['date_debut'] = goal_data['date_debut'].isoformat()
+        if 'date_fin' in goal_data and goal_data['date_fin']:
+            goal_data['date_fin'] = goal_data['date_fin'].isoformat()
+        
+        goal_data['date_modification'] = datetime.now().isoformat()
 
-        try:
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    query,
-                    (
-                        goal_data.get("nom"),
-                        goal_data.get("montant_cible"),
-                        goal_data.get("date_debut").isoformat()
-                        if goal_data.get("date_debut")
-                        else None,
-                        goal_data.get("date_fin").isoformat()
-                        if goal_data.get("date_fin")
-                        else None,
-                        goal_data.get("categorie"),
-                        goal_data.get("description"),
-                        goal_data.get("statut"),
-                        goal_data.get("poids_allocation"),
-                        datetime.now().isoformat(),
-                        goal_data.get("montant_mensuel"),
-                        goal_id,
-                    ),
-                )
-                self._salary_plan_cache = None
-                return cursor.rowcount > 0
-        except sqlcipher.Error as e:
-            logger.error(f"Erreur SQL update goal: {e}")
-            return False
+        success = self.update_by_id(goal_id, goal_data)
+        if success:
+            self._salary_plan_cache = None
+        return success
 
-    def delete(self, goal_id: int) -> bool:
-        """Supprime un objectif."""
-        try:
-            with db_transaction(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM goals WHERE id = ?", (goal_id,))
-                self._salary_plan_cache = None
-                return cursor.rowcount > 0
-        except sqlcipher.Error as e:
-            logger.error(f"Erreur SQL delete goal: {e}")
-            return False
+    def delete(self, goal_id: int, conn: Optional[sqlcipher.Connection] = None) -> bool:
+        """Supprime un objectif et vide le cache."""
+        success = super().delete(goal_id, conn=conn)
+        if success:
+            self._salary_plan_cache = None
+        return success
 
     def _calculate_epargne_mensuelle(self, salary_plan: dict) -> float:
         """Calcule l'enveloppe d'épargne mensuelle depuis le salary plan."""
@@ -220,6 +155,7 @@ class GoalRepository:
             months = (goal.date_fin.year - start_date.year) * 12 + (
                 goal.date_fin.month - start_date.month
             )
+            # Ensure safe handling if dates are strings (they shouldn't be since Pydantic parses them)
             months = max(1, months)
             montant_cible_calcule = round(montant_mensuel * months, 2)
         else:
@@ -263,7 +199,7 @@ class GoalRepository:
                 FROM transactions
                 WHERE categorie = ? AND date >= ?
                 """,
-                (goal.categorie, start_date.isoformat()),
+                (goal.categorie, start_date.isoformat() if hasattr(start_date, 'isoformat') else start_date),
             )
             result = cursor.fetchone()
             return float(result["total"]) if result else 0.0
@@ -306,7 +242,7 @@ class GoalRepository:
                     """,
                     (
                         goal.categorie,
-                        start_date.isoformat(),
+                        start_date.isoformat() if hasattr(start_date, 'isoformat') else start_date,
                         (current_date + relativedelta(months=1)).isoformat(),
                     ),
                 )
