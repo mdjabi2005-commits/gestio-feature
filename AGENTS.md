@@ -12,10 +12,10 @@
    - Sur quelle issue travaille-t-on ? (ex: #12)
    - Sur quelle branche sommes-nous ? (`git branch --show-current`)
 
-**Règles absolues :**
+**Règles absolues (Git & Branches) :**
 - **NE JAMAIS coder sur `main`**
 - Si pas de branche précisée, **demander** avant de commencer
-- Référencer `#{numéro}` dans chaque commit
+- **OBLIGATOIRE :** Le numéro de l'issue est **toujours** dans le nom de la branche actuelle. L'agent doit le repérer et **systématiquement** l'inclure dans CHAQUE message de commit via la syntaxe `(#numéro)`. (Exemple: `git status` -> branche `13-ma-feature` -> mettre `(#13)` dans le commit).
 
 ---
 
