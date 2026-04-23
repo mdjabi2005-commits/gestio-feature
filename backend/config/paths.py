@@ -6,23 +6,23 @@ from dotenv import load_dotenv
 APP_ROOT = Path(__file__).parent.parent.parent
 APP_NAME = "gestio-test"
 
-DATA_DIR = platformdirs.user_data_dir(appname=APP_NAME, appauthor=False)
+DATA_DIR = Path(platformdirs.user_data_dir(appname=APP_NAME, appauthor=False))
 
-DB_PATH = os.path.join(DATA_DIR, "finances.db")
+DB_PATH = DATA_DIR / "finances.db"
 
-DESKTOP_DIR = platformdirs.user_desktop_dir()
+DESKTOP_DIR = Path(platformdirs.user_desktop_dir())
 
-TO_SCAN_DIR = os.path.join(DESKTOP_DIR, "Gestio_Tickets")
-SORTED_DIR = os.path.join(DATA_DIR, "tickets_tries")
+TO_SCAN_DIR = DESKTOP_DIR / "Gestio_Tickets"
+SORTED_DIR = DATA_DIR / "tickets_tries"
 
-REVENUS_A_TRAITER = os.path.join(DESKTOP_DIR, "Gestio_Revenus")
-REVENUS_TRAITES = os.path.join(DATA_DIR, "revenus_traites")
+REVENUS_A_TRAITER = DESKTOP_DIR / "Gestio_Revenus"
+REVENUS_TRAITES = DATA_DIR / "revenus_traites"
 
-APP_LOG_PATH = os.path.join(DATA_DIR, "gestio_app.log")
+APP_LOG_PATH = DATA_DIR / "gestio_app.log"
 
-OBJECTIFS_DIR = os.path.join(DATA_DIR, "objectifs")
+OBJECTIFS_DIR = DATA_DIR / "objectifs"
 
-ENV_PATH = Path(DATA_DIR) / ".env"
+ENV_PATH = DATA_DIR / ".env"
 if not ENV_PATH.exists():
     PROJECT_ENV = APP_ROOT / ".env"
     if PROJECT_ENV.exists():
@@ -46,4 +46,5 @@ for directory in [
     REVENUS_TRAITES,
     OBJECTIFS_DIR,
 ]:
-    os.makedirs(directory, exist_ok=True)
+    directory.mkdir(parents=True, exist_ok=True)
+

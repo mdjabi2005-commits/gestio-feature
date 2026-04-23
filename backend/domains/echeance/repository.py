@@ -18,16 +18,11 @@ logger = logging.getLogger(__name__)
 
 FREQ_DELTAS = {
     "quotidien": timedelta(days=1),
-    "quotidienne": timedelta(days=1),
     "hebdomadaire": timedelta(weeks=1),
     "mensuel": relativedelta(months=1),
-    "mensuelle": relativedelta(months=1),
     "trimestriel": relativedelta(months=3),
-    "trimestrielle": relativedelta(months=3),
     "semestriel": relativedelta(months=6),
-    "semestrielle": relativedelta(months=6),
     "annuel": relativedelta(years=1),
-    "annuelle": relativedelta(years=1),
 }
 
 
@@ -173,3 +168,38 @@ class EcheanceRepository(BaseRepository[Echeance]):
         except Exception as e:
             logger.error(f"Erreur lors du calcul des occurrences: {e}")
             return []
+
+    def get_paid_this_month(self) -> set[int]:
+        """Récupère les IDs des échéances payées ce mois."""
+        today = date.today()
+        month_start = today.replace(day=1).isoformat()
+        month_end = (
+            (today.replace(day=28) + relativedelta(months=1)).replace(day=1).isoformat()
+        )
+
+        from backend.domains.transactions.repository import transaction_repository
+        
+        results = transaction_repository.get_time_filtered(
+            start_date=month_start,
+            end_date=month_end,
+            date_column="date",
+            where="echeance_id IS NOT NULL",
+            base_query="SELECT echeance_id FROM transactions",
+            end_inclusive=False,
+            raw=True
+        )
+        return {row["echeance_id"] for row in results} if results else set()
+
+    def get_paid_dates_map(self) -> dict[str, list[str]]:
+        """Récupère un dictionnaire {echeance_id: [dates_payées]}."""
+        with db_transaction() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT echeance_id, date FROM transactions WHERE echeance_id IS NOT NULL"
+            )
+            res: dict[str, list[str]] = {}
+            for row in cursor.fetchall():
+                eid = str(row["echeance_id"])
+                d = row["date"][:10]
+                res.setdefault(eid, []).append(d)
+            return res

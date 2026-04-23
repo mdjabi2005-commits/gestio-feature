@@ -94,6 +94,54 @@ class BaseRepository(Generic[T]):
     def exists(self, where: str, params: tuple = ()) -> bool:
         return self.count(where, params) > 0
 
+    def get_time_filtered(
+        self,
+        start_date: Optional[Any] = None,
+        end_date: Optional[Any] = None,
+        date_column: str = "date",
+        where: str = None,
+        params: tuple = (),
+        group_by: str = None,
+        order_by: str = None,
+        base_query: str = None,
+        base_query_has_where: bool = False,
+        end_inclusive: bool = True,
+        raw: bool = False,
+        fetch_one: bool = False,
+    ) -> Any:
+        """
+        Requête temporelle hyper-générique.
+        """
+        query = base_query or f"SELECT * FROM {self.table_name}"
+        conditions = []
+        new_params = list(params)
+
+        if where:
+            conditions.append(f"({where})")
+
+        if start_date:
+            conditions.append(f"{date_column} >= ?")
+            new_params.append(start_date.isoformat() if hasattr(start_date, 'isoformat') else start_date)
+
+        if end_date:
+            op = "<=" if end_inclusive else "<"
+            conditions.append(f"{date_column} {op} ?")
+            new_params.append(end_date.isoformat() if hasattr(end_date, 'isoformat') else end_date)
+
+        if conditions:
+            if base_query_has_where:
+                query += " AND " + " AND ".join(conditions)
+            else:
+                query += " WHERE " + " AND ".join(conditions)
+
+        if group_by:
+            query += f" GROUP BY {group_by}"
+
+        if order_by:
+            query += f" ORDER BY {order_by}"
+
+        return self._execute_read(query, tuple(new_params), fetch_one=fetch_one, raw=raw)
+
     # ── Écritures ─────────────────────────────────────────────────────────
 
     def add(self, model: T, conn=None) -> Optional[int]:

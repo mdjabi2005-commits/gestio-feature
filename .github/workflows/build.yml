@@ -70,7 +70,9 @@ jobs:
           cp -r backend release-universal/
           mkdir -p release-universal/frontend
           cp -r frontend/out release-universal/frontend/out
-          cp pyproject.toml uv.lock launcher.py launcher.bat launcher.sh release-universal/
+          mkdir -p release-universal/distribution
+          cp pyproject.toml uv.lock release-universal/
+          cp distribution/launcher.py distribution/launcher.bat distribution/launcher.sh release-universal/distribution/
           python -c "import shutil; shutil.make_archive('Gestio-Universal', 'zip', 'release-universal')"
 
       - name: Upload Universal artifact
@@ -154,7 +156,7 @@ jobs:
             | Plateforme | Fichier | Instructions |
             |---|---|---|
             | Windows | `Gestio-Setup-v*.exe` | Double-cliquez sur l'assistant d'installation |
-            | macOS / Linux | `Gestio-Universal.zip` | Dézippez et exécutez `bash launcher.sh` (nécessite l'outil `uv`) |
+            | macOS / Linux | `Gestio-Universal.zip` | Dézippez et exécutez `bash distribution/launcher.sh` (nécessite l'outil `uv`) |
 
             Vos données financières sont stockées exclusivement sur votre machine locale.
           files: |

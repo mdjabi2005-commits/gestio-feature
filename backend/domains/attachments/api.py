@@ -8,8 +8,6 @@ from backend.domains.echeance.repository import EcheanceRepository
 from backend.domains.attachments.service import (
     attachment_service,
     archive_file,
-    archive_payroll_file,
-    archive_ticket_file,
 )
 from backend.domains.attachments.model import TransactionAttachment
 from backend.domains.goals.repository import goal_repository
@@ -68,7 +66,7 @@ async def upload_echeance_attachment(echeance_id: int, file: UploadFile = File(.
 
     ext = Path(filename).suffix.lower()
 
-    success = attachment_service.add_attachment_to_echeance(
+    success = attachment_service.add_attachment(
         echeance_id=echeance_id,
         file_content=content,
         filename=filename,
@@ -115,7 +113,7 @@ async def upload_goal_attachment(objectif_id: int, file: UploadFile = File(...))
         raise HTTPException(status_code=404, detail="Objectif non trouvé")
 
     content = await file.read()
-    success = attachment_service.add_attachment_to_objectif(
+    success = attachment_service.add_attachment(
         objectif_id=objectif_id,
         nom_objectif=goal.nom,
         file_content=content,

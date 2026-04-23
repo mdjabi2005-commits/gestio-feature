@@ -4,6 +4,7 @@ from datetime import date
 from typing import List, Dict, Any
 
 from backend.shared.database import db_transaction
+from backend.domains.echeance.model import Echeance
 from backend.shared.utils.categories_loader import (
     get_category_config,
     get_subcategories,
@@ -27,29 +28,18 @@ def get_month_range() -> tuple[str, str]:
 
 def get_paid_echeance_ids() -> set:
     """IDs des échéances payées ce mois."""
-    start, end = get_month_range()
-    with db_transaction() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT echeance_id FROM transactions WHERE date >= ? AND date < ? AND echeance_id IS NOT NULL",
-            (start, end),
-        )
-        return {r["echeance_id"] for r in cursor.fetchall()}
+    from backend.domains.echeance.repository import EcheanceRepository
+    return EcheanceRepository().get_paid_this_month()
 
 
 def get_active_echeances() -> List[dict]:
     """Échéances actives depuis la DB."""
-    with db_transaction() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT * FROM echeances WHERE statut = 'active' ORDER BY date_debut ASC"
-        )
-        return [dict(r) for r in cursor.fetchall()]
+    from backend.domains.echeance.repository import EcheanceRepository
+    return EcheanceRepository().get_all_raw()
 
 
-def dict_to_echeance(data: dict) -> "Echeance":
+def dict_to_echeance(data: dict) -> Echeance:
     """Convertit dict vers Echeance."""
-    from backend.domains.echeance.model import Echeance
 
     return Echeance(
         id=data.get("id"),
@@ -171,13 +161,19 @@ def build_budget_summary() -> dict:
         return {"total_budget_prevu": 0, "total_consomme": 0, "repartition_budget": []}
 
     start, end = get_month_range()
-    with db_transaction() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT categorie, SUM(montant) as total FROM transactions WHERE type = 'depense' AND date >= ? AND date < ? GROUP BY categorie",
-            (start, end),
-        )
-        expenses = {r[0]: r[1] for r in cursor.fetchall()}
+    from backend.domains.transactions.repository import transaction_repository
+    
+    results = transaction_repository.get_time_filtered(
+        start_date=start,
+        end_date=end,
+        date_column="date",
+        where="type = 'depense'",
+        group_by="categorie",
+        base_query="SELECT categorie, COALESCE(SUM(montant), 0) as total FROM transactions",
+        end_inclusive=False,
+        raw=True
+    )
+    expenses = {r["categorie"]: r["total"] for r in results} if results else {}
 
     total_prev = sum(cats.values())
     total_cons = sum(expenses.get(c, 0) for c in cats)

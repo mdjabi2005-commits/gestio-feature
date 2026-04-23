@@ -18,9 +18,9 @@ def temp_scanned_dirs(tmp_path: Path, monkeypatch):
     revenus_dir.mkdir()
     objectifs_dir.mkdir()
 
-    monkeypatch.setattr("backend.config.paths.SORTED_DIR", str(sorted_dir))
-    monkeypatch.setattr("backend.config.paths.REVENUS_TRAITES", str(revenus_dir))
-    monkeypatch.setattr("backend.config.paths.OBJECTIFS_DIR", str(objectifs_dir))
+    monkeypatch.setattr("backend.domains.attachments.service.SORTED_DIR", str(sorted_dir))
+    monkeypatch.setattr("backend.domains.attachments.service.REVENUS_TRAITES", str(revenus_dir))
+    monkeypatch.setattr("backend.domains.attachments.service.OBJECTIFS_DIR", str(objectifs_dir))
     return sorted_dir, revenus_dir, objectifs_dir
 
 
@@ -130,7 +130,7 @@ def test_add_attachment_to_echeance(
     file_content = b"Quittance de loyer"
     filename = "quittance_loyer.pdf"
 
-    success = attachment_svc.add_attachment_to_echeance(
+    success = attachment_svc.add_attachment(
         echeance_id=echeance_id, file_content=file_content, filename=filename
     )
 
@@ -165,7 +165,7 @@ def test_add_attachment_to_objectif(
     file_content = b"Brochure vacances"
     filename = "brochure.pdf"
 
-    success = attachment_svc.add_attachment_to_objectif(
+    success = attachment_svc.add_attachment(
         objectif_id=objectif_id,
         nom_objectif="Vacances",
         file_content=file_content,
@@ -175,19 +175,7 @@ def test_add_attachment_to_objectif(
     assert success is True, "L'ajout de l'attachment objectif a échoué"
 
 
-@pytest.mark.integration
-def test_find_file(attachment_svc, temp_scanned_dirs, tmp_path):
-    """Test la recherche de fichier par nom."""
-    sorted_dir, revenus_dir, objectifs_dir = temp_scanned_dirs
 
-    test_file = sorted_dir / "Alimentation" / "test_ticket.jpg"
-    test_file.parent.mkdir(parents=True, exist_ok=True)
-    test_file.write_bytes(b"test content")
-
-    found = attachment_svc.find_file("test_ticket.jpg")
-
-    assert found is not None
-    assert found.name == "test_ticket.jpg"
 
 
 @pytest.mark.integration
@@ -220,16 +208,24 @@ def test_get_attachments(
 
 def test_archive_income_file(attachment_svc, temp_scanned_dirs, tmp_path):
     """Test l'archivage d'un fichier de revenu."""
+    from backend.domains.attachments.service import archive_file
+    from backend.domains.transactions.model import Transaction
+
     sorted_dir, revenus_dir, objectifs_dir = temp_scanned_dirs
 
     temp_file = tmp_path / "fiche_paie_temp.pdf"
     temp_file.write_bytes(b"fake pdf content")
 
-    archived_path = attachment_svc.archive_income_file(
-        temp_path=str(temp_file),
-        category="Salaire",
-        date_str="2026-01-31",
-        net_amount=2500.0,
+    archived_path = archive_file(
+        source_path=str(temp_file),
+        transaction=Transaction(
+            type="Revenu",
+            categorie="Salaire",
+            sous_categorie="Mensuel",
+            montant=2500.0,
+            date="2026-01-31",
+        ),
+        is_ticket=False,
     )
 
     assert archived_path is not None

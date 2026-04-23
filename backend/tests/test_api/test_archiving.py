@@ -8,10 +8,8 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from backend.api.attachments.attachments import (
+from backend.domains.attachments.api import (
     archive_file as _archive_file,
-    archive_ticket_file as _archive_ticket_file,
-    archive_payroll_file as _archive_payroll_file,
 )
 from backend.domains.transactions.model import Transaction
 
@@ -33,8 +31,13 @@ class TestArchiveFile:
 
         result = _archive_file(
             source_path=test_file,
-            category="Alimentation",
-            sub_category="Supermarché",
+            transaction=Transaction(
+                type="Dépense",
+                categorie="Alimentation",
+                sous_categorie="Supermarché",
+                montant=0.0,
+                date="2026-01-15",
+            ),
             target_base_dir=temp_dir,
             is_ticket=True,
         )
@@ -53,8 +56,13 @@ class TestArchiveFile:
 
         result = _archive_file(
             source_path=test_file,
-            category="Transport",
-            sub_category=None,
+            transaction=Transaction(
+                type="Dépense",
+                categorie="Transport",
+                sous_categorie=None,
+                montant=0.0,
+                date="2026-01-15",
+            ),
             target_base_dir=temp_dir,
             is_ticket=True,
         )
@@ -75,16 +83,26 @@ class TestArchiveFile:
 
         result1 = _archive_file(
             source_path=test_file1,
-            category="Test",
-            sub_category="Cat1",
+            transaction=Transaction(
+                type="Dépense",
+                categorie="Test",
+                sous_categorie="Cat1",
+                montant=0.0,
+                date="2026-01-15",
+            ),
             target_base_dir=temp_dir,
             is_ticket=True,
         )
 
         result2 = _archive_file(
             source_path=test_file2,
-            category="Test",
-            sub_category="Cat1",
+            transaction=Transaction(
+                type="Dépense",
+                categorie="Test",
+                sous_categorie="Cat1",
+                montant=0.0,
+                date="2026-01-15",
+            ),
             target_base_dir=temp_dir,
             is_ticket=True,
         )
@@ -101,8 +119,13 @@ class TestArchiveFile:
 
         result = _archive_file(
             source_path=test_file,
-            category="Test",
-            sub_category="Sub",
+            transaction=Transaction(
+                type="Dépense",
+                categorie="Test",
+                sous_categorie="Sub",
+                montant=0.0,
+                date="2026-01-15",
+            ),
             target_base_dir=temp_dir,
             is_ticket=True,
         )
@@ -118,8 +141,13 @@ class TestArchiveFile:
 
         result = _archive_file(
             source_path=test_file,
-            category="Épargne",
-            sub_category="Salaire",
+            transaction=Transaction(
+                type="Revenu",
+                categorie="Épargne",
+                sous_categorie="Salaire",
+                montant=0.0,
+                date="2026-01-15",
+            ),
             target_base_dir=temp_dir,
             is_ticket=False,
         )
@@ -130,7 +158,7 @@ class TestArchiveFile:
 
 
 class TestArchiveTicketFile:
-    """Tests de la fonction _archive_ticket_file."""
+    """Tests de la fonction _archive_file pour les tickets."""
 
     @pytest.fixture
     def temp_dir(self):
@@ -161,7 +189,7 @@ class TestArchiveTicketFile:
         with open(test_file, "wb") as f:
             f.write(b"data")
 
-        result = _archive_ticket_file(test_file, sample_transaction)
+        result = _archive_file(test_file, transaction=sample_transaction, is_ticket=True)
 
         assert result is not None
         assert "Alimentation" in result
@@ -173,13 +201,14 @@ class TestArchiveTicketFile:
         with open(test_file, "wb") as f:
             f.write(b"data")
 
-        result = _archive_ticket_file(test_file, None)
+        result = _archive_file(test_file, transaction=None, is_ticket=True)
 
-        assert result is None
+        assert result is not None
+        assert "Autre" in result
 
 
 class TestArchivePayrollFile:
-    """Tests de la fonction _archive_payroll_file."""
+    """Tests de la fonction _archive_file pour les fiches de paie."""
 
     @pytest.fixture
     def temp_dir(self):
@@ -211,7 +240,7 @@ class TestArchivePayrollFile:
         with open(test_file, "wb") as f:
             f.write(b"pdf data")
 
-        result = _archive_payroll_file(test_file, transactions_list)
+        result = _archive_file(test_file, transaction=transactions_list[0], is_ticket=False)
 
         assert result is not None
         assert "Épargne" in result
@@ -223,9 +252,10 @@ class TestArchivePayrollFile:
         with open(test_file, "wb") as f:
             f.write(b"data")
 
-        result = _archive_payroll_file(test_file, [])
+        result = _archive_file(test_file, transaction=None, is_ticket=False)
 
-        assert result is None
+        assert result is not None
+        assert "Autre" in result
 
 
 class TestWatcherFunctions:
@@ -233,7 +263,7 @@ class TestWatcherFunctions:
 
     def test_is_valid_file_images(self):
         """Test validation des fichiers image."""
-        from backend.api.ocr.watcher import _is_valid_file
+        from backend.domains.ocr.watcher import _is_valid_file
 
         assert _is_valid_file("ticket.jpg") == "image"
         assert _is_valid_file("ticket.jpeg") == "image"
@@ -244,13 +274,13 @@ class TestWatcherFunctions:
 
     def test_is_valid_file_pdf(self):
         """Test validation des fichiers PDF."""
-        from backend.api.ocr.watcher import _is_valid_file
+        from backend.domains.ocr.watcher import _is_valid_file
 
         assert _is_valid_file("fiche_paie.pdf") == "pdf"
 
     def test_is_valid_file_invalid(self):
         """Test fichiers invalides."""
-        from backend.api.ocr.watcher import _is_valid_file
+        from backend.domains.ocr.watcher import _is_valid_file
 
         assert _is_valid_file("readme.txt") is None
         assert _is_valid_file("document.doc") is None

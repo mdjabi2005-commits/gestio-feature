@@ -5,6 +5,12 @@ import socket
 import subprocess
 import webbrowser
 
+# Forcer l'encodage UTF-8 pour le terminal Windows
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 try:
     import browsers
 except ImportError:
@@ -12,6 +18,9 @@ except ImportError:
     print("Attention: le module 'pybrowsers' n'est pas installé. Fallback sur webbrowser standard actif.")
 
 PORT = 8002
+
+# Calcul du chemin racine du projet (V1-feature)
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def wait_for_port(port, timeout=30):
     start_time = time.time()
@@ -63,7 +72,8 @@ def main():
     # On lance Uvicorn en utilisant uv (optimisé)
     backend_process = subprocess.Popen(
         ["uv", "run", "uvicorn", "backend.main:app", "--port", str(PORT)],
-        creationflags=creationflags
+        creationflags=creationflags,
+        cwd=PROJECT_ROOT
     )
     
     print(f"\n[2/2] En attente de l'application (port {PORT})...")

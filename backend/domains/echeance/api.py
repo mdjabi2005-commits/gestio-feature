@@ -11,10 +11,9 @@ from dateutil.relativedelta import relativedelta
 from backend.domains.echeance.model import Echeance
 from backend.domains.echeance.repository import EcheanceRepository
 from backend.domains.echeance.service import (
-    calculate_next_occurrence,
     backfill_echeances,
-    get_paid_this_month,
-    get_paid_dates_map,
+)
+from backend.domains.echeance.presenters import (
     build_echeance_response,
     build_calendar_occurrence,
 )
@@ -28,7 +27,7 @@ async def get_echeances():
     """Récupère toutes les échéances actives."""
     try:
         echeances = repo.get_all()
-        paid_ids = get_paid_this_month()
+        paid_ids = repo.get_paid_this_month()
         return [build_echeance_response(e, is_paid=e.id in paid_ids) for e in echeances]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -41,7 +40,7 @@ async def get_calendar_echeances():
         today = date.today()
         start_month = today - relativedelta(months=6)
         end_month = today + relativedelta(months=24)
-        paid_map = get_paid_dates_map()
+        paid_map = repo.get_paid_dates_map()
 
         all_occurrences = []
         current = start_month.replace(day=1)

@@ -22,7 +22,15 @@ class Echeance(BaseModel):
     categorie: str = Field(..., description="Catégorie principale")
     sous_categorie: Optional[str] = Field(None, description="Sous-catégorie")
     montant: float = Field(..., gt=0, description="Montant")
-    frequence: str = Field(..., description="Fréquence (mensuel, annuel, etc.)")
+    frequence: Literal[
+        "quotidien",
+        "hebdomadaire",
+        "mensuel",
+        "trimestriel",
+        "semestriel",
+        "annuel",
+        "unique",
+    ] = Field(..., description="Fréquence (mensuel, annuel, etc.)")
     date_debut: date = Field(..., description="Date de début")
     date_fin: Optional[date] = Field(None, description="Date de fin")
     description: Optional[str] = Field(None, description="Description ou notes")
@@ -43,6 +51,21 @@ class Echeance(BaseModel):
         if normalized in {"depense", "dépense", "expense"}:
             return "depense"
         return v
+
+    @field_validator("frequence", mode="before")
+    @classmethod
+    def normalize_frequence(cls, v: str) -> str:
+        if not isinstance(v, str):
+            return v
+        normalized = v.strip().lower()
+        mapping = {
+            "quotidienne": "quotidien",
+            "mensuelle": "mensuel",
+            "trimestrielle": "trimestriel",
+            "semestrielle": "semestriel",
+            "annuelle": "annuel",
+        }
+        return mapping.get(normalized, normalized)
 
     # ── Propriétés calculées ────────────────────────────────
 

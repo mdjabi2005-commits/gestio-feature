@@ -12,11 +12,12 @@ from backend.domains.goals.repository import GoalRepository
 @pytest.fixture
 def goal_repo(db_path) -> GoalRepository:
     """Repository branché sur la DB de test."""
-    repo = GoalRepository(db_path=db_path)
+    from backend.domains.goals.repository import goal_repository
+    goal_repository.db_path = db_path
+    
     from backend.domains.goals.schema import init_goal_table
-
     init_goal_table(db_path)
-    return repo
+    return goal_repository
 
 
 @pytest.fixture
@@ -124,13 +125,14 @@ def test_get_all_with_progress(goal_repo, goal_vacances, db_path):
     """Récupère les objectifs avec progression."""
     from backend.domains.transactions.repository import transaction_repository
     from backend.domains.transactions.schema import init_transaction_table
+    from backend.domains.goals.service import goal_service
 
     transaction_repository.db_path = db_path
     init_transaction_table(db_path)
 
     goal_repo.add(goal_vacances)
 
-    results = goal_repo.get_all_with_progress()
+    results = goal_service.get_all_with_progress()
 
     assert len(results) == 1
     assert hasattr(results[0], "montant_actuel")

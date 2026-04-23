@@ -16,7 +16,7 @@ from backend.domains.budgets.service import (
     generate_budgets_from_plan,
     save_plan_to_yaml,
 )
-from .models import SalaryPlanItem, SalaryPlanResponse
+from .models_api import SalaryPlanItem, SalaryPlanResponse
 
 logger = logging.getLogger(__name__)
 

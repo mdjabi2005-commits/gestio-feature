@@ -28,7 +28,7 @@ class TestOCRConfig:
         client = TestClient(app)
 
         response = client.post("/api/ocr/config", json={"api_key": "invalid_key"})
-        assert response.status_code == 400
+        assert response.status_code == 422
 
     def test_api_key_validation_valid(self):
         """Test avec clé valide."""
@@ -124,10 +124,10 @@ class TestSalaryPlanService:
             ],
         }
 
-        transactions = apply_salary_split(2000, "2026-01-31", plan=plan)
+        allocations = apply_salary_split(2000, plan=plan)
 
-        assert len(transactions) > 0
-        total = sum(t.montant for t in transactions)
+        assert len(allocations) > 0
+        total = sum(a["montant"] for a in allocations)
         assert total == 2000
 
     def test_get_available_plans(self):

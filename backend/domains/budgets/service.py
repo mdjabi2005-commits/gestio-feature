@@ -87,90 +87,19 @@ def _calculate_allocation_amount(remaining: float, allocation: dict) -> float:
         return 0
 
 
-def _create_subcategory_transactions(
-    category: str,
-    amount: float,
-    date: str,
-    sub_allocations: list,
-    attachment: Optional[str],
-    sub_distribution_mode: str,
-) -> List[Transaction]:
-    """Crée les transactions pour les sous-catégories."""
-    transactions = []
-
-    if sub_distribution_mode == "manual" and sub_allocations:
-        total_pct = sum(s.get("value", 0) for s in sub_allocations)
-        if total_pct > 100:
-            logger.warning(f"Total sous-allocations ({total_pct}%) > 100%")
-
-        for sub in sub_allocations:
-            sub_name = sub.get("name")
-            sub_val = sub.get("value", 0)
-            sub_amt = round(amount * (sub_val / 100), 2) if total_pct > 0 else 0
-
-            if sub_amt > 0:
-                transactions.append(
-                    Transaction(
-                        type="depense",
-                        categorie=category,
-                        sous_categorie=sub_name,
-                        montant=sub_amt,
-                        date=date,
-                        description=f"Salaire - {sub_name}",
-                        source="salary_split",
-                        attachment=attachment,
-                        has_attachments=bool(attachment),
-                    )
-                )
-    else:
-        subcats = get_subcategories(category)
-        if subcats:
-            sub_amt = round(amount / len(subcats), 2)
-            for subcat in subcats:
-                transactions.append(
-                    Transaction(
-                        type="depense",
-                        categorie=category,
-                        sous_categorie=subcat,
-                        montant=sub_amt,
-                        date=date,
-                        description=f"Salaire - {subcat}",
-                        source="salary_split",
-                        attachment=attachment,
-                        has_attachments=bool(attachment),
-                    )
-                )
-        else:
-            transactions.append(
-                Transaction(
-                    type="depense",
-                    categorie=category,
-                    sous_categorie="Autre",
-                    montant=amount,
-                    date=date,
-                    description="Salaire",
-                    source="salary_split",
-                    attachment=attachment,
-                    has_attachments=bool(attachment),
-                )
-            )
-
-    return transactions
 
 
 def apply_salary_split(
     net_amount: float,
-    payroll_date: str,
     plan: Optional[Dict[str, Any]] = None,
-    attachment: Optional[str] = None,
-) -> List[Transaction]:
-    """Applique le plan de salaire pour générer une liste de transactions."""
+) -> List[Dict[str, Any]]:
+    """Applique le plan de salaire pour générer une répartition théorique (allocations)."""
     if plan is None:
         plan = load_salary_plan()
 
     validate_salary_plan(plan)
 
-    transactions = []
+    allocations = []
     remaining = net_amount
     default_category = plan.get("default_remainder_category", "Épargne")
 
@@ -178,37 +107,22 @@ def apply_salary_split(
         category = allocation.get("category")
         amount = _calculate_allocation_amount(remaining, allocation)
 
-        sub_transactions = _create_subcategory_transactions(
-            category,
-            amount,
-            payroll_date,
-            allocation.get("sub_allocations", []),
-            attachment,
-            allocation.get("sub_distribution_mode", "equal"),
-        )
-        transactions.extend(sub_transactions)
+        allocations.append({
+            "categorie": category,
+            "montant": amount,
+        })
         remaining = round(remaining - amount, 2)
 
     if remaining > 0:
-        transactions.append(
-            Transaction(
-                type="depense",
-                categorie=default_category,
-                sous_categorie="Divers",
-                montant=round(remaining, 2),
-                date=payroll_date,
-                description="Salaire - Reliquat",
-                source="salary_split",
-                attachment=attachment,
-                has_attachments=bool(attachment),
-            )
-        )
+        allocations.append({
+            "categorie": default_category,
+            "montant": round(remaining, 2),
+        })
 
     logger.info(
-        f"Salary split appliqué: {net_amount}€ → {len(transactions)} transactions"
+        f"Salary split calculé théoriquement: {net_amount}€ → {len(allocations)} allocations"
     )
-    return transactions
-
+    return allocations
 
 def get_available_plans() -> List[str]:
     """Retourne la liste des plans de salaire disponibles."""

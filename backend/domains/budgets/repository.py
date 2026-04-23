@@ -1,10 +1,9 @@
 import logging
 from typing import List, Optional
 
-from sqlcipher3 import dbapi2 as sqlcipher
-
 from backend.shared.database.base_repository import BaseRepository
 from backend.domains.budgets.model import Budget
+from sqlcipher3 import dbapi2 as sqlcipher
 
 logger = logging.getLogger(__name__)
 

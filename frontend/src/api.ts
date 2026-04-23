@@ -1,8 +1,8 @@
 // api.ts — Thin aggregator. Keep under 200 lines (AGENTS.md rule).
 // Types are in api/types.ts. Domain methods in api/*.ts
 
-import type { Transaction, Attachment, OCRScanResponse, ScannedTicket, Budget, BudgetSummaryItem, BudgetSummary, Echeance, IncomeScanResponse, IncomeSplit, SalaryPlan, SalaryPlanItem, Objectif, GoalMonthlyProgress } from './api/types';
-export type { Transaction, Attachment, OCRScanResponse, ScannedTicket, Budget, BudgetSummaryItem, BudgetSummary, Echeance, IncomeScanResponse, IncomeSplit, SalaryPlan, SalaryPlanItem, Objectif, GoalMonthlyProgress } from './api/types';
+import type { Transaction, Attachment, OCRScanResponse, ScannedTicket, Budget, BudgetSummaryItem, BudgetSummary, Echeance, SalaryPlan, SalaryPlanItem, Objectif, GoalMonthlyProgress } from './api/types';
+export type { Transaction, Attachment, OCRScanResponse, ScannedTicket, Budget, BudgetSummaryItem, BudgetSummary, Echeance, SalaryPlan, SalaryPlanItem, Objectif, GoalMonthlyProgress } from './api/types';
 import { budgetsApi } from './api/budgets';
 import { ocrApi } from './api/ocr';
 import { objectifsApi } from './api/objectifs';

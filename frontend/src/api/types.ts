@@ -82,20 +82,7 @@ export interface Echeance {
   objectif_id?: number;
 }
 
-export interface IncomeSplit {
-  categorie: string;
-  sous_categorie: string;
-  montant: number;
-  description: string;
-}
 
-export interface IncomeScanResponse {
-  total_net: number;
-  date: string;
-  suggested_splits: IncomeSplit[];
-  archived_path?: string;
-  raw_text: string;
-}
 
 export interface SalaryPlanItem {
   id?: number;

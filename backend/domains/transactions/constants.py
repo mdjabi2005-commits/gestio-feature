@@ -30,12 +30,14 @@ _FALLBACK_CATEGORIES: list[str] = [
     "Santé",
     "Shopping",
     "Services",
+    "Épargne",
+    "Salaire",
     "Autre",
 ]
 
 def _load_categories() -> list[str]:
     try:
-        from shared.utils.categories_loader import get_categories
+        from backend.shared.utils.categories_loader import get_categories
         cats = get_categories()
         return cats if cats else _FALLBACK_CATEGORIES
     except Exception:

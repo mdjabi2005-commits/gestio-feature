@@ -6,13 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import os
-from backend.api.transactions.transactions import router as transactions_router
-from backend.api.dashboard.dashboard import router as dashboard_router
-from backend.api.attachments.attachments import router as attachments_router
-from backend.api.ocr.ocr import router as ocr_router
-from backend.api.echeances.echeances import router as echeances_router
-from backend.api.budgets.budgets import router as budgets_router
-from backend.api.goals import router as goals_router
+from backend.domains.transactions.api import router as transactions_router
+from backend.domains.dashboard.api import router as dashboard_router
+from backend.domains.attachments.api import router as attachments_router
+from backend.domains.ocr.api import router as ocr_router
+from backend.domains.echeance.api import router as echeances_router
+from backend.domains.budgets.api import router as budgets_router
+from backend.domains.goals.api import router as goals_router
 from backend.domains.ocr.services.ocr_service import get_ocr_service
 
 # Configure logging
@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
 
     # Démarre le watcher de fichiers
     try:
-        from backend.api.ocr.watcher import start_watcher
+        from backend.domains.ocr.watcher import start_watcher
 
         start_watcher(interval=60)
         logger.info("Watcher de fichiers démarré ✅")
@@ -59,7 +59,7 @@ async def lifespan(app: FastAPI):
 
     # Arrêt : Nettoyage
     try:
-        from backend.api.ocr.watcher import stop_watcher
+        from backend.domains.ocr.watcher import stop_watcher
 
         stop_watcher()
     except Exception as e:

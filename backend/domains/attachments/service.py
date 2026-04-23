@@ -10,28 +10,11 @@ from pathlib import Path
 from typing import List, Optional, Any
 import mimetypes
 
-from backend.config import paths as paths_config
+from backend.config.paths import SORTED_DIR, REVENUS_TRAITES, OBJECTIFS_DIR
 from backend.domains.attachments.model import TransactionAttachment
-from backend.domains.attachments.repository import (
-    attachment_repository,
-)
+from backend.domains.attachments.repository import attachment_repository
 
 logger = logging.getLogger(__name__)
-
-
-def _get_sorted_dir() -> str:
-    """Retourne le chemin SORTED_DIR de manière dynamique."""
-    return paths_config.SORTED_DIR
-
-
-def _get_revenus_traites() -> str:
-    """Retourne le chemin REVENUS_TRAITES de manière dynamique."""
-    return paths_config.REVENUS_TRAITES
-
-
-def _get_objectifs_dir() -> str:
-    """Retourne le chemin OBJECTIFS_DIR de manière dynamique."""
-    return paths_config.OBJECTIFS_DIR
 
 
 def _sanitize_name(name: str) -> str:
@@ -44,17 +27,6 @@ def _sanitize_name(name: str) -> str:
 def _sanitize_filename(name: str) -> str:
     """Nettoie un nom de fichier."""
     return "".join(c for c in name if c.isalnum() or c in "._-").strip()
-
-
-def _find_file_in_dirs(file_name: str) -> Optional[Path]:
-    """Cherche un fichier par son nom dans les répertoires."""
-    for root in (Path(_get_sorted_dir()), Path(_get_revenus_traites())):
-        if not root.exists():
-            continue
-        matches = list(root.rglob(file_name))
-        if matches:
-            return matches[0]
-    return None
 
 
 def _save_file_to_dir(
@@ -74,27 +46,36 @@ def _save_file_to_dir(
 class AttachmentService:
     def add_attachment(
         self,
-        transaction_id: int,
         file_content: bytes,
         filename: str,
+        transaction_id: Optional[int] = None,
+        echeance_id: Optional[int] = None,
+        objectif_id: Optional[int] = None,
         category: str = "Autre",
         subcategory: str = "",
         transaction_type: str = "depense",
+        nom_objectif: str = ""
     ) -> bool:
-        """Sauvegarde le fichier et enregistre les métadonnées."""
+        """Sauvegarde le fichier et enregistre les métadonnées (unifié)."""
         try:
-            root_dir = (
-                Path(_get_revenus_traites())
-                if transaction_type.lower() == "revenu"
-                else Path(_get_sorted_dir())
-            )
-            target_dir = root_dir / _sanitize_name(category)
-            if subcategory and subcategory.strip():
-                target_dir = target_dir / _sanitize_name(subcategory)
+            if objectif_id is not None:
+                target_dir = Path(OBJECTIFS_DIR) / _sanitize_name(nom_objectif)
+                prefix = ""
+            elif echeance_id is not None:
+                target_dir = Path(SORTED_DIR) / "Echeances"
+                prefix = f"echeance_{echeance_id}_"
+            else:
+                root_dir = (
+                    Path(REVENUS_TRAITES)
+                    if transaction_type.lower() == "revenu"
+                    else Path(SORTED_DIR)
+                )
+                target_dir = root_dir / _sanitize_name(category)
+                if subcategory and subcategory.strip():
+                    target_dir = target_dir / _sanitize_name(subcategory)
+                prefix = ""
 
-            unique_name = (
-                f"{int(datetime.now().timestamp())}_{_sanitize_filename(filename)}"
-            )
+            unique_name = f"{prefix}{int(datetime.now().timestamp())}_{_sanitize_filename(filename)}"
             target_path = _save_file_to_dir(file_content, target_dir, unique_name)
 
             if not target_path:
@@ -102,9 +83,9 @@ class AttachmentService:
 
             attachment = TransactionAttachment(
                 transaction_id=transaction_id,
-                file_name=unique_name,
+                echeance_id=echeance_id,
+                objectif_id=objectif_id,
                 file_path=str(target_path),
-                file_type=Path(filename).suffix.lower(),
             )
             new_id = attachment_repository.add_attachment(attachment)
 
@@ -120,74 +101,6 @@ class AttachmentService:
             logger.error(f"Erreur add_attachment: {e}")
             return False
 
-    def add_attachment_to_echeance(
-        self, echeance_id: int, file_content: bytes, filename: str
-    ) -> bool:
-        """Sauvegarde un fichier pour une échéance."""
-        try:
-            target_dir = Path(_get_sorted_dir()) / "Echeances"
-            unique_name = f"echeance_{echeance_id}_{int(datetime.now().timestamp())}_{_sanitize_filename(filename)}"
-            target_path = _save_file_to_dir(file_content, target_dir, unique_name)
-
-            if not target_path:
-                return False
-
-            attachment = TransactionAttachment(
-                echeance_id=echeance_id,
-                file_name=unique_name,
-                file_path=str(target_path),
-                file_type=Path(filename).suffix.lower(),
-            )
-            new_id = attachment_repository.add_attachment(attachment)
-
-            if new_id:
-                logger.info(f"Attachment échéance ajouté: {unique_name} (ID: {new_id})")
-                return True
-
-            if target_path.exists():
-                target_path.unlink()
-            return False
-
-        except Exception as e:
-            logger.error(f"Erreur add_attachment_to_echeance: {e}")
-            return False
-
-    def add_attachment_to_objectif(
-        self, objectif_id: int, nom_objectif: str, file_content: bytes, filename: str
-    ) -> bool:
-        """Sauvegarde un fichier pour un objectif."""
-        try:
-            target_dir = Path(_get_objectifs_dir()) / _sanitize_name(nom_objectif)
-            unique_name = (
-                f"{int(datetime.now().timestamp())}_{_sanitize_filename(filename)}"
-            )
-            target_path = _save_file_to_dir(file_content, target_dir, unique_name)
-
-            if not target_path:
-                return False
-
-            attachment = TransactionAttachment(
-                objectif_id=objectif_id,
-                file_path=str(target_path),
-            )
-            new_id = attachment_repository.add_attachment(attachment)
-
-            if new_id:
-                logger.info(f"Attachment objectif ajouté: {unique_name} (ID: {new_id})")
-                return True
-
-            if target_path.exists():
-                target_path.unlink()
-            return False
-
-        except Exception as e:
-            logger.error(f"Erreur add_attachment_to_objectif: {e}")
-            return False
-
-    def find_file(self, file_name: str) -> Optional[Path]:
-        """Cherche un fichier par son nom."""
-        return _find_file_in_dirs(file_name)
-
     def get_attachments(self, transaction_id: int) -> List[TransactionAttachment]:
         """Récupère les pièces jointes d'une transaction."""
         return attachment_repository.get_attachments_by_transaction(transaction_id)
@@ -199,15 +112,12 @@ class AttachmentService:
             if not attachment:
                 return False
 
-            file_path = attachment.file_path
             if not attachment_repository.delete_attachment(attachment_id):
                 return False
 
-            if file_path:
-                physical = Path(file_path)
-                if not physical.exists():
-                    physical = self.find_file(attachment.file_name) or physical
-                if physical and physical.exists():
+            if attachment.file_path:
+                physical = Path(attachment.file_path)
+                if physical.exists():
                     try:
                         physical.unlink()
                         logger.info(f"Fichier physique supprimé: {physical}")
@@ -220,50 +130,20 @@ class AttachmentService:
             return False
 
     def get_file_content(self, attachment_id: int) -> Optional[tuple[bytes, str, str]]:
-        """Récupère le contenu binaire, nom et type MIME."""
+        """Récupère le contenu binaire, nom et type MIME via le chemin direct."""
         attachment = attachment_repository.get_attachment_by_id(attachment_id)
-        if not attachment:
+        if not attachment or not attachment.file_path:
             return None
 
-        file_path = attachment.file_path
-        physical = Path(file_path) if file_path else None
-        file_name = Path(file_path).name if file_path else "unknown"
-
-        if not (physical and physical.exists()):
-            physical = self.find_file(file_name)
-
-        if physical and physical.exists():
+        physical = Path(attachment.file_path)
+        if physical.exists():
             content = physical.read_bytes()
             mime_type, _ = mimetypes.guess_type(physical)
-            return content, file_name, mime_type or "application/octet-stream"
+            return content, physical.name, mime_type or "application/octet-stream"
 
         return None
 
-    def archive_income_file(
-        self, temp_path: str, category: str, date_str: str, net_amount: float
-    ) -> Optional[str]:
-        """Archive un fichier de revenu."""
-        try:
-            root_dir = Path(_get_revenus_traites())
-            target_dir = root_dir / _sanitize_name(category)
-            target_dir.mkdir(parents=True, exist_ok=True)
 
-            ext = Path(temp_path).suffix.lower()
-            safe_date = _sanitize_name(date_str).replace(" ", "_")
-            filename = f"{safe_date}_Salaire_{int(net_amount)}€{ext}"
-            target_path = target_dir / filename
-
-            if target_path.exists():
-                filename = f"{safe_date}_Salaire_{int(net_amount)}€_{int(datetime.now().timestamp())}{ext}"
-                target_path = target_dir / filename
-
-            shutil.copy2(temp_path, target_path)
-            logger.info(f"Fiche de paie archivée : {target_path}")
-            return str(target_path)
-
-        except Exception as e:
-            logger.error(f"Erreur archive_income_file: {e}")
-            return None
 
 
 attachment_service = AttachmentService()
@@ -271,32 +151,41 @@ attachment_service = AttachmentService()
 
 def archive_file(
     source_path: str,
-    category: str,
-    sub_category: str = None,
-    target_base_dir: str = None,
+    transaction: Any = None,
     is_ticket: bool = True,
+    target_base_dir: str = None,
 ) -> Optional[str]:
     """
-    Archive un fichier (ticket ou revenu) vers le dossier structuré.
+    Archive un fichier temporaire (ticket ou revenu) vers le dossier structuré.
     """
     if target_base_dir is None:
-        target_base_dir = _get_revenus_traites() if not is_ticket else _get_sorted_dir()
+        target_base_dir = REVENUS_TRAITES if not is_ticket else SORTED_DIR
 
     try:
         import os
 
-        sub_cat = sub_category or "Divers"
-        cat = category or "Autre"
+        # Utiliser la transaction fournie
+        main_tx = transaction
+
+        cat = getattr(main_tx, "categorie", "Autre") or "Autre"
+        sub_cat = getattr(main_tx, "sous_categorie", "Divers") or "Divers"
 
         target_dir = os.path.join(target_base_dir, cat, sub_cat)
         os.makedirs(target_dir, exist_ok=True)
 
         original_name = os.path.basename(source_path)
-        prefixes = ["ocr_", "income_", "batch_"]
-        for prefix in prefixes:
-            if original_name.startswith(prefix):
-                original_name = original_name[len(prefix) :]
-                break
+        
+        # Format spécifique pour les fiches de paie
+        if not is_ticket and main_tx and hasattr(main_tx, "montant") and hasattr(main_tx, "date"):
+            ext = os.path.splitext(original_name)[1]
+            safe_date = str(main_tx.date).replace(" ", "_")
+            original_name = f"{safe_date}_Salaire_{int(main_tx.montant)}€{ext}"
+        else:
+            prefixes = ["ocr_", "income_", "batch_"]
+            for prefix in prefixes:
+                if original_name.startswith(prefix):
+                    original_name = original_name[len(prefix) :]
+                    break
 
         target_path = os.path.join(target_dir, original_name)
         counter = 1
@@ -312,34 +201,3 @@ def archive_file(
     except Exception as e:
         logger.error(f"Erreur archivage fichier: {e}")
         return None
-
-
-def archive_payroll_file(temp_path: str, transactions: List[Any]) -> Optional[str]:
-    """Archive le fichier PDF de fiche de paie."""
-    from backend.domains.transactions.model import Transaction
-
-    if not transactions:
-        return None
-
-    dominant_tx = max(transactions, key=lambda t: t.montant)
-    return archive_file(
-        temp_path,
-        category=dominant_tx.categorie or "Épargne",
-        sub_category=dominant_tx.sous_categorie,
-        target_base_dir=None,
-        is_ticket=False,
-    )
-
-
-def archive_ticket_file(temp_path: str, transaction: Any = None) -> Optional[str]:
-    """Archive le fichier de ticket image."""
-    if transaction is None:
-        return None
-
-    return archive_file(
-        temp_path,
-        category=transaction.categorie or "Autre",
-        sub_category=transaction.sous_categorie,
-        target_base_dir=None,
-        is_ticket=True,
-    )

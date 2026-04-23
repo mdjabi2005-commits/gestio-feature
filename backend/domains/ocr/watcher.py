@@ -13,7 +13,7 @@ from typing import Optional
 from backend.config.paths import TO_SCAN_DIR, SORTED_DIR, REVENUS_TRAITES
 from backend.domains.transactions.repository import transaction_repository
 from backend.domains.ocr.services.ocr_service import get_ocr_service
-from backend.api.attachments.attachments import archive_file as _archive_file
+from backend.domains.attachments.api import archive_file as _archive_file
 
 logger = logging.getLogger(__name__)
 
@@ -79,10 +79,6 @@ def _process_file(file_path: str) -> bool:
                 logger.warning(f"Montant net non trouvé dans le PDF: {file_path}")
                 return False
 
-            from backend.domains.budgets.service import (
-                apply_salary_split,
-                SalaryPlanError,
-            )
             from backend.domains.transactions.model import Transaction
             from datetime import date
 
@@ -92,36 +88,26 @@ def _process_file(file_path: str) -> bool:
                 else date.today().isoformat()
             )
 
-            try:
-                transactions = apply_salary_split(net_amount=net, payroll_date=date_str)
-            except SalaryPlanError:
-                transactions = [
-                    Transaction(
-                        type="revenu",
-                        categorie="Épargne",
-                        sous_categorie="Divers",
-                        montant=net,
-                        date=date_str,
-                        description="Salaire",
-                        source="watcher",
-                    )
-                ]
+            tx = Transaction(
+                type="revenu",
+                categorie="Salaire",
+                sous_categorie="Mensuel",
+                montant=net,
+                date=date_str,
+                description="Salaire (PDF)",
+                source="watcher",
+            )
 
-            for tx in transactions:
-                transaction_repository.add(tx)
+            transaction_repository.add(tx)
 
             _archive_file(
                 file_path,
-                category=transactions[0].categorie if transactions else "Épargne",
-                sub_category=transactions[0].sous_categorie
-                if transactions
-                else "Divers",
+                category="Salaire",
+                sub_category="Mensuel",
                 target_base_dir=REVENUS_TRAITES,
                 is_ticket=False,
             )
-            logger.info(
-                f"PDF de paie traité et archivé: {len(transactions)} transactions"
-            )
+            logger.info(f"PDF de paie traité et archivé: {net}€")
             return True
 
     except Exception as e:
@@ -156,7 +142,7 @@ def _scan_directory() -> list:
                 logger.info(f"Traitement du fichier: {filename}")
 
                 try:
-                    from backend.api.ocr.models import OCRScanResponse
+                    from backend.domains.ocr.models_api import OCRScanResponse
                     from backend.domains.transactions.model import Transaction
 
                     if file_type := _is_valid_file(filename):

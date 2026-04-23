@@ -1,6 +1,6 @@
 "use client"
 import { useState } from 'react'
-import { api, type ScannedTicket, type IncomeScanResponse } from '@/api'
+import { api, type ScannedTicket } from '@/api'
 import { toast } from 'sonner'
 
 export function useTransactionQueue(refreshData: () => void, setEditingTransaction: (t: any) => void, setIsAddModalOpen: (b: boolean) => void, setIsViewMode: (b: boolean) => void) {
@@ -18,62 +18,15 @@ export function useTransactionQueue(refreshData: () => void, setEditingTransacti
     refreshData()
   }
 
-  const handleScanResults = (results: any[]) => {
-    const flattened: ScannedTicket[] = []
-    results.forEach(res => {
-      if (res.type === 'income') {
-        const income = res.result as IncomeScanResponse
-        const archivedPath = income.archived_path
-        let totalAllocated = 0
-        
-        income.suggested_splits.forEach((split: any) => {
-          totalAllocated += split.montant
-          flattened.push({
-            file: res.file,
-            result: {
-              transaction: {
-                type: 'revenu',
-                date: income.date,
-                categorie: split.categorie,
-                sous_categorie: split.sous_categorie,
-                montant: split.montant,
-                description: split.description,
-                source: 'pdf',
-                attachment: archivedPath
-              },
-              warnings: [],
-              raw_ocr_text: income.raw_text
-            }
-          })
-        })
-        const remainder = Math.max(0, income.total_net - totalAllocated)
-        if (remainder > 0.1) {
-          flattened.push({
-            file: res.file,
-            result: {
-              transaction: {
-                type: 'revenu',
-                date: income.date,
-                categorie: 'Autre',
-                montant: remainder,
-                description: 'Reliquat de fiche de paie',
-                source: 'pdf',
-                attachment: archivedPath
-              },
-              warnings: ["Montant résiduel non alloué par le plan"],
-              raw_ocr_text: income.raw_text
-            }
-          })
-        }
-      } else {
-        const ticket = res as ScannedTicket;
-        if (ticket.result.archived_path) {
-          ticket.result.transaction.attachment = ticket.result.archived_path;
-        }
-        flattened.push(ticket);
+  const handleScanResults = (results: ScannedTicket[]) => {
+    const processed: ScannedTicket[] = results.map(ticket => {
+      // Attach archived_path to the transaction if available
+      if (ticket.result.archived_path) {
+        ticket.result.transaction.attachment = ticket.result.archived_path
       }
+      return ticket
     })
-    setScanResultsQueue(prev => [...prev, ...flattened])
+    setScanResultsQueue(prev => [...prev, ...processed])
   }
 
   const handleValidate = async (index: number) => {

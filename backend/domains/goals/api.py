@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 
 from backend.domains.goals.model import Goal, GoalWithProgress
 from backend.domains.goals.repository import goal_repository
+from backend.domains.goals.service import goal_service
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/api/goals", tags=["goals"])
 async def get_goals():
     """Récupère tous les objectifs avec leur progression."""
     try:
-        return goal_repository.get_all_with_progress()
+        return goal_service.get_all_with_progress()
     except Exception as e:
         logger.error(f"Erreur get_goals: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -29,7 +30,7 @@ async def get_goals():
 async def get_goal(goal_id: int):
     """Récupère un objectif par son ID avec sa progression."""
     try:
-        goal = goal_repository.get_by_id_with_progress(goal_id)
+        goal = goal_service.get_by_id_with_progress(goal_id)
         if not goal:
             raise HTTPException(status_code=404, detail="Objectif non trouvé")
         return goal
@@ -47,6 +48,7 @@ async def create_goal(goal: Goal):
         goal_id = goal_repository.add(goal)
         if not goal_id:
             raise HTTPException(status_code=400, detail="Échec de la création")
+        goal_service.invalidate_cache()
         return goal_id
     except Exception as e:
         logger.error(f"Erreur create_goal: {e}")
@@ -61,7 +63,8 @@ async def update_goal(goal_id: int, goal: Goal):
         success = goal_repository.update(goal_id, goal_data)
         if not success:
             raise HTTPException(status_code=404, detail="Objectif non trouvé")
-        updated_goal = goal_repository.get_by_id_with_progress(goal_id)
+        goal_service.invalidate_cache()
+        updated_goal = goal_service.get_by_id_with_progress(goal_id)
         return updated_goal
     except HTTPException:
         raise
@@ -77,6 +80,7 @@ async def delete_goal(goal_id: int):
         success = goal_repository.delete(goal_id)
         if not success:
             raise HTTPException(status_code=404, detail="Objectif non trouvé")
+        goal_service.invalidate_cache()
         return {"status": "success", "message": "Objectif supprimé"}
     except HTTPException:
         raise
@@ -92,7 +96,7 @@ async def get_goal_monthly_progress(goal_id: int):
         goal = goal_repository.get_by_id(goal_id)
         if not goal:
             raise HTTPException(status_code=404, detail="Objectif non trouvé")
-        progress = goal_repository.get_monthly_progress(goal_id)
+        progress = goal_service.get_monthly_progress(goal_id)
         return progress
     except HTTPException:
         raise

@@ -160,31 +160,18 @@ class TransactionRepository(BaseRepository[Transaction]):
         category: Optional[str] = None,
     ) -> List[Transaction]:
         """Récupère les transactions filtrées."""
-        query = f"{self._get_with_attachments_query()} WHERE 1=1"
-        params = []
+        where_clause = "t.categorie = ?" if category else None
+        params = (category,) if category else ()
 
-        if start_date:
-            query += " AND t.date >= ?"
-            params.append(start_date.isoformat())
-        if end_date:
-            query += " AND t.date <= ?"
-            params.append(end_date.isoformat())
-        if category:
-            query += " AND t.categorie = ?"
-            params.append(category)
-
-        query += " ORDER BY t.date DESC"
-
-        with db_transaction(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, params)
-            transactions = []
-            for row in cursor.fetchall():
-                try:
-                    transactions.append(Transaction.model_validate(dict(row)))
-                except Exception as e:
-                    logger.error(f"Error validating filtered transaction row: {e}")
-            return transactions
+        return self.get_time_filtered(
+            start_date=start_date,
+            end_date=end_date,
+            date_column="t.date",
+            where=where_clause,
+            params=params,
+            order_by="t.date DESC",
+            base_query=self._get_with_attachments_query(),
+        )
 
     def delete(self, transaction_id: int | List[int]) -> bool:
         """Supprime une ou plusieurs transactions."""

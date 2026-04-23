@@ -72,16 +72,12 @@ export function useScanner(isOpen: boolean, onClose: () => void, onScanResults: 
     setIsScanning(true)
     const start = Date.now()
     try {
-      const results: any[] = []
+      const results: ScannedTicket[] = []
       for (const file of files) {
-        if (file.type === 'application/pdf') {
-          const result = await api.scanIncome(file)
-          results.push({ result, file, type: 'income' })
-        } else {
-          const resized = await resizeImage(file)
-          const result = await api.scanTicket(resized)
-          results.push({ result, file: resized, type: 'ticket' })
-        }
+        const isPdf = file.type === 'application/pdf'
+        const processedFile = isPdf ? file : await resizeImage(file)
+        const result = isPdf ? await api.scanIncome(processedFile) : await api.scanTicket(processedFile)
+        results.push({ result, file: processedFile })
       }
       onScanResults(results)
       toast.success(`${results.length} doc(s) en ${((Date.now() - start)/1000).toFixed(1)}s !`, { position: "top-center" })

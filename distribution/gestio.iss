@@ -2,7 +2,9 @@
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "Gestio Team"
 #define MyAppExeName "launcher.bat"
+#define MyAppExePath "distribution\launcher.bat"
 #define MyAppIcon "favicon.ico"
+#define MyAppIconPath "distribution\favicon.ico"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -34,12 +36,12 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; Copier tous les fichiers sauf les dossiers de dépendances et caches
 Source: "../*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; \
     Excludes: ".git\*,.venv\*,frontend\node_modules\*,node_modules\*,.idea\*,.pytest_cache\*,.ruff_cache\*,tmp\*,.github\*,dist\*,build\*"
-Source: "{#MyAppIcon}"; DestDir: "{app}"; Flags: ignoreversion
+; Plus besoin de copier explicitement favicon.ico à la racine de {app} puisqu'il est copié dans distribution/
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppIcon}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppIcon}"; Tasks: desktopicon
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExePath}"; IconFilename: "{app}\{#MyAppIconPath}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExePath}"; IconFilename: "{app}\{#MyAppIconPath}"; Tasks: desktopicon
 
 [Run]
 ; Lancer le setup.ps1 au premier démarrage (via run.ps1 qui l'appelle si besoin)
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: shellexec postinstall skipifsilent
+Filename: "{app}\{#MyAppExePath}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: shellexec postinstall skipifsilent

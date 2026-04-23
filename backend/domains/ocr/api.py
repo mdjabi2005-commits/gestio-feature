@@ -13,53 +13,26 @@ from pydantic import BaseModel
 from backend.domains.ocr.services.ocr_service import get_ocr_service
 from backend.domains.transactions.model import Transaction
 from backend.domains.ocr.core.pdfplumber_engine import pdfplumber_engine
-from backend.domains.budgets.service import (
-    SalaryPlanError,
-    apply_salary_split,
-)
+
 from backend.config.ocr_config import get_ocr_config, save_ocr_config
-from backend.api.attachments.attachments import (
-    archive_ticket_file,
-    archive_payroll_file,
-)
+from backend.domains.attachments.api import archive_file
 from backend.shared.utils.file_utils import (
     validate_image_format,
     validate_pdf_format,
     save_upload_to_temp,
     TempFileManager,
 )
-from .models import (
+from .models_api import (
     OCRScanResponse,
     BatchScanResponse,
-    IncomeSplitDTO,
-    IncomeScanResponse,
+    OCRConfigResponse,
+    OCRConfigUpdate,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/ocr", tags=["ocr"])
 
 IMAGES = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"}
-
-
-def _tx_warnings(t: Transaction) -> List[str]:
-    w = []
-    if t.montant == 0.0:
-        w.append("montant non trouvé dans le ticket")
-    if not t.date:
-        w.append("date non trouvée dans le ticket")
-    if not t.categorie or t.categorie == "Non catégorisé":
-        w.append("catégorie non identifiée")
-    if not t.sous_categorie:
-        w.append("sous-catégorie non identifiée")
-    return w
-
-
-class OCRConfigResponse(BaseModel):
-    api_key: str = ""
-
-
-class OCRConfigUpdate(BaseModel):
-    api_key: str
 
 
 @router.get("/config", response_model=OCRConfigResponse)
@@ -74,11 +47,11 @@ async def get_ocr_config_endpoint():
 @router.post("/config", response_model=OCRConfigResponse)
 async def update_ocr_config_endpoint(config_data: OCRConfigUpdate):
     """Sauvegarde la clé API Groq."""
-    if config_data.api_key and not config_data.api_key.startswith("gsk_"):
-        raise HTTPException(400, "Clé API Groq invalide (doit commencer par 'gsk_')")
-
-    config = save_ocr_config(config_data.api_key)
-    return OCRConfigResponse(api_key=config.get("api_key", ""))
+    try:
+        config = save_ocr_config(config_data.api_key)
+        return OCRConfigResponse(api_key=config.get("api_key", ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @router.get("/warmup")
@@ -103,11 +76,10 @@ async def scan_ticket(file: UploadFile = File(...)):
         raw = ocr.ocr_engine.extract_text(path)
         tx = ocr.process_ticket(path)
 
-        archived_path = archive_ticket_file(path, tx)
+        archived_path = archive_file(path, transaction=tx)
 
         return OCRScanResponse(
-            transaction=tx.model_dump(),
-            warnings=_tx_warnings(tx),
+            transaction=tx,
             raw_ocr_text=raw,
             archived_path=archived_path,
         )
@@ -152,13 +124,8 @@ async def scan_batch(files: List[UploadFile] = File(...)):
                     )
                 )
             else:
-                w = []
-                if tx.montant == 0.0:
-                    w.append("montant non trouvé")
-                if not tx.categorie or tx.categorie == "Non catégorisé":
-                    w.append("catégorie non identifiée")
                 formatted.append(
-                    OCRScanResponse(transaction=tx, warnings=w, raw_ocr_text=None)
+                    OCRScanResponse(transaction=tx, raw_ocr_text=None)
                 )
 
         return BatchScanResponse(results=formatted)
@@ -169,7 +136,7 @@ async def scan_batch(files: List[UploadFile] = File(...)):
         mgr.cleanup()
 
 
-@router.post("/scan-income", response_model=IncomeScanResponse)
+@router.post("/scan-income", response_model=OCRScanResponse)
 async def scan_income(file: UploadFile = File(...)):
     if not validate_pdf_format(file.filename):
         raise HTTPException(400, "Format non supporté. Acceptés: pdf")
@@ -186,48 +153,27 @@ async def scan_income(file: UploadFile = File(...)):
             raise HTTPException(400, "Montant net non trouvé")
         date_str = pay_date.isoformat() if pay_date else date_type.today().isoformat()
 
-        archived_path = archive_payroll_file(
-            path, transactions=[]
-        )  # Mock tx list just for target path derivation if needed
+        archived_path = archive_file(path, is_ticket=False)
 
-        try:
-            txs = apply_salary_split(
-                net_amount=net, payroll_date=date_str, attachment=archived_path
-            )
-        except SalaryPlanError as e:
-            logger.error(f"Salary plan error: {e}")
-            txs = [
-                Transaction(
-                    type="revenu",
-                    categorie="Épargne",
-                    sous_categorie="Divers",
-                    montant=net,
-                    date=date_str,
-                    description="Salaire",
-                    source="scan_income",
-                    attachment=archived_path,
-                    has_attachments=bool(archived_path),
-                )
-            ]
+        # On crée une seule transaction pour le salaire
+        tx = Transaction(
+            type="revenu",
+            categorie="Salaire",
+            sous_categorie="Mensuel",
+            montant=net,
+            date=date_str,
+            description="Salaire",
+            source="scan_income",
+            has_attachments=bool(archived_path),
+        )
 
-        # Actual archiving with real txs if needed
-        final_archived_path = archive_payroll_file(path, txs)
+        # Actual archiving with real tx
+        final_archived_path = archive_file(path, transaction=tx, is_ticket=False)
 
-        splits = [
-            IncomeSplitDTO(
-                categorie=t.categorie,
-                sous_categorie=t.sous_categorie,
-                montant=t.montant,
-                description=t.description or "",
-            )
-            for t in txs
-        ]
-        return IncomeScanResponse(
-            total_net=net,
-            date=pay_date or date_type.today(),
-            suggested_splits=splits,
+        return OCRScanResponse(
+            transaction=tx,
+            raw_ocr_text=raw,
             archived_path=final_archived_path,
-            raw_text=raw,
         )
     except HTTPException:
         raise

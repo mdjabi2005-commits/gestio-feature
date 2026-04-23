@@ -1,6 +1,6 @@
 // OCR domain API methods
 
-import type { OCRScanResponse, IncomeScanResponse, SalaryPlan } from './types';
+import type { OCRScanResponse, SalaryPlan } from './types';
 
 const API_BASE_URL = 'http://localhost:8002';
 
@@ -17,7 +17,7 @@ export const ocrApi = {
     return res.json();
   },
 
-  scanIncome: async (file: File): Promise<IncomeScanResponse> => {
+  scanIncome: async (file: File): Promise<OCRScanResponse> => {
     const formData = new FormData();
     formData.append('file', file);
     const res = await fetch(`${API_BASE_URL}/api/ocr/scan-income`, { method: 'POST', body: formData });
