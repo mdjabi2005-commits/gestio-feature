@@ -5,7 +5,7 @@ import { AttachmentSection } from "../transactions/AttachmentSection"
 import { CategorySubcategorySelect } from "@/components/ui/CategorySubcategorySelect"
 import { useFinancial } from "@/context/FinancialDataContext"
 
-const FREQUENCIES = ["mensuelle", "hebdomadaire", "annuelle", "trimestrielle", "bimensuelle"]
+const FREQUENCIES = ["mensuelle", "hebdomadaire", "annuelle", "trimestrielle"]
 const FIELD_CLASS = "w-full px-3 py-2 rounded-lg bg-white/[0.08] border border-white/[0.12] text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500/60 transition-all appearance-none"
 const LABEL_CLASS = "block text-[10px] font-black text-white/30 uppercase tracking-widest mb-1.5"
 

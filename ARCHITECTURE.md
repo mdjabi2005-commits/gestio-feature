@@ -40,10 +40,10 @@ graph TB
 
 ## Structure des Données
 
-### Base SQLite
+### Base SQLite(definie dans `backend/config/paths.py`)
 
 ```
-base.db
+finances.db
 ├── transactions      # Dépenses et revenus
 ├── echeances         # Échéances récurrentes
 ├── attachments       # Fichiers joints
@@ -264,9 +264,13 @@ export default function MaPage() {
 ## Pour Aller Plus Loin
 
 Voir les LOGIC_FLOW par module :
-- `backend/api/dashboard/LOGIC_FLOW.md`
-- `backend/api/transactions/LOGIC_FLOW.md`
-- `backend/api/echeances/LOGIC_FLOW.md`
-- `backend/api/budgets/LOGIC_FLOW.md`
+- `backend/domains/dashboard/LOGIC_FLOW.md`
+- `backend/domains/transactions/LOGIC_FLOW.md`
+- `backend/domains/echeances/LOGIC_FLOW.md`
+- `backend/domains/budgets/LOGIC_FLOW.md`
+- `backend/domains/ocr/LOGIC_FLOW.md`
+- `backend/domains/attachments/LOGIC_FLOW.md`
+- `backend/domains/goals/LOGIC_FLOW.md`
 - `frontend/src/app/budgets/LOGIC_FLOW.md`
 - `frontend/src/app/echeances/LOGIC_FLOW.md`
+- 

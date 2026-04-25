@@ -9,6 +9,42 @@ import { objectifsApi } from './api/objectifs';
 
 const API_BASE_URL = 'http://localhost:8002';
 
+const normalizeFrequence = (value: string): string => {
+  const mapping: Record<string, string> = {
+    mensuelle: 'mensuel',
+    trimestrielle: 'trimestriel',
+    semestrielle: 'semestriel',
+    annuelle: 'annuel',
+    quotidienne: 'quotidien',
+  };
+  const normalized = value?.trim().toLowerCase();
+  return mapping[normalized] ?? normalized;
+};
+const normalizeEcheancePayload = (data: any) => {
+  const payload = {
+    ...data,
+    frequence: normalizeFrequence(String(data?.frequence ?? '')),
+    montant: typeof data?.montant === 'string' ? Number(data.montant.replace(',', '.')) : data?.montant,
+    date_fin: data?.date_fin ? data.date_fin : undefined,
+  };
+  return payload;
+};
+const extractApiError = async (res: Response, fallbackMessage: string): Promise<Error> => {
+  try {
+    const errorBody = await res.json();
+    const detail = errorBody?.detail;
+    if (Array.isArray(detail)) {
+      const message = detail.map((item) => item?.msg).filter(Boolean).join(' | ');
+      return new Error(message || fallbackMessage);
+    }
+    if (typeof detail === 'string' && detail.trim().length > 0) {
+      return new Error(detail);
+    }
+  } catch {
+    // Ignore JSON parsing errors and keep fallback message.
+  }
+  return new Error(fallbackMessage);
+};
 export const api = {
   getSummary: async (params?: { start_date?: string | null, end_date?: string | null, category?: string | null }) => {
     const url = new URL(`${API_BASE_URL}/api/dashboard/`);
@@ -21,7 +57,6 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch summary');
     return res.json();
   },
-
   getCategories: async (): Promise<any[]> => {
     const res = await fetch(`${API_BASE_URL}/api/dashboard/categories`);
     if (!res.ok) throw new Error('Failed to fetch categories');
@@ -33,7 +68,6 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch transactions');
     return res.json();
   },
-
   addTransaction: async (data: any) => {
     const attachment = data.attachment;
     const cleanData = { ...data };
@@ -47,7 +81,6 @@ export const api = {
     if (!res.ok) throw new Error('Failed to add transaction');
     return res.json();
   },
-
   updateTransaction: async (id: number, data: any) => {
     const res = await fetch(`${API_BASE_URL}/api/transactions/${id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
@@ -61,7 +94,6 @@ export const api = {
     if (!res.ok) throw new Error('Failed to delete transaction');
     return res.json();
   },
-
   getEcheances: async (): Promise<any[]> => {
     const res = await fetch(`${API_BASE_URL}/api/echeances/`);
     if (!res.ok) throw new Error('Failed to fetch echeances');
@@ -73,20 +105,21 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch calendar echeances');
     return res.json();
   },
-
   addEcheance: async (data: any) => {
+    const payload = normalizeEcheancePayload(data);
     const res = await fetch(`${API_BASE_URL}/api/echeances/`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error('Failed to add echeance');
+    if (!res.ok) throw await extractApiError(res, 'Failed to add echeance');
     return res.json();
   },
 
   updateEcheance: async (id: string, data: any) => {
+    const payload = normalizeEcheancePayload(data);
     const res = await fetch(`${API_BASE_URL}/api/echeances/${id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error('Failed to update echeance');
+    if (!res.ok) throw await extractApiError(res, 'Failed to update echeance');
     return res.json();
   },
 

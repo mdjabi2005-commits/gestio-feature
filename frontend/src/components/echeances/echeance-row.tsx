@@ -19,7 +19,7 @@ export function InstallmentRow({ installment, onMarkPaid, onEdit, onDelete, onVi
   const Icon = installment.icon
   const isIncome = installment.type === "revenu"
   const isPaid = installment.statut === "paid"
-  const stat = statusConfig[installment.statut]
+  const stat = statusConfig[installment.statut] ?? statusConfig.pending
 
   // Use hex color with 15% opacity (decimal 0.15 * 255 = ~38 = 26 in hex)
   const bgStyle = { backgroundColor: `${installment.color}26` }
