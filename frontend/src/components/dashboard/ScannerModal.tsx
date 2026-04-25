@@ -4,7 +4,7 @@ import { Camera, X, Loader2, Sparkles, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api, type ScannedTicket, type OCRScanResponse } from '@/api';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useScanner } from '@/hooks/useScanner';
 import { toast } from 'sonner';
 
@@ -27,6 +27,9 @@ export function ScannerModal({ isOpen, onClose, onScanResults }: ScannerModalPro
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Sparkles className="w-5 h-5 text-indigo-400" /> Scanner un document
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Importez une image ou un PDF pour analyser automatiquement les transactions.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">

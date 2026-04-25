@@ -13,4 +13,4 @@ salary_plan:
   default_remainder_category: Épargne
   is_active: true
   name: Plan Test
-  reference_salary: 3000.0
+  reference_salary: 3000

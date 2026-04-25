@@ -48,7 +48,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Install dependencies
-        run: uv sync --frozen --no-dev --group build
+        run: uv sync --project backend --frozen --no-dev --group build
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -71,7 +71,7 @@ jobs:
           mkdir -p release-universal/frontend
           cp -r frontend/out release-universal/frontend/out
           mkdir -p release-universal/distribution
-          cp pyproject.toml uv.lock release-universal/
+          cp backend/pyproject.toml backend/uv.lock release-universal/
           cp distribution/launcher.py distribution/launcher.bat distribution/launcher.sh release-universal/distribution/
           python -c "import shutil; shutil.make_archive('Gestio-Universal', 'zip', 'release-universal')"
 
